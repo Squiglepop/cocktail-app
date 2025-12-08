@@ -1,0 +1,3 @@
+"""
+Cocktail Recipe Extractor Backend.
+"""
