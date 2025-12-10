@@ -26,6 +26,8 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/cocktails
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-for-docker-compose}
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     volumes:
       - ./backend:/app
       - uploads:/app/uploads

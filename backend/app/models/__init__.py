@@ -24,6 +24,7 @@ from .recipe import (
     RecipeIngredient,
     ExtractionJob,
 )
+from .user import User
 
 __all__ = [
     # Enums
@@ -48,4 +49,5 @@ __all__ = [
     "Ingredient",
     "RecipeIngredient",
     "ExtractionJob",
+    "User",
 ]

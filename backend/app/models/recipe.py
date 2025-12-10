@@ -61,6 +61,11 @@ class Recipe(Base):
     garnish: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # User ownership (nullable for existing/anonymous recipes)
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
@@ -72,6 +77,9 @@ class Recipe(Base):
     # Relationships
     ingredients: Mapped[List["RecipeIngredient"]] = relationship(
         "RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan"
+    )
+    user: Mapped[Optional["User"]] = relationship(
+        "User", back_populates="recipes"
     )
 
 
@@ -144,3 +152,10 @@ class ExtractionJob(Base):
         DateTime, default=datetime.utcnow, nullable=False
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+# Import User at the end to avoid circular import issues
+# The relationship is defined via string reference above
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import User

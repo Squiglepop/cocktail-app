@@ -21,6 +21,14 @@ from .recipe import (
     CategoryGroup,
     CategoriesResponse,
 )
+from .auth import (
+    UserCreate,
+    UserLogin,
+    UserUpdate,
+    UserResponse,
+    Token,
+    TokenData,
+)
 
 __all__ = [
     "IngredientBase",
@@ -41,4 +49,11 @@ __all__ = [
     "CategoryItem",
     "CategoryGroup",
     "CategoriesResponse",
+    # Auth schemas
+    "UserCreate",
+    "UserLogin",
+    "UserUpdate",
+    "UserResponse",
+    "Token",
+    "TokenData",
 ]

@@ -38,6 +38,7 @@ export interface Recipe {
   source_image_path?: string;
   source_url?: string;
   source_type?: string;
+  user_id?: string;
   created_at: string;
   updated_at: string;
   ingredients: RecipeIngredient[];
@@ -51,6 +52,7 @@ export interface RecipeListItem {
   glassware?: string;
   serving_style?: string;
   source_image_path?: string;
+  user_id?: string;
   created_at: string;
 }
 
@@ -80,6 +82,30 @@ export interface RecipeFilters {
   serving_style?: string;
   method?: string;
   search?: string;
+}
+
+export interface RecipeIngredientInput {
+  ingredient_id?: string;
+  ingredient_name?: string;
+  ingredient_type?: string;
+  amount?: number;
+  unit?: string;
+  notes?: string;
+  optional?: boolean;
+}
+
+export interface RecipeInput {
+  name: string;
+  description?: string;
+  instructions?: string;
+  template?: string;
+  main_spirit?: string;
+  glassware?: string;
+  serving_style?: string;
+  method?: string;
+  garnish?: string;
+  notes?: string;
+  ingredients?: RecipeIngredientInput[];
 }
 
 // Fetch all categories
@@ -113,12 +139,18 @@ export async function fetchRecipe(id: string): Promise<Recipe> {
 }
 
 // Upload and extract recipe
-export async function uploadAndExtract(file: File): Promise<Recipe> {
+export async function uploadAndExtract(file: File, token?: string | null): Promise<Recipe> {
   const formData = new FormData();
   formData.append('file', file);
 
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}/upload/extract-immediate`, {
     method: 'POST',
+    headers,
     body: formData,
   });
 
@@ -131,11 +163,67 @@ export async function uploadAndExtract(file: File): Promise<Recipe> {
 }
 
 // Delete recipe
-export async function deleteRecipe(id: string): Promise<void> {
+export async function deleteRecipe(id: string, token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}/recipes/${id}`, {
     method: 'DELETE',
+    headers,
   });
-  if (!res.ok) throw new Error('Failed to delete recipe');
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to delete recipe' }));
+    throw new Error(error.detail || 'Failed to delete recipe');
+  }
+}
+
+// Create recipe manually
+export async function createRecipe(data: RecipeInput, token?: string | null): Promise<Recipe> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/recipes`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to create recipe' }));
+    throw new Error(error.detail || 'Failed to create recipe');
+  }
+
+  return res.json();
+}
+
+// Update recipe
+export async function updateRecipe(id: string, data: Partial<RecipeInput>, token?: string | null): Promise<Recipe> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/recipes/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update recipe' }));
+    throw new Error(error.detail || 'Failed to update recipe');
+  }
+
+  return res.json();
 }
 
 // Format display helpers

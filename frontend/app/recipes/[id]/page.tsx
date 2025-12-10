@@ -10,21 +10,28 @@ import {
   formatEnumValue,
   formatUnit,
 } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import {
   ArrowLeft,
   GlassWater,
   Wine,
   Clock,
   Trash2,
-  ExternalLink,
+  Pencil,
 } from 'lucide-react';
 
 export default function RecipeDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, token } = useAuth();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+
+  // Check if current user is the owner of this recipe
+  const isOwner = user && recipe && recipe.user_id === user.id;
+  // Allow editing for recipes without an owner (backwards compatibility) or if user is owner
+  const canEdit = recipe && (recipe.user_id === null || recipe.user_id === undefined || isOwner);
 
   useEffect(() => {
     if (params.id) {
@@ -41,10 +48,11 @@ export default function RecipeDetailPage() {
 
     setDeleting(true);
     try {
-      await deleteRecipe(recipe.id);
+      await deleteRecipe(recipe.id, token);
       router.push('/');
     } catch (error) {
       console.error('Failed to delete:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete recipe');
       setDeleting(false);
     }
   };
@@ -235,14 +243,25 @@ export default function RecipeDetailPage() {
           Added {new Date(recipe.created_at).toLocaleDateString()}
           {recipe.source_type && ` via ${recipe.source_type}`}
         </div>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          {deleting ? 'Deleting...' : 'Delete'}
-        </button>
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/recipes/${recipe.id}/edit`}
+              className="btn btn-secondary"
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

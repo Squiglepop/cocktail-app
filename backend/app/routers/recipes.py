@@ -3,7 +3,7 @@ Recipe CRUD endpoints.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -11,6 +11,7 @@ from app.models import (
     Recipe,
     Ingredient,
     RecipeIngredient,
+    User,
 )
 from app.schemas import (
     RecipeCreate,
@@ -19,6 +20,7 @@ from app.schemas import (
     RecipeListResponse,
 )
 from app.services import get_db
+from app.services.auth import get_current_user, get_current_user_optional
 
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
@@ -32,6 +34,7 @@ def list_recipes(
     serving_style: Optional[str] = None,
     method: Optional[str] = None,
     search: Optional[str] = None,
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -50,6 +53,8 @@ def list_recipes(
         query = query.filter(Recipe.serving_style == serving_style)
     if method:
         query = query.filter(Recipe.method == method)
+    if user_id:
+        query = query.filter(Recipe.user_id == user_id)
     if search:
         search_term = f"%{search}%"
         query = query.filter(
@@ -78,8 +83,12 @@ def get_recipe(recipe_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=RecipeResponse)
-def create_recipe(recipe_data: RecipeCreate, db: Session = Depends(get_db)):
-    """Create a new recipe."""
+def create_recipe(
+    recipe_data: RecipeCreate,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Create a new recipe. Optionally associates with current user if authenticated."""
     # Create the recipe
     recipe = Recipe(
         name=recipe_data.name,
@@ -93,6 +102,7 @@ def create_recipe(recipe_data: RecipeCreate, db: Session = Depends(get_db)):
         garnish=recipe_data.garnish,
         notes=recipe_data.notes,
         source_type="manual",
+        user_id=current_user.id if current_user else None,
     )
 
     db.add(recipe)
@@ -146,12 +156,29 @@ def create_recipe(recipe_data: RecipeCreate, db: Session = Depends(get_db)):
 
 @router.put("/{recipe_id}", response_model=RecipeResponse)
 def update_recipe(
-    recipe_id: str, recipe_data: RecipeUpdate, db: Session = Depends(get_db)
+    recipe_id: str,
+    recipe_data: RecipeUpdate,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Update a recipe."""
+    """Update a recipe. Only the owner can update their recipes."""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Check ownership - only owner can edit (or if recipe has no owner, anyone can edit for backwards compatibility)
+    if recipe.user_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to edit this recipe",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if recipe.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to edit this recipe"
+            )
 
     # Update scalar fields
     update_data = recipe_data.model_dump(exclude_unset=True, exclude={"ingredients"})
@@ -209,11 +236,29 @@ def update_recipe(
 
 
 @router.delete("/{recipe_id}")
-def delete_recipe(recipe_id: str, db: Session = Depends(get_db)):
-    """Delete a recipe."""
+def delete_recipe(
+    recipe_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Delete a recipe. Only the owner can delete their recipes."""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Check ownership - only owner can delete (or if recipe has no owner, anyone can delete for backwards compatibility)
+    if recipe.user_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to delete this recipe",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if recipe.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to delete this recipe"
+            )
 
     db.delete(recipe)
     db.commit()

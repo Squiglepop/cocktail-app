@@ -4,6 +4,7 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Image, Loader2, CheckCircle, AlertCircle, Link, Clipboard } from 'lucide-react';
 import { uploadAndExtract, Recipe } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
 interface UploadDropzoneProps {
@@ -14,6 +15,7 @@ type UploadState = 'idle' | 'uploading' | 'success' | 'error';
 type InputMode = 'drop' | 'url';
 
 export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
+  const { token } = useAuth();
   const [state, setState] = useState<UploadState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -29,7 +31,8 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
       const items = e.clipboardData?.items;
       if (!items) return;
 
-      for (const item of items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
         if (item.type.startsWith('image/')) {
           e.preventDefault();
           const file = item.getAsFile();
@@ -57,7 +60,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
     setError(null);
 
     try {
-      const recipe = await uploadAndExtract(file);
+      const recipe = await uploadAndExtract(file, token);
       setState('success');
       onRecipeExtracted(recipe);
     } catch (err) {
@@ -90,7 +93,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
       const blob = await response.blob();
       const file = new File([blob], 'image.jpg', { type: blob.type });
 
-      const recipe = await uploadAndExtract(file);
+      const recipe = await uploadAndExtract(file, token);
       setState('success');
       onRecipeExtracted(recipe);
     } catch (err) {

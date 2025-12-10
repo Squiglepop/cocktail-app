@@ -103,6 +103,7 @@ class RecipeResponse(RecipeBase):
     source_image_path: Optional[str] = None
     source_url: Optional[str] = None
     source_type: Optional[str] = None
+    user_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     ingredients: List[RecipeIngredientResponse] = Field(default_factory=list)
@@ -119,6 +120,7 @@ class RecipeListResponse(BaseModel):
     glassware: Optional[str] = None
     serving_style: Optional[str] = None
     source_image_path: Optional[str] = None
+    user_id: Optional[str] = None
     created_at: datetime
 
     class Config:
