@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 
-// Backend API URL - defaults to local dev server
+// Backend API URL - MUST be set in production
 const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
 const nextConfig = {
@@ -8,13 +8,7 @@ const nextConfig = {
   output: 'standalone',
 
   async rewrites() {
-    // Only use rewrites in development or when proxying to a separate backend
-    // In production with same-origin backend, these won't be needed
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      // If a full API URL is set, don't use rewrites (direct API calls)
-      return [];
-    }
-
+    console.log('BACKEND_URL:', BACKEND_URL);
     return [
       {
         source: '/api/:path*',
