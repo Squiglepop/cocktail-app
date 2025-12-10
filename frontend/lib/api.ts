@@ -3,7 +3,9 @@
  */
 
 // Use environment variable for API URL, fallback to relative path for local dev
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+// NEXT_PUBLIC_API_URL should be set to the full backend URL including /api
+// e.g., https://back-end-production-1219.up.railway.app/api
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export interface Ingredient {
   id: string;
