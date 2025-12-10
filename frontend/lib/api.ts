@@ -12,7 +12,9 @@ const BACKEND_BASE = API_BASE.replace(/\/api$/, '');
 export function getImageUrl(path?: string): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
-  return `${BACKEND_BASE}${path}`;
+  // Ensure path starts with a slash
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BACKEND_BASE}${normalizedPath}`;
 }
 
 export interface Ingredient {

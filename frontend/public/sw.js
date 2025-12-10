@@ -1,16 +1,24 @@
 // Service Worker for Cocktail Recipe Library PWA
 
-const CACHE_NAME = 'cocktail-recipes-v1';
+const CACHE_NAME = 'cocktail-recipes-v2';
 
 // Install event - cache essential files
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        '/',
-        '/upload',
-        '/recipes',
-      ]);
+      // Cache files individually to avoid failing if one request fails
+      const urlsToCache = ['/', '/upload', '/recipes'];
+      return Promise.allSettled(
+        urlsToCache.map((url) =>
+          fetch(url).then((response) => {
+            if (response.ok) {
+              return cache.put(url, response);
+            }
+          }).catch(() => {
+            // Silently ignore cache failures
+          })
+        )
+      );
     })
   );
   self.skipWaiting();
