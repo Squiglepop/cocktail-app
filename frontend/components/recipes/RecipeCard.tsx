@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { RecipeListItem, formatEnumValue } from '@/lib/api';
+import { RecipeListItem, formatEnumValue, getImageUrl } from '@/lib/api';
 import { GlassWater, Wine } from 'lucide-react';
 
 interface RecipeCardProps {
@@ -16,7 +16,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center relative overflow-hidden">
           {recipe.source_image_path ? (
             <img
-              src={recipe.source_image_path}
+              src={getImageUrl(recipe.source_image_path)}
               alt={recipe.name}
               className="w-full h-full object-cover"
             />

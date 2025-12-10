@@ -9,6 +9,7 @@ import {
   deleteRecipe,
   formatEnumValue,
   formatUnit,
+  getImageUrl,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -112,7 +113,7 @@ export default function RecipeDetailPage() {
           <div className="aspect-square bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg flex items-center justify-center overflow-hidden">
             {recipe.source_image_path ? (
               <img
-                src={recipe.source_image_path}
+                src={getImageUrl(recipe.source_image_path)}
                 alt={recipe.name}
                 className="w-full h-full object-contain"
               />

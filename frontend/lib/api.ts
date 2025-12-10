@@ -5,6 +5,16 @@
 // Use environment variable for API URL, fallback to production URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
 
+// Backend base URL for static assets (uploads)
+const BACKEND_BASE = API_BASE.replace(/\/api$/, '');
+
+// Get full URL for uploaded images
+export function getImageUrl(path?: string): string | undefined {
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  return `${BACKEND_BASE}${path}`;
+}
+
 export interface Ingredient {
   id: string;
   name: string;
