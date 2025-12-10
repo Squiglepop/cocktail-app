@@ -20,6 +20,14 @@ router = APIRouter(prefix="/upload", tags=["upload"])
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
+MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
 
 @router.post("", response_model=ExtractionJobResponse)
 async def upload_image(
@@ -89,6 +97,11 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
         # Convert to create schema
         recipe_data = map_extracted_to_create(extracted)
 
+        # Read image data from file for storage in DB
+        with open(Path(job.image_path), "rb") as img_file:
+            image_data = img_file.read()
+        suffix = Path(job.image_path).suffix.lower()
+
         # Create recipe
         recipe = Recipe(
             name=recipe_data.name,
@@ -102,7 +115,8 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
             garnish=recipe_data.garnish,
             notes=recipe_data.notes,
             source_type="screenshot",
-            source_image_path=job.image_path,
+            source_image_data=image_data,
+            source_image_mime=MIME_TYPES.get(suffix, "image/jpeg"),
         )
         db.add(recipe)
         db.flush()
@@ -226,7 +240,8 @@ async def upload_and_extract(
             garnish=recipe_data.garnish,
             notes=recipe_data.notes,
             source_type="screenshot",
-            source_image_path=str(file_path),
+            source_image_data=content,
+            source_image_mime=MIME_TYPES.get(suffix, "image/jpeg"),
         )
         db.add(recipe)
         db.flush()

@@ -10,7 +10,7 @@ const mockRecipe: RecipeListItem = {
   main_spirit: 'tequila',
   glassware: 'coupe',
   serving_style: 'up',
-  source_image_path: null,
+  has_image: false,
   user_id: '1',
   created_at: '2024-01-01T00:00:00Z',
 }
@@ -19,12 +19,13 @@ const mockRecipeWithImage: RecipeListItem = {
   ...mockRecipe,
   id: '2',
   name: 'Old Fashioned',
-  source_image_path: '/uploads/old-fashioned.jpg',
+  has_image: true,
 }
 
 const mockMinimalRecipe: RecipeListItem = {
   id: '3',
   name: 'Simple Cocktail',
+  has_image: false,
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -48,11 +49,12 @@ describe('RecipeCard', () => {
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
-    it('renders image when source_image_path exists', () => {
+    it('renders image when has_image is true', () => {
       render(<RecipeCard recipe={mockRecipeWithImage} />)
 
       const image = screen.getByRole('img')
-      expect(image).toHaveAttribute('src', '/uploads/old-fashioned.jpg')
+      // Image URL is now constructed from recipe ID
+      expect(image.getAttribute('src')).toContain('/recipes/2/image')
       expect(image).toHaveAttribute('alt', 'Old Fashioned')
     })
   })

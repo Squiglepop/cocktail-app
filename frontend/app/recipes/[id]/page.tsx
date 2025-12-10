@@ -9,7 +9,7 @@ import {
   deleteRecipe,
   formatEnumValue,
   formatUnit,
-  getImageUrl,
+  getRecipeImageUrl,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -111,9 +111,9 @@ export default function RecipeDetailPage() {
         {/* Image */}
         <div>
           <div className="aspect-square bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg flex items-center justify-center overflow-hidden">
-            {recipe.source_image_path ? (
+            {recipe.has_image ? (
               <img
-                src={getImageUrl(recipe.source_image_path)}
+                src={getRecipeImageUrl(recipe.id)}
                 alt={recipe.name}
                 className="w-full h-full object-contain"
               />

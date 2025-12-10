@@ -5,16 +5,9 @@
 // Use environment variable for API URL, fallback to production URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
 
-// Backend base URL for static assets (uploads)
-const BACKEND_BASE = API_BASE.replace(/\/api$/, '');
-
-// Get full URL for uploaded images
-export function getImageUrl(path?: string): string | undefined {
-  if (!path) return undefined;
-  if (path.startsWith('http')) return path;
-  // Ensure path starts with a slash
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${BACKEND_BASE}${normalizedPath}`;
+// Get full URL for recipe images (served from database via API)
+export function getRecipeImageUrl(recipeId: string): string {
+  return `${API_BASE}/recipes/${recipeId}/image`;
 }
 
 export interface Ingredient {
@@ -47,10 +40,10 @@ export interface Recipe {
   method?: string;
   garnish?: string;
   notes?: string;
-  source_image_path?: string;
   source_url?: string;
   source_type?: string;
   user_id?: string;
+  has_image: boolean;
   created_at: string;
   updated_at: string;
   ingredients: RecipeIngredient[];
@@ -63,7 +56,7 @@ export interface RecipeListItem {
   main_spirit?: string;
   glassware?: string;
   serving_style?: string;
-  source_image_path?: string;
+  has_image: boolean;
   user_id?: string;
   created_at: string;
 }

@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Float,
+    LargeBinary,
     Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
@@ -54,6 +55,8 @@ class Recipe(Base):
 
     # Source tracking
     source_image_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    source_image_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    source_image_mime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     source_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
@@ -81,6 +84,11 @@ class Recipe(Base):
     user: Mapped[Optional["User"]] = relationship(
         "User", back_populates="recipes"
     )
+
+    @property
+    def has_image(self) -> bool:
+        """Check if recipe has image data stored."""
+        return self.source_image_data is not None
 
 
 class Ingredient(Base):

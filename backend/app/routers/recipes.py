@@ -4,6 +4,7 @@ Recipe CRUD endpoints.
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -80,6 +81,24 @@ def get_recipe(recipe_id: str, db: Session = Depends(get_db)):
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
     return recipe
+
+
+@router.get("/{recipe_id}/image")
+def get_recipe_image(recipe_id: str, db: Session = Depends(get_db)):
+    """Get the source image for a recipe."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    if not recipe.source_image_data:
+        raise HTTPException(status_code=404, detail="No image available for this recipe")
+
+    return Response(
+        content=recipe.source_image_data,
+        media_type=recipe.source_image_mime or "image/jpeg",
+        headers={
+            "Cache-Control": "public, max-age=31536000",  # Cache for 1 year
+        }
+    )
 
 
 @router.post("", response_model=RecipeResponse)
