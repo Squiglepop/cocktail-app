@@ -2,10 +2,8 @@
  * API client for cocktail backend.
  */
 
-// Use environment variable for API URL, fallback to relative path for local dev
-// NEXT_PUBLIC_API_URL should be set to the full backend URL including /api
-// e.g., https://back-end-production-1219.up.railway.app/api
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Use environment variable for API URL, fallback to production URL
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
 
 export interface Ingredient {
   id: string;
