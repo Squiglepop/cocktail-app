@@ -107,134 +107,133 @@ export default function RecipeDetailPage() {
         Back to recipes
       </Link>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Image */}
+      {/* Recipe Details */}
+      <div className="space-y-6">
         <div>
-          <div className="aspect-square bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg flex items-center justify-center overflow-hidden">
-            {recipe.has_image ? (
-              <img
-                src={getRecipeImageUrl(recipe.id)}
-                alt={recipe.name}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <GlassWater className="h-24 w-24 text-amber-300" />
-            )}
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {recipe.name}
+          </h1>
+          {recipe.description && (
+            <p className="text-gray-600">{recipe.description}</p>
+          )}
         </div>
 
-        {/* Details */}
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {recipe.name}
-            </h1>
-            {recipe.description && (
-              <p className="text-gray-600">{recipe.description}</p>
-            )}
-          </div>
+        {/* Metadata badges */}
+        <div className="flex flex-wrap gap-2">
+          {recipe.template && (
+            <span className="badge badge-amber">
+              {formatEnumValue(recipe.template)}
+            </span>
+          )}
+          {recipe.main_spirit && (
+            <span className="badge badge-gray">
+              {formatEnumValue(recipe.main_spirit)}
+            </span>
+          )}
+          {recipe.method && (
+            <span className="badge badge-gray">
+              {formatEnumValue(recipe.method)}
+            </span>
+          )}
+        </div>
 
-          {/* Metadata badges */}
-          <div className="flex flex-wrap gap-2">
-            {recipe.template && (
-              <span className="badge badge-amber">
-                {formatEnumValue(recipe.template)}
-              </span>
-            )}
-            {recipe.main_spirit && (
-              <span className="badge badge-gray">
-                {formatEnumValue(recipe.main_spirit)}
-              </span>
-            )}
-            {recipe.method && (
-              <span className="badge badge-gray">
-                {formatEnumValue(recipe.method)}
-              </span>
-            )}
-          </div>
-
-          {/* Glass and serving style */}
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-            {recipe.glassware && (
-              <div className="flex items-center gap-1">
-                <Wine className="h-4 w-4" />
-                {formatEnumValue(recipe.glassware)}
-              </div>
-            )}
-            {recipe.serving_style && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                Served {formatEnumValue(recipe.serving_style)}
-              </div>
-            )}
-          </div>
-
-          {/* Ingredients */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">
-              Ingredients
-            </h2>
-            {recipe.ingredients.length > 0 ? (
-              <ul className="space-y-2">
-                {recipe.ingredients
-                  .sort((a, b) => a.order - b.order)
-                  .map((ri) => (
-                    <li key={ri.id} className="flex items-baseline gap-2">
-                      <span className="font-medium text-gray-900">
-                        {ri.amount && (
-                          <>
-                            {ri.amount} {formatUnit(ri.unit, ri.amount)}{' '}
-                          </>
-                        )}
-                        {ri.ingredient.name}
-                      </span>
-                      {ri.notes && (
-                        <span className="text-sm text-gray-500">
-                          ({ri.notes})
-                        </span>
-                      )}
-                      {ri.optional && (
-                        <span className="text-xs text-gray-400">optional</span>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500 text-sm">No ingredients listed</p>
-            )}
-          </div>
-
-          {/* Garnish */}
-          {recipe.garnish && (
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                Garnish
-              </h2>
-              <p className="text-gray-600">{recipe.garnish}</p>
+        {/* Glass and serving style */}
+        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          {recipe.glassware && (
+            <div className="flex items-center gap-1">
+              <Wine className="h-4 w-4" />
+              {formatEnumValue(recipe.glassware)}
+            </div>
+          )}
+          {recipe.serving_style && (
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              Served {formatEnumValue(recipe.serving_style)}
             </div>
           )}
         </div>
+
+        {/* Ingredients */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+            Ingredients
+          </h2>
+          {recipe.ingredients.length > 0 ? (
+            <ul className="space-y-2">
+              {recipe.ingredients
+                .sort((a, b) => a.order - b.order)
+                .map((ri) => (
+                  <li key={ri.id} className="flex items-baseline gap-2">
+                    <span className="font-medium text-gray-900">
+                      {ri.amount && (
+                        <>
+                          {ri.amount} {formatUnit(ri.unit, ri.amount)}{' '}
+                        </>
+                      )}
+                      {ri.ingredient.name}
+                    </span>
+                    {ri.notes && (
+                      <span className="text-sm text-gray-500">
+                        ({ri.notes})
+                      </span>
+                    )}
+                    {ri.optional && (
+                      <span className="text-xs text-gray-400">optional</span>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 text-sm">No ingredients listed</p>
+          )}
+        </div>
+
+        {/* Garnish */}
+        {recipe.garnish && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">
+              Garnish
+            </h2>
+            <p className="text-gray-600">{recipe.garnish}</p>
+          </div>
+        )}
+
+        {/* Instructions */}
+        {recipe.instructions && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Instructions
+            </h2>
+            <div className="prose prose-amber max-w-none">
+              <p className="text-gray-600 whitespace-pre-wrap">
+                {recipe.instructions}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Notes */}
+        {recipe.notes && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Notes</h2>
+            <p className="text-gray-600">{recipe.notes}</p>
+          </div>
+        )}
       </div>
 
-      {/* Instructions */}
-      {recipe.instructions && (
+      {/* Screenshot */}
+      {recipe.has_image && (
         <div className="mt-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            Instructions
+            Original Screenshot
           </h2>
-          <div className="prose prose-amber max-w-none">
-            <p className="text-gray-600 whitespace-pre-wrap">
-              {recipe.instructions}
-            </p>
+          <div className="bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg overflow-hidden">
+            <img
+              src={getRecipeImageUrl(recipe.id)}
+              alt={recipe.name}
+              className="w-full h-auto object-contain"
+            />
           </div>
-        </div>
-      )}
-
-      {/* Notes */}
-      {recipe.notes && (
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Notes</h2>
-          <p className="text-gray-600">{recipe.notes}</p>
         </div>
       )}
 

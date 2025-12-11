@@ -12,7 +12,7 @@ interface RecipeGridProps {
 export function RecipeGrid({ recipes, loading }: RecipeGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="card animate-pulse">
             <div className="aspect-[4/3] bg-gray-200 rounded-t-lg"></div>
@@ -41,7 +41,7 @@ export function RecipeGrid({ recipes, loading }: RecipeGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
       {recipes.map((recipe) => (
         <RecipeCard key={recipe.id} recipe={recipe} />
       ))}

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Categories, CategoryItem, CategoryGroup, fetchCategories } from '@/lib/api';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 
 interface FilterSidebarProps {
   filters: {
@@ -13,11 +13,29 @@ interface FilterSidebarProps {
     search?: string;
   };
   onFilterChange: (filters: FilterSidebarProps['filters']) => void;
+  className?: string;
+  variant?: 'sidebar' | 'tile';
 }
 
-export function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
+export function FilterSidebar({ filters, onFilterChange, className = '', variant = 'sidebar' }: FilterSidebarProps) {
   const [categories, setCategories] = useState<Categories | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (variant !== 'tile' || !isExpanded) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [variant, isExpanded]);
 
   useEffect(() => {
     fetchCategories()
@@ -38,10 +56,146 @@ export function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
   };
 
   const hasActiveFilters = Object.values(filters).some(v => v);
+  const activeFilterCount = Object.values(filters).filter(v => v).length;
 
+  // Tile variant for mobile
+  if (variant === 'tile') {
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow w-full h-full"
+        >
+          <div className="relative">
+            <SlidersHorizontal className="h-6 w-6 text-amber-600 mb-1" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-2 bg-amber-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
+          <span className="text-xs font-medium text-gray-900">Filters</span>
+        </button>
+
+        {/* Dropdown */}
+        {isExpanded && categories && (
+          <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-4 space-y-4 z-50">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Filters</h3>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                >
+                  <X className="h-3 w-3" />
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Search
+              </label>
+              <input
+                type="text"
+                placeholder="Search recipes..."
+                value={filters.search || ''}
+                onChange={(e) => updateFilter('search', e.target.value)}
+                className="input"
+              />
+            </div>
+
+            {/* Template */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Template / Family
+              </label>
+              <select
+                value={filters.template || ''}
+                onChange={(e) => updateFilter('template', e.target.value)}
+                className="select"
+              >
+                <option value="">All templates</option>
+                {categories.templates.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Main Spirit */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Main Spirit
+              </label>
+              <select
+                value={filters.main_spirit || ''}
+                onChange={(e) => updateFilter('main_spirit', e.target.value)}
+                className="select"
+              >
+                <option value="">All spirits</option>
+                {categories.spirits.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Glassware */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Glassware
+              </label>
+              <select
+                value={filters.glassware || ''}
+                onChange={(e) => updateFilter('glassware', e.target.value)}
+                className="select"
+              >
+                <option value="">All glassware</option>
+                {categories.glassware.map((group) => (
+                  <optgroup key={group.name} label={group.name}>
+                    {group.items.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.display_name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+
+            {/* Serving Style */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Serving Style
+              </label>
+              <select
+                value={filters.serving_style || ''}
+                onChange={(e) => updateFilter('serving_style', e.target.value)}
+                className="select"
+              >
+                <option value="">All styles</option>
+                {categories.serving_styles.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Sidebar variant (default)
   if (loading) {
     return (
-      <div className="w-64 shrink-0">
+      <div className={className}>
         <div className="card p-4">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -57,8 +211,9 @@ export function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
   if (!categories) return null;
 
   return (
-    <div className="w-64 shrink-0">
+    <div className={className}>
       <div className="card p-4 space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Filters</h2>
           {hasActiveFilters && (
@@ -72,98 +227,101 @@ export function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
           )}
         </div>
 
-        {/* Search */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Search
-          </label>
-          <input
-            type="text"
-            placeholder="Search recipes..."
-            value={filters.search || ''}
-            onChange={(e) => updateFilter('search', e.target.value)}
-            className="input"
-          />
-        </div>
+        {/* Filter content */}
+        <div className="space-y-6">
+          {/* Search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
+            <input
+              type="text"
+              placeholder="Search recipes..."
+              value={filters.search || ''}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              className="input"
+            />
+          </div>
 
-        {/* Template */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Template / Family
-          </label>
-          <select
-            value={filters.template || ''}
-            onChange={(e) => updateFilter('template', e.target.value)}
-            className="select"
-          >
-            <option value="">All templates</option>
-            {categories.templates.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.display_name}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* Template */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Template / Family
+            </label>
+            <select
+              value={filters.template || ''}
+              onChange={(e) => updateFilter('template', e.target.value)}
+              className="select"
+            >
+              <option value="">All templates</option>
+              {categories.templates.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Main Spirit */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Main Spirit
-          </label>
-          <select
-            value={filters.main_spirit || ''}
-            onChange={(e) => updateFilter('main_spirit', e.target.value)}
-            className="select"
-          >
-            <option value="">All spirits</option>
-            {categories.spirits.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.display_name}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* Main Spirit */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Main Spirit
+            </label>
+            <select
+              value={filters.main_spirit || ''}
+              onChange={(e) => updateFilter('main_spirit', e.target.value)}
+              className="select"
+            >
+              <option value="">All spirits</option>
+              {categories.spirits.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Glassware */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Glassware
-          </label>
-          <select
-            value={filters.glassware || ''}
-            onChange={(e) => updateFilter('glassware', e.target.value)}
-            className="select"
-          >
-            <option value="">All glassware</option>
-            {categories.glassware.map((group) => (
-              <optgroup key={group.name} label={group.name}>
-                {group.items.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.display_name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
+          {/* Glassware */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Glassware
+            </label>
+            <select
+              value={filters.glassware || ''}
+              onChange={(e) => updateFilter('glassware', e.target.value)}
+              className="select"
+            >
+              <option value="">All glassware</option>
+              {categories.glassware.map((group) => (
+                <optgroup key={group.name} label={group.name}>
+                  {group.items.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.display_name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
 
-        {/* Serving Style */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Serving Style
-          </label>
-          <select
-            value={filters.serving_style || ''}
-            onChange={(e) => updateFilter('serving_style', e.target.value)}
-            className="select"
-          >
-            <option value="">All styles</option>
-            {categories.serving_styles.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.display_name}
-              </option>
-            ))}
-          </select>
+          {/* Serving Style */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Serving Style
+            </label>
+            <select
+              value={filters.serving_style || ''}
+              onChange={(e) => updateFilter('serving_style', e.target.value)}
+              className="select"
+            >
+              <option value="">All styles</option>
+              {categories.serving_styles.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </div>
