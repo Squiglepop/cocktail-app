@@ -27,15 +27,20 @@ function ShareContent() {
           setError(err instanceof Error ? err.message : 'Failed to extract recipe');
           setStatus('error');
         }
+      } else if (event.data?.type === 'NO_SHARED_IMAGE') {
+        setError('No image was received. Please try sharing again.');
+        setStatus('error');
       }
     };
 
     navigator.serviceWorker?.addEventListener('message', handleMessage);
 
-    // Check if we were redirected here after receiving a share
+    // If we were redirected here after receiving a share, request the image from SW
     if (searchParams.get('received') === 'true') {
-      // The service worker should send us the image data
-      setStatus('waiting');
+      // Wait for service worker to be ready, then request the shared image
+      navigator.serviceWorker?.ready.then((registration) => {
+        registration.active?.postMessage({ type: 'GET_SHARED_IMAGE' });
+      });
     }
 
     return () => {

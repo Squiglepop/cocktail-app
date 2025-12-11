@@ -1,6 +1,9 @@
 // Service Worker for Cocktail Recipe Library PWA
 
-const CACHE_NAME = 'cocktail-recipes-v2';
+const CACHE_NAME = 'cocktail-recipes-v3';
+
+// Store for shared images (temporary, in-memory)
+let pendingSharedImage = null;
 
 // Install event - cache essential files
 self.addEventListener('install', (event) => {
@@ -71,19 +74,32 @@ self.addEventListener('fetch', (event) => {
         const formData = await event.request.formData();
         const image = formData.get('image');
 
-        // Store the shared image in IndexedDB or pass to client
-        const client = await self.clients.get(event.resultingClientId);
+        // Store the image temporarily - the client page will request it
+        pendingSharedImage = image;
 
-        if (client) {
-          client.postMessage({
-            type: 'SHARED_IMAGE',
-            image: image
-          });
-        }
-
-        // Redirect to the upload page
+        // Redirect to the share page
         return Response.redirect('/share?received=true', 303);
       })()
     );
+  }
+});
+
+// Listen for messages from clients requesting the shared image
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'GET_SHARED_IMAGE') {
+    const client = event.source;
+    if (client && pendingSharedImage) {
+      client.postMessage({
+        type: 'SHARED_IMAGE',
+        image: pendingSharedImage
+      });
+      // Clear after sending
+      pendingSharedImage = null;
+    } else if (client) {
+      // No image available
+      client.postMessage({
+        type: 'NO_SHARED_IMAGE'
+      });
+    }
   }
 });
