@@ -18,7 +18,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             <img
               src={getRecipeImageUrl(recipe.id)}
               alt={recipe.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-top"
             />
           ) : (
             <GlassWater className="h-16 w-16 text-amber-300" />
