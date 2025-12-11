@@ -1,6 +1,6 @@
 // Service Worker for Cocktail Recipe Library PWA
 
-const CACHE_NAME = 'cocktail-recipes-v3';
+const CACHE_NAME = 'cocktail-recipes-v4';
 
 // Store for shared images (temporary, in-memory)
 let pendingSharedImage = null;
