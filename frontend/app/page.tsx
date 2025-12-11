@@ -46,17 +46,17 @@ export default function HomePage() {
         <div className="grid grid-cols-3 gap-2">
           <Link
             href="/upload"
-            className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-50 border-amber-200"
+            className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-700 border-amber-800"
           >
-            <Upload className="h-6 w-6 text-amber-600 mb-1" />
-            <span className="text-xs font-medium text-gray-900">Extract</span>
+            <Upload className="h-6 w-6 text-amber-100 mb-1" />
+            <span className="text-xs font-medium text-white">Upload</span>
           </Link>
           <Link
             href="/recipes/new"
-            className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow"
+            className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-100 border-amber-300"
           >
-            <Plus className="h-6 w-6 text-amber-600 mb-1" />
-            <span className="text-xs font-medium text-gray-900">Add</span>
+            <Plus className="h-6 w-6 text-amber-800 mb-1" />
+            <span className="text-xs font-medium text-amber-900">Add</span>
           </Link>
           <FilterSidebar
             filters={filters}

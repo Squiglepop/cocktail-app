@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { GlassWater, Upload, LogOut, User } from 'lucide-react';
+import { GlassWater, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export function Header() {
@@ -23,13 +23,6 @@ export function Header() {
               className="text-gray-600 hover:text-gray-900 font-medium"
             >
               Recipes
-            </Link>
-            <Link
-              href="/upload"
-              className="btn btn-primary flex items-center gap-2"
-            >
-              <Upload className="h-4 w-4" />
-              Upload
             </Link>
 
             {/* Auth UI */}

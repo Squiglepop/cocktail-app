@@ -64,17 +64,17 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow w-full h-full"
+          className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow w-full h-full bg-amber-50 border-amber-200"
         >
           <div className="relative">
-            <SlidersHorizontal className="h-6 w-6 text-amber-600 mb-1" />
+            <SlidersHorizontal className="h-6 w-6 text-amber-700 mb-1" />
             {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-2 bg-amber-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-2 bg-amber-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
           </div>
-          <span className="text-xs font-medium text-gray-900">Filters</span>
+          <span className="text-xs font-medium text-amber-800">Filters</span>
         </button>
 
         {/* Dropdown */}
