@@ -1,34 +1,81 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Recipe, formatEnumValue, formatUnit } from '@/lib/api';
+import { Recipe, formatEnumValue, formatUnit, fetchRecipe } from '@/lib/api';
 import { UploadDropzone } from '@/components/upload/UploadDropzone';
-import { ArrowRight, Wine, Clock, GlassWater } from 'lucide-react';
+import { ArrowRight, Wine, Clock, GlassWater, Plus, ImagePlus, Loader2 } from 'lucide-react';
 
-export default function UploadPage() {
+function UploadPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const enhanceRecipeId = searchParams.get('enhance');
+
   const [extractedRecipe, setExtractedRecipe] = useState<Recipe | null>(null);
+  const [isEnhanceMode, setIsEnhanceMode] = useState(false);
+  const [originalRecipeName, setOriginalRecipeName] = useState<string | null>(null);
+
+  // Load recipe name if in enhance mode
+  useEffect(() => {
+    if (enhanceRecipeId) {
+      setIsEnhanceMode(true);
+      fetchRecipe(enhanceRecipeId)
+        .then((recipe) => setOriginalRecipeName(recipe.name))
+        .catch(() => {
+          // Recipe not found, redirect to normal upload
+          router.replace('/upload');
+        });
+    }
+  }, [enhanceRecipeId, router]);
 
   const handleRecipeExtracted = (recipe: Recipe) => {
     setExtractedRecipe(recipe);
+    // Clear enhance mode after successful extraction
+    if (isEnhanceMode) {
+      setIsEnhanceMode(false);
+    }
+  };
+
+  const handleEnhanceComplete = (recipe: Recipe) => {
+    setExtractedRecipe(recipe);
+    // Clear the enhance query param but stay on page
+    router.replace('/upload');
+    setIsEnhanceMode(false);
+  };
+
+  const handleAddMoreImages = () => {
+    if (extractedRecipe) {
+      // Switch to enhance mode for the current recipe
+      router.push(`/upload?enhance=${extractedRecipe.id}`);
+      setIsEnhanceMode(true);
+      setOriginalRecipeName(extractedRecipe.name);
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Upload Recipe</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEnhanceMode ? 'Add More Images' : 'Upload Recipe'}
+        </h1>
         <p className="text-gray-500 mt-1">
-          Upload a screenshot of a cocktail recipe and our AI will extract the
-          details automatically.
+          {isEnhanceMode ? (
+            <>Adding images to enhance <strong>{originalRecipeName || 'recipe'}</strong></>
+          ) : (
+            'Upload a screenshot of a cocktail recipe and our AI will extract the details automatically.'
+          )}
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Upload area */}
         <div>
-          <UploadDropzone onRecipeExtracted={handleRecipeExtracted} />
+          <UploadDropzone
+            onRecipeExtracted={handleRecipeExtracted}
+            enhanceRecipeId={enhanceRecipeId || undefined}
+            onEnhanceComplete={handleEnhanceComplete}
+          />
         </div>
 
         {/* Extracted recipe preview */}
@@ -115,7 +162,7 @@ export default function UploadPage() {
               )}
 
               {/* Actions */}
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-gray-100 space-y-3">
                 <Link
                   href={`/recipes/${extractedRecipe.id}`}
                   className="btn btn-primary w-full justify-center"
@@ -123,6 +170,16 @@ export default function UploadPage() {
                   View Full Recipe
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
+                <button
+                  onClick={handleAddMoreImages}
+                  className="btn btn-secondary w-full justify-center"
+                >
+                  <ImagePlus className="h-4 w-4 mr-2" />
+                  Add More Images
+                </button>
+                <p className="text-xs text-gray-400 text-center">
+                  Recipe incomplete? Add another screenshot to enhance it.
+                </p>
               </div>
             </div>
           ) : (
@@ -198,5 +255,25 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function UploadPageLoading() {
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function UploadPage() {
+  return (
+    <Suspense fallback={<UploadPageLoading />}>
+      <UploadPageContent />
+    </Suspense>
   );
 }

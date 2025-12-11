@@ -167,6 +167,36 @@ export async function uploadAndExtract(file: File, token?: string | null): Promi
   return res.json();
 }
 
+// Enhance existing recipe with additional images
+export async function enhanceRecipeWithImages(
+  recipeId: string,
+  files: File[],
+  token?: string | null
+): Promise<Recipe> {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/upload/enhance/${recipeId}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Enhancement failed' }));
+    throw new Error(error.detail || 'Enhancement failed');
+  }
+
+  return res.json();
+}
+
 // Delete recipe
 export async function deleteRecipe(id: string, token?: string | null): Promise<void> {
   const headers: Record<string, string> = {};

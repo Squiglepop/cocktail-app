@@ -5,6 +5,7 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
@@ -297,3 +298,149 @@ async def upload_and_extract(
         job.error_message = str(e)
         db.commit()
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
+
+@router.post("/enhance/{recipe_id}", response_model=RecipeResponse)
+async def enhance_recipe_with_images(
+    recipe_id: str,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    """Enhance an existing recipe with additional screenshot(s).
+
+    Sends the original image (if available) plus new images to Claude
+    for re-extraction, merging any new information into the recipe.
+    """
+    # Get existing recipe
+    recipe = (
+        db.query(Recipe)
+        .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+        .filter(Recipe.id == recipe_id)
+        .first()
+    )
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Validate and save new files
+    new_image_paths: List[Path] = []
+    new_image_contents: List[tuple[bytes, str]] = []  # (content, mime_type)
+
+    for file in files:
+        suffix = Path(file.filename or "").suffix.lower()
+        if suffix not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type: {file.filename}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+            )
+
+        file_id = uuid.uuid4()
+        filename = f"{file_id}{suffix}"
+        file_path = settings.upload_dir / filename
+
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        new_image_paths.append(file_path)
+        new_image_contents.append((content, MIME_TYPES.get(suffix, "image/jpeg")))
+
+    # Build existing recipe data for enhancement prompt
+    existing_recipe_data = {
+        "name": recipe.name,
+        "description": recipe.description,
+        "ingredients": [
+            {
+                "name": ri.ingredient.name,
+                "amount": ri.amount,
+                "unit": ri.unit,
+                "notes": ri.notes,
+                "type": ri.ingredient.type,
+            }
+            for ri in sorted(recipe.ingredients, key=lambda x: x.order)
+        ],
+        "instructions": recipe.instructions,
+        "template": recipe.template,
+        "main_spirit": recipe.main_spirit,
+        "glassware": recipe.glassware,
+        "serving_style": recipe.serving_style,
+        "method": recipe.method,
+        "garnish": recipe.garnish,
+        "notes": recipe.notes,
+    }
+
+    # Get original image path if stored on disk
+    original_image_path = None
+    if recipe.source_image_path:
+        original_image_path = Path(recipe.source_image_path)
+
+    try:
+        # Run enhancement extraction
+        extractor = RecipeExtractor()
+        extracted = extractor.enhance_recipe(
+            existing_recipe=existing_recipe_data,
+            original_image_path=original_image_path,
+            new_image_paths=new_image_paths,
+        )
+
+        # Convert to update format
+        recipe_data = map_extracted_to_create(extracted)
+
+        # Update recipe fields
+        recipe.name = recipe_data.name
+        recipe.description = recipe_data.description
+        recipe.instructions = recipe_data.instructions
+        recipe.template = recipe_data.template
+        recipe.main_spirit = recipe_data.main_spirit
+        recipe.glassware = recipe_data.glassware
+        recipe.serving_style = recipe_data.serving_style
+        recipe.method = recipe_data.method
+        recipe.garnish = recipe_data.garnish
+        recipe.notes = recipe_data.notes
+
+        # Clear existing ingredients and add new ones
+        db.query(RecipeIngredient).filter(RecipeIngredient.recipe_id == recipe.id).delete()
+        db.flush()
+
+        for idx, ing_data in enumerate(recipe_data.ingredients):
+            ingredient = None
+            if ing_data.ingredient_name:
+                ingredient = (
+                    db.query(Ingredient)
+                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
+                    .first()
+                )
+                if not ingredient:
+                    ingredient = Ingredient(
+                        name=ing_data.ingredient_name,
+                        type=ing_data.ingredient_type or "other",
+                    )
+                    db.add(ingredient)
+                    db.flush()
+
+            if ingredient:
+                recipe_ingredient = RecipeIngredient(
+                    recipe_id=recipe.id,
+                    ingredient_id=ingredient.id,
+                    amount=ing_data.amount,
+                    unit=ing_data.unit,
+                    notes=ing_data.notes,
+                    optional=ing_data.optional,
+                    order=idx,
+                )
+                db.add(recipe_ingredient)
+
+        db.commit()
+
+        # Return updated recipe
+        recipe = (
+            db.query(Recipe)
+            .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+            .filter(Recipe.id == recipe_id)
+            .first()
+        )
+
+        return recipe
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Enhancement failed: {str(e)}")

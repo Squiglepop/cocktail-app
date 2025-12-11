@@ -2,19 +2,27 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Image, Loader2, CheckCircle, AlertCircle, Link, Clipboard } from 'lucide-react';
-import { uploadAndExtract, Recipe } from '@/lib/api';
+import { Upload, Image, Loader2, CheckCircle, AlertCircle, Link, Clipboard, Plus } from 'lucide-react';
+import { uploadAndExtract, enhanceRecipeWithImages, Recipe } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
 interface UploadDropzoneProps {
   onRecipeExtracted: (recipe: Recipe) => void;
+  /** If provided, enhance this recipe instead of creating new */
+  enhanceRecipeId?: string;
+  /** Callback when enhancement completes */
+  onEnhanceComplete?: (recipe: Recipe) => void;
 }
 
 type UploadState = 'idle' | 'uploading' | 'success' | 'error';
 type InputMode = 'drop' | 'url';
 
-export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
+export function UploadDropzone({
+  onRecipeExtracted,
+  enhanceRecipeId,
+  onEnhanceComplete
+}: UploadDropzoneProps) {
   const { token } = useAuth();
   const [state, setState] = useState<UploadState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +30,8 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
   const [inputMode, setInputMode] = useState<InputMode>('drop');
   const [imageUrl, setImageUrl] = useState('');
   const urlInputRef = useRef<HTMLInputElement>(null);
+
+  const isEnhanceMode = !!enhanceRecipeId;
 
   // Handle clipboard paste anywhere on the page
   useEffect(() => {
@@ -60,12 +70,20 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
     setError(null);
 
     try {
-      const recipe = await uploadAndExtract(file, token);
-      setState('success');
-      onRecipeExtracted(recipe);
+      if (isEnhanceMode && enhanceRecipeId) {
+        // Enhancement mode - add to existing recipe
+        const recipe = await enhanceRecipeWithImages(enhanceRecipeId, [file], token);
+        setState('success');
+        onEnhanceComplete?.(recipe);
+      } else {
+        // Normal mode - create new recipe
+        const recipe = await uploadAndExtract(file, token);
+        setState('success');
+        onRecipeExtracted(recipe);
+      }
     } catch (err) {
       setState('error');
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : isEnhanceMode ? 'Enhancement failed' : 'Upload failed');
     }
   };
 
@@ -93,9 +111,15 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
       const blob = await response.blob();
       const file = new File([blob], 'image.jpg', { type: blob.type });
 
-      const recipe = await uploadAndExtract(file, token);
-      setState('success');
-      onRecipeExtracted(recipe);
+      if (isEnhanceMode && enhanceRecipeId) {
+        const recipe = await enhanceRecipeWithImages(enhanceRecipeId, [file], token);
+        setState('success');
+        onEnhanceComplete?.(recipe);
+      } else {
+        const recipe = await uploadAndExtract(file, token);
+        setState('success');
+        onRecipeExtracted(recipe);
+      }
     } catch (err) {
       setState('error');
       setError(err instanceof Error ? err.message : 'Failed to process URL');
@@ -182,8 +206,12 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
                     className="max-h-48 rounded-lg"
                   />
                 ) : (
-                  <div className="p-4 bg-amber-100 rounded-full">
-                    <Image className="h-12 w-12 text-amber-600" />
+                  <div className={cn("p-4 rounded-full", isEnhanceMode ? "bg-blue-100" : "bg-amber-100")}>
+                    {isEnhanceMode ? (
+                      <Plus className="h-12 w-12 text-blue-600" />
+                    ) : (
+                      <Image className="h-12 w-12 text-amber-600" />
+                    )}
                   </div>
                 )}
               </div>
@@ -191,10 +219,14 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
                 <p className="text-lg font-medium text-gray-900">
                   {isDragActive
                     ? 'Drop your screenshot here'
+                    : isEnhanceMode
+                    ? 'Add more screenshots to this recipe'
                     : 'Upload a cocktail recipe screenshot'}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Drag and drop, click to select, or <strong>paste from clipboard (Cmd+V)</strong>
+                  {isEnhanceMode
+                    ? 'Add another image to enhance the recipe with more details'
+                    : <>Drag and drop, click to select, or <strong>paste from clipboard (Cmd+V)</strong></>}
                 </p>
               </div>
               <p className="text-xs text-gray-400">
@@ -215,7 +247,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
                 <span className="text-lg font-medium text-gray-900">
-                  Extracting recipe with AI...
+                  {isEnhanceMode ? 'Enhancing recipe with AI...' : 'Extracting recipe with AI...'}
                 </span>
               </div>
               <p className="text-sm text-gray-500">
@@ -232,7 +264,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
                 </div>
               </div>
               <p className="text-lg font-medium text-green-800">
-                Recipe extracted successfully!
+                {isEnhanceMode ? 'Recipe enhanced successfully!' : 'Recipe extracted successfully!'}
               </p>
             </div>
           )}
@@ -245,7 +277,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
                 </div>
               </div>
               <p className="text-lg font-medium text-red-800">
-                Failed to extract recipe
+                {isEnhanceMode ? 'Failed to enhance recipe' : 'Failed to extract recipe'}
               </p>
               <p className="text-sm text-red-600">{error}</p>
             </div>
@@ -314,7 +346,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
                 <span className="text-lg font-medium text-gray-900">
-                  Extracting recipe with AI...
+                  {isEnhanceMode ? 'Enhancing recipe with AI...' : 'Extracting recipe with AI...'}
                 </span>
               </div>
               <p className="text-sm text-gray-500">
@@ -331,7 +363,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
                 </div>
               </div>
               <p className="text-lg font-medium text-green-800">
-                Recipe extracted successfully!
+                {isEnhanceMode ? 'Recipe enhanced successfully!' : 'Recipe extracted successfully!'}
               </p>
             </div>
           )}
@@ -344,7 +376,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
                 </div>
               </div>
               <p className="text-lg font-medium text-red-800">
-                Failed to extract recipe
+                {isEnhanceMode ? 'Failed to enhance recipe' : 'Failed to extract recipe'}
               </p>
               <p className="text-sm text-red-600">{error}</p>
             </div>
@@ -355,7 +387,7 @@ export function UploadDropzone({ onRecipeExtracted }: UploadDropzoneProps) {
       {(state === 'success' || state === 'error') && (
         <div className="flex justify-center">
           <button onClick={reset} className="btn btn-secondary">
-            Upload Another
+            {isEnhanceMode ? 'Add Another Image' : 'Upload Another'}
           </button>
         </div>
       )}

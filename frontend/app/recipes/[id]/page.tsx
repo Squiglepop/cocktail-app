@@ -19,6 +19,7 @@ import {
   Clock,
   Trash2,
   Pencil,
+  ImagePlus,
 } from 'lucide-react';
 
 export default function RecipeDetailPage() {
@@ -245,6 +246,13 @@ export default function RecipeDetailPage() {
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
+            <Link
+              href={`/upload?enhance=${recipe.id}`}
+              className="btn btn-secondary"
+            >
+              <ImagePlus className="h-4 w-4 mr-2" />
+              Add Images
+            </Link>
             <Link
               href={`/recipes/${recipe.id}/edit`}
               className="btn btn-secondary"

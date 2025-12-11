@@ -5,7 +5,7 @@ import base64
 import json
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import anthropic
 
@@ -64,6 +64,105 @@ Important:
 - Extract all ingredients with exact measurements
 - Infer the template/family based on the structure if not explicitly stated
 - If information is not visible, use null
+- Return ONLY the JSON object, no other text
+"""
+
+MULTI_IMAGE_PROMPT = """Analyze these cocktail recipe images together. They show the SAME recipe split across multiple screenshots or pages.
+
+Combine all the information from ALL images into a single complete recipe.
+
+Return a JSON object with this structure:
+{
+  "name": "Name of the cocktail",
+  "description": "Brief description if visible",
+  "ingredients": [
+    {
+      "name": "ingredient name",
+      "amount": 2.0,
+      "unit": "oz",
+      "notes": "any notes like 'muddled' or 'fresh'",
+      "type": "spirit|liqueur|juice|syrup|bitter|mixer|garnish|other"
+    }
+  ],
+  "instructions": "Step by step instructions if visible",
+  "template": "The cocktail family/template",
+  "main_spirit": "The primary spirit used",
+  "glassware": "Type of glass",
+  "serving_style": "How it's served (up, rocks, etc.)",
+  "method": "Preparation method (shaken, stirred, etc.)",
+  "garnish": "Garnish description",
+  "notes": "Any additional notes"
+}
+
+For template, choose from: """ + ", ".join([f"{t.value} ({TEMPLATE_DESCRIPTIONS.get(t, '')})" for t in CocktailTemplate]) + """
+
+For main_spirit, choose from: """ + ", ".join([s.value for s in SpiritCategory]) + """
+
+For glassware, choose from: """ + ", ".join([g.value for g in Glassware]) + """
+
+For serving_style, choose from: """ + ", ".join([s.value for s in ServingStyle]) + """
+
+For method, choose from: """ + ", ".join([m.value for m in Method]) + """
+
+For ingredient units, prefer: """ + ", ".join([u.value for u in Unit]) + """
+
+Important:
+- Combine information from ALL images into one complete recipe
+- If the same information appears in multiple images, use the clearest/most detailed version
+- Extract all ingredients with exact measurements
+- If information is not visible in any image, use null
+- Return ONLY the JSON object, no other text
+"""
+
+ENHANCEMENT_PROMPT_TEMPLATE = """You previously extracted this cocktail recipe:
+
+{existing_recipe}
+
+The user has provided additional image(s) that contain more information about the SAME recipe.
+
+Review ALL images (original and new) along with the existing extraction.
+Return an UPDATED and COMPLETE recipe that incorporates any new information from the additional images.
+
+Return a JSON object with this structure:
+{
+  "name": "Name of the cocktail",
+  "description": "Brief description if visible",
+  "ingredients": [
+    {
+      "name": "ingredient name",
+      "amount": 2.0,
+      "unit": "oz",
+      "notes": "any notes like 'muddled' or 'fresh'",
+      "type": "spirit|liqueur|juice|syrup|bitter|mixer|garnish|other"
+    }
+  ],
+  "instructions": "Step by step instructions if visible",
+  "template": "The cocktail family/template",
+  "main_spirit": "The primary spirit used",
+  "glassware": "Type of glass",
+  "serving_style": "How it's served (up, rocks, etc.)",
+  "method": "Preparation method (shaken, stirred, etc.)",
+  "garnish": "Garnish description",
+  "notes": "Any additional notes"
+}
+
+For template, choose from: """ + ", ".join([f"{t.value} ({TEMPLATE_DESCRIPTIONS.get(t, '')})" for t in CocktailTemplate]) + """
+
+For main_spirit, choose from: """ + ", ".join([s.value for s in SpiritCategory]) + """
+
+For glassware, choose from: """ + ", ".join([g.value for g in Glassware]) + """
+
+For serving_style, choose from: """ + ", ".join([s.value for s in ServingStyle]) + """
+
+For method, choose from: """ + ", ".join([m.value for m in Method]) + """
+
+For ingredient units, prefer: """ + ", ".join([u.value for u in Unit]) + """
+
+Important:
+- Keep information from the original extraction if it's accurate
+- ADD any new ingredients, instructions, or details from the new images
+- If the new images have BETTER/CLEARER information, update the existing data
+- If there are conflicts, prefer the clearer/more detailed source
 - Return ONLY the JSON object, no other text
 """
 
@@ -168,6 +267,121 @@ class RecipeExtractor:
             garnish=data.get("garnish"),
             notes=data.get("notes"),
         )
+
+    def _load_image_from_file(self, image_path: Path) -> tuple[str, str]:
+        """Load image file and return (base64_data, media_type)."""
+        with open(image_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+
+        suffix = image_path.suffix.lower()
+        media_type_map = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+        }
+        media_type = media_type_map.get(suffix, "image/jpeg")
+        return image_data, media_type
+
+    def extract_from_multiple_files(self, image_paths: List[Path]) -> ExtractedRecipe:
+        """Extract recipe from multiple image files (combined context)."""
+        if len(image_paths) == 1:
+            return self.extract_from_file(image_paths[0])
+
+        # Build content array with all images
+        content = []
+        for image_path in image_paths:
+            image_data, media_type = self._load_image_from_file(image_path)
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": image_data,
+                },
+            })
+
+        # Add the multi-image prompt
+        content.append({
+            "type": "text",
+            "text": MULTI_IMAGE_PROMPT,
+        })
+
+        message = self.client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": content}],
+        )
+
+        return self._parse_response(message.content[0].text)
+
+    def enhance_recipe(
+        self,
+        existing_recipe: dict,
+        original_image_path: Optional[Path],
+        new_image_paths: List[Path],
+    ) -> ExtractedRecipe:
+        """Enhance an existing recipe with additional images."""
+        # Build content array with all images
+        content = []
+
+        # Add original image if available
+        if original_image_path and original_image_path.exists():
+            image_data, media_type = self._load_image_from_file(original_image_path)
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": image_data,
+                },
+            })
+
+        # Add all new images
+        for image_path in new_image_paths:
+            image_data, media_type = self._load_image_from_file(image_path)
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": image_data,
+                },
+            })
+
+        # Format existing recipe for prompt
+        existing_recipe_json = json.dumps(existing_recipe, indent=2)
+        prompt = ENHANCEMENT_PROMPT_TEMPLATE.format(existing_recipe=existing_recipe_json)
+
+        content.append({
+            "type": "text",
+            "text": prompt,
+        })
+
+        message = self.client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": content}],
+        )
+
+        return self._parse_response(message.content[0].text)
+
+    def _parse_response(self, response_text: str) -> ExtractedRecipe:
+        """Parse Claude response text into ExtractedRecipe."""
+        # Extract JSON from response (handle markdown code blocks)
+        json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response_text)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            json_str = response_text
+
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse extraction response: {e}")
+
+        return self._parse_extracted_data(data)
 
 
 def map_to_enum_value(value: Optional[str], enum_class) -> Optional[str]:
