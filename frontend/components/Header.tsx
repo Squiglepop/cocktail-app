@@ -18,13 +18,6 @@ export function Header() {
             </span>
           </Link>
           <nav className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-gray-600 hover:text-gray-900 font-medium"
-            >
-              Recipes
-            </Link>
-
             {/* Auth UI */}
             {isLoading ? (
               <div className="w-20 h-8 bg-gray-100 rounded animate-pulse" />
