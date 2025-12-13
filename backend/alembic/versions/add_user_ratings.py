@@ -35,22 +35,40 @@ def upgrade() -> None:
 
     # Migrate existing ratings from recipes table to user_ratings
     # Only migrate recipes that have both a user_id and a rating
+    # Use gen_random_uuid() for PostgreSQL, or uuid4 via Python for SQLite
     connection = op.get_bind()
-    connection.execute(sa.text("""
-        INSERT INTO user_ratings (id, user_id, recipe_id, rating, created_at, updated_at)
-        SELECT
-            lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-                  substr(hex(randomblob(2)), 2) || '-' ||
-                  substr('89ab', abs(random()) % 4 + 1, 1) ||
-                  substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
-            user_id,
-            id,
-            rating,
-            created_at,
-            updated_at
-        FROM recipes
-        WHERE user_id IS NOT NULL AND rating IS NOT NULL
-    """))
+    dialect = connection.dialect.name
+
+    if dialect == 'postgresql':
+        connection.execute(sa.text("""
+            INSERT INTO user_ratings (id, user_id, recipe_id, rating, created_at, updated_at)
+            SELECT
+                gen_random_uuid()::text,
+                user_id,
+                id,
+                rating,
+                created_at,
+                updated_at
+            FROM recipes
+            WHERE user_id IS NOT NULL AND rating IS NOT NULL
+        """))
+    else:
+        # SQLite fallback
+        connection.execute(sa.text("""
+            INSERT INTO user_ratings (id, user_id, recipe_id, rating, created_at, updated_at)
+            SELECT
+                lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+                      substr(hex(randomblob(2)), 2) || '-' ||
+                      substr('89ab', abs(random()) % 4 + 1, 1) ||
+                      substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
+                user_id,
+                id,
+                rating,
+                created_at,
+                updated_at
+            FROM recipes
+            WHERE user_id IS NOT NULL AND rating IS NOT NULL
+        """))
 
     # Drop the rating column from recipes table
     with op.batch_alter_table('recipes', schema=None) as batch_op:
