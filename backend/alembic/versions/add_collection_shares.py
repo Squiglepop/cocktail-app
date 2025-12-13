@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create collection_shares table
+    # Create collection_shares table with unique constraint inline (SQLite compatible)
     op.create_table(
         'collection_shares',
         sa.Column('id', sa.String(36), primary_key=True),
@@ -27,15 +27,14 @@ def upgrade() -> None:
         sa.Column('shared_with_user_id', sa.String(36), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         sa.Column('can_edit', sa.Boolean, nullable=False, server_default='0'),
         sa.Column('shared_at', sa.DateTime, nullable=False),
+        sa.UniqueConstraint('collection_id', 'shared_with_user_id', name='uq_collection_share'),
     )
     op.create_index('ix_collection_shares_collection_id', 'collection_shares', ['collection_id'])
     op.create_index('ix_collection_shares_shared_with_user_id', 'collection_shares', ['shared_with_user_id'])
-    op.create_unique_constraint('uq_collection_share', 'collection_shares', ['collection_id', 'shared_with_user_id'])
 
 
 def downgrade() -> None:
-    # Drop collection_shares table
-    op.drop_constraint('uq_collection_share', 'collection_shares', type_='unique')
+    # Drop collection_shares table (constraint dropped with table)
     op.drop_index('ix_collection_shares_shared_with_user_id', table_name='collection_shares')
     op.drop_index('ix_collection_shares_collection_id', table_name='collection_shares')
     op.drop_table('collection_shares')
