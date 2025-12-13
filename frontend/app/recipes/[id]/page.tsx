@@ -63,16 +63,20 @@ export default function RecipeDetailPage() {
   };
 
   const handleRatingChange = async (newRating: number) => {
-    if (!recipe || !isOwner) return;
+    if (!recipe || !user) return;
 
     setUpdatingRating(true);
     try {
-      const updatedRecipe = await updateRecipeRating(
+      await updateRecipeRating(
         recipe.id,
         newRating === 0 ? null : newRating,
         token
       );
-      setRecipe(updatedRecipe);
+      // Update local state with new rating
+      setRecipe({
+        ...recipe,
+        my_rating: newRating === 0 ? undefined : newRating,
+      });
     } catch (error) {
       console.error('Failed to update rating:', error);
       alert(error instanceof Error ? error.message : 'Failed to update rating');
@@ -160,12 +164,12 @@ export default function RecipeDetailPage() {
           )}
         </div>
 
-        {/* Rating - only shown if user owns the recipe */}
-        {isOwner && (
+        {/* Rating - shown for any authenticated user */}
+        {user && (
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-700">Your Rating:</span>
             <StarRating
-              rating={recipe.rating}
+              rating={recipe.my_rating}
               onRate={handleRatingChange}
               size="lg"
               showCaption

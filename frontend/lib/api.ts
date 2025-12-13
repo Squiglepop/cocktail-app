@@ -44,7 +44,7 @@ export interface Recipe {
   source_type?: string;
   user_id?: string;
   visibility: string;
-  rating?: number;
+  my_rating?: number;
   has_image: boolean;
   created_at: string;
   updated_at: string;
@@ -61,7 +61,7 @@ export interface RecipeListItem {
   has_image: boolean;
   user_id?: string;
   visibility: string;
-  rating?: number;
+  my_rating?: number;
   created_at: string;
 }
 
@@ -313,8 +313,8 @@ export async function updateRecipe(id: string, data: Partial<RecipeInput>, token
   return res.json();
 }
 
-// Update recipe rating
-export async function updateRecipeRating(id: string, rating: number | null, token?: string | null): Promise<Recipe> {
+// Update recipe rating (personal rating for any recipe)
+export async function updateRecipeRating(id: string, rating: number | null, token?: string | null): Promise<void> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -322,18 +322,30 @@ export async function updateRecipeRating(id: string, rating: number | null, toke
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}/recipes/${id}/rating`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify({ rating }),
-  });
+  if (rating === null || rating === 0) {
+    // Delete the rating
+    const res = await fetch(`${API_BASE}/recipes/${id}/my-rating`, {
+      method: 'DELETE',
+      headers,
+    });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Failed to update rating' }));
-    throw new Error(error.detail || 'Failed to update rating');
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Failed to clear rating' }));
+      throw new Error(error.detail || 'Failed to clear rating');
+    }
+  } else {
+    // Set/update the rating
+    const res = await fetch(`${API_BASE}/recipes/${id}/my-rating`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ rating }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Failed to update rating' }));
+      throw new Error(error.detail || 'Failed to update rating');
+    }
   }
-
-  return res.json();
 }
 
 // Rating captions (cricket-themed)

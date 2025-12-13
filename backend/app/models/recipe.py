@@ -75,9 +75,6 @@ class Recipe(Base):
         String(20), default=Visibility.PUBLIC.value, nullable=False, index=True
     )
 
-    # Personal rating (1-5, only visible to owner)
-    rating: Mapped[Optional[int]] = mapped_column(nullable=True)
-
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
@@ -92,6 +89,9 @@ class Recipe(Base):
     )
     user: Mapped[Optional["User"]] = relationship(
         "User", back_populates="recipes"
+    )
+    user_ratings: Mapped[List["UserRating"]] = relationship(
+        "UserRating", back_populates="recipe", cascade="all, delete-orphan"
     )
 
     @property
@@ -176,3 +176,4 @@ class ExtractionJob(Base):
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .user import User
+    from .user_rating import UserRating

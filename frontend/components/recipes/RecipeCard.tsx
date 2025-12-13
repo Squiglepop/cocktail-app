@@ -31,8 +31,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             {recipe.name}
           </h3>
 
-          {recipe.rating && (
-            <StarRating rating={recipe.rating} size="sm" showCaption />
+          {recipe.my_rating && (
+            <StarRating rating={recipe.my_rating} size="sm" showCaption />
           )}
 
           <div className="flex flex-wrap gap-1">

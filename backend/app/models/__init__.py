@@ -27,6 +27,7 @@ from .recipe import (
 )
 from .user import User
 from .collection import Collection, CollectionRecipe
+from .user_rating import UserRating
 
 __all__ = [
     # Enums
@@ -55,4 +56,5 @@ __all__ = [
     "User",
     "Collection",
     "CollectionRecipe",
+    "UserRating",
 ]

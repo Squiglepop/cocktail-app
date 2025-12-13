@@ -13,6 +13,7 @@ from app.models import (
     Ingredient,
     RecipeIngredient,
     User,
+    UserRating,
     Visibility,
 )
 from app.schemas import (
@@ -21,6 +22,8 @@ from app.schemas import (
     RecipeRatingUpdate,
     RecipeResponse,
     RecipeListResponse,
+    RecipeIngredientResponse,
+    IngredientResponse,
 )
 from app.services import get_db
 from app.services.auth import get_current_user, get_current_user_optional
@@ -144,7 +147,22 @@ def list_recipes(
     query = query.order_by(Recipe.created_at.desc())
     recipes = query.offset(skip).limit(limit).all()
 
-    # Strip rating from recipes not owned by current user
+    # Get user's ratings for these recipes if authenticated
+    user_ratings_map = {}
+    if current_user:
+        recipe_ids = [r.id for r in recipes]
+        if recipe_ids:
+            user_ratings = (
+                db.query(UserRating)
+                .filter(
+                    UserRating.user_id == current_user.id,
+                    UserRating.recipe_id.in_(recipe_ids)
+                )
+                .all()
+            )
+            user_ratings_map = {ur.recipe_id: ur.rating for ur in user_ratings}
+
+    # Build response with user's rating
     result = []
     for recipe in recipes:
         recipe_dict = {
@@ -157,7 +175,7 @@ def list_recipes(
             "has_image": recipe.has_image,
             "user_id": recipe.user_id,
             "visibility": recipe.visibility,
-            "rating": recipe.rating if current_user and recipe.user_id == current_user.id else None,
+            "my_rating": user_ratings_map.get(recipe.id),
             "created_at": recipe.created_at,
         }
         result.append(RecipeListResponse(**recipe_dict))
@@ -186,11 +204,61 @@ def get_recipe(
     if recipe.visibility != Visibility.PUBLIC.value and not is_owner:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # Strip rating if not owner
-    if not is_owner:
-        recipe.rating = None
+    # Get current user's rating for this recipe
+    my_rating = None
+    if current_user:
+        user_rating = (
+            db.query(UserRating)
+            .filter(
+                UserRating.user_id == current_user.id,
+                UserRating.recipe_id == recipe_id
+            )
+            .first()
+        )
+        if user_rating:
+            my_rating = user_rating.rating
 
-    return recipe
+    # Build response manually to include my_rating
+    return RecipeResponse(
+        id=recipe.id,
+        name=recipe.name,
+        description=recipe.description,
+        instructions=recipe.instructions,
+        template=recipe.template,
+        main_spirit=recipe.main_spirit,
+        glassware=recipe.glassware,
+        serving_style=recipe.serving_style,
+        method=recipe.method,
+        garnish=recipe.garnish,
+        notes=recipe.notes,
+        source_url=recipe.source_url,
+        source_type=recipe.source_type,
+        user_id=recipe.user_id,
+        visibility=recipe.visibility,
+        my_rating=my_rating,
+        has_image=recipe.has_image,
+        created_at=recipe.created_at,
+        updated_at=recipe.updated_at,
+        ingredients=[
+            RecipeIngredientResponse(
+                id=ri.id,
+                amount=ri.amount,
+                unit=ri.unit,
+                notes=ri.notes,
+                optional=ri.optional,
+                order=ri.order,
+                ingredient=IngredientResponse(
+                    id=ri.ingredient.id,
+                    name=ri.ingredient.name,
+                    type=ri.ingredient.type,
+                    spirit_category=ri.ingredient.spirit_category,
+                    description=ri.ingredient.description,
+                    common_brands=ri.ingredient.common_brands,
+                )
+            )
+            for ri in recipe.ingredients
+        ]
+    )
 
 
 @router.get("/{recipe_id}/image")
@@ -396,38 +464,84 @@ def delete_recipe(
     return {"message": "Recipe deleted successfully"}
 
 
-@router.put("/{recipe_id}/rating", response_model=RecipeResponse)
-def update_recipe_rating(
+@router.put("/{recipe_id}/my-rating")
+def set_my_rating(
     recipe_id: str,
     rating_data: RecipeRatingUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Update personal rating for a recipe. Only the owner can rate their own recipes.
-    Rating is private and not visible to other users.
+    Set or update personal rating for any recipe in the library.
+    Rating is private and only visible to the current user.
     """
+    # Check recipe exists and is accessible
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # Only owner can rate their own recipes
-    if recipe.user_id != current_user.id:
+    # Check visibility - user must be able to see the recipe to rate it
+    is_owner = recipe.user_id == current_user.id
+    if recipe.visibility != Visibility.PUBLIC.value and not is_owner:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    if rating_data.rating is None:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only rate your own recipes"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rating is required"
         )
 
-    recipe.rating = rating_data.rating
-    db.commit()
-    db.refresh(recipe)
-
-    # Load relationships for response
-    recipe = (
-        db.query(Recipe)
-        .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
-        .filter(Recipe.id == recipe.id)
+    # Find existing rating or create new one
+    user_rating = (
+        db.query(UserRating)
+        .filter(
+            UserRating.user_id == current_user.id,
+            UserRating.recipe_id == recipe_id
+        )
         .first()
     )
 
-    return recipe
+    if user_rating:
+        user_rating.rating = rating_data.rating
+    else:
+        user_rating = UserRating(
+            user_id=current_user.id,
+            recipe_id=recipe_id,
+            rating=rating_data.rating,
+        )
+        db.add(user_rating)
+
+    db.commit()
+
+    return {"message": "Rating updated", "rating": rating_data.rating}
+
+
+@router.delete("/{recipe_id}/my-rating")
+def delete_my_rating(
+    recipe_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Clear personal rating for a recipe.
+    """
+    # Check recipe exists
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Find and delete the user's rating
+    user_rating = (
+        db.query(UserRating)
+        .filter(
+            UserRating.user_id == current_user.id,
+            UserRating.recipe_id == recipe_id
+        )
+        .first()
+    )
+
+    if user_rating:
+        db.delete(user_rating)
+        db.commit()
+
+    return {"message": "Rating cleared"}

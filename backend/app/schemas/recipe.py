@@ -111,7 +111,7 @@ class RecipeResponse(RecipeBase):
     source_type: Optional[str] = None
     user_id: Optional[str] = None
     visibility: str = Visibility.PUBLIC.value
-    rating: Optional[int] = None  # Only included for owner
+    my_rating: Optional[int] = None  # Current user's rating for this recipe
     has_image: bool = False
     created_at: datetime
     updated_at: datetime
@@ -131,7 +131,7 @@ class RecipeListResponse(BaseModel):
     has_image: bool = False
     user_id: Optional[str] = None
     visibility: str = Visibility.PUBLIC.value
-    rating: Optional[int] = None  # Only included for owner
+    my_rating: Optional[int] = None  # Current user's rating for this recipe
     created_at: datetime
 
     class Config:
