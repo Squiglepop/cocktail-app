@@ -46,6 +46,7 @@ export default function PlaylistDetailPage() {
   const [showShareModal, setShowShareModal] = useState(false);
 
   const isOwner = user && playlist && playlist.user_id === user.id;
+  const canEdit = playlist?.can_edit ?? isOwner;
 
   useEffect(() => {
     if (params.id) {
@@ -392,7 +393,7 @@ export default function PlaylistDetailPage() {
           {playlist.recipes.map((recipe, index) => (
             <div
               key={recipe.id}
-              draggable={!!isOwner}
+              draggable={!!canEdit}
               onDragStart={(e) => handleDragStart(e, recipe)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
@@ -401,11 +402,11 @@ export default function PlaylistDetailPage() {
                 flex items-center gap-4 p-3 rounded-lg border bg-white
                 ${dragOverIndex === index ? 'border-amber-400 bg-amber-50' : 'border-gray-200'}
                 ${draggedItem?.recipe_id === recipe.recipe_id ? 'opacity-50' : ''}
-                ${isOwner ? 'cursor-move' : ''}
+                ${canEdit ? 'cursor-move' : ''}
                 group
               `}
             >
-              {isOwner && (
+              {canEdit && (
                 <GripVertical className="h-5 w-5 text-gray-400 flex-shrink-0" />
               )}
 
@@ -446,7 +447,7 @@ export default function PlaylistDetailPage() {
               </Link>
 
               {/* Remove button */}
-              {isOwner && (
+              {canEdit && (
                 <button
                   onClick={() => handleRemoveRecipe(recipe.recipe_id)}
                   className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"

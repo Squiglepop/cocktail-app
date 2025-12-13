@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { CollectionListItem } from '@/lib/api';
-import { ListMusic, Lock, Globe, Users } from 'lucide-react';
+import { ListMusic, Lock, Globe, Users, Pencil } from 'lucide-react';
 
 interface PlaylistCardProps {
   playlist: CollectionListItem;
@@ -46,6 +46,11 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
                 <span className="flex items-center gap-1 text-amber-600">
                   <Users className="h-3 w-3" />
                   Shared
+                  {playlist.can_edit && (
+                    <span title="Can edit">
+                      <Pencil className="h-3 w-3" />
+                    </span>
+                  )}
                 </span>
               </>
             )}

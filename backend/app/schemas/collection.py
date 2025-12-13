@@ -60,6 +60,8 @@ class CollectionResponse(CollectionBase):
 
 class CollectionDetailResponse(CollectionResponse):
     recipes: List[CollectionRecipeResponse] = Field(default_factory=list)
+    is_shared: bool = False  # True if this collection is shared with the current user (not owned)
+    can_edit: bool = False  # True if user can edit (owner or shared with edit permission)
 
 
 class CollectionListResponse(BaseModel):

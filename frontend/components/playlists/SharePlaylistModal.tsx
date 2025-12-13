@@ -5,9 +5,10 @@ import {
   CollectionShare,
   fetchCollectionShares,
   shareCollection,
+  updateCollectionShare,
   removeCollectionShare,
 } from '@/lib/api';
-import { X, UserPlus, Trash2, Loader2, Users } from 'lucide-react';
+import { X, UserPlus, Trash2, Loader2, Users, Pencil, Eye } from 'lucide-react';
 
 interface SharePlaylistModalProps {
   playlistId: string;
@@ -25,9 +26,11 @@ export function SharePlaylistModal({
   const [shares, setShares] = useState<CollectionShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const [canEdit, setCanEdit] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState('');
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCollectionShares(playlistId, token)
@@ -44,13 +47,26 @@ export function SharePlaylistModal({
     setError('');
 
     try {
-      const newShare = await shareCollection(playlistId, email.trim(), token);
+      const newShare = await shareCollection(playlistId, email.trim(), canEdit, token);
       setShares([newShare, ...shares]);
       setEmail('');
+      setCanEdit(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to share');
     } finally {
       setSharing(false);
+    }
+  };
+
+  const handleToggleEdit = async (share: CollectionShare) => {
+    setUpdatingId(share.id);
+    try {
+      const updated = await updateCollectionShare(playlistId, share.id, !share.can_edit, token);
+      setShares(shares.map((s) => (s.id === share.id ? updated : s)));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update permission');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -111,6 +127,19 @@ export function SharePlaylistModal({
               )}
             </button>
           </div>
+          {/* Permission checkbox */}
+          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={canEdit}
+              onChange={(e) => setCanEdit(e.target.checked)}
+              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+              disabled={sharing}
+            />
+            <span className="text-sm text-gray-600">
+              Allow editing (add, remove, reorder recipes)
+            </span>
+          </label>
           {error && (
             <p className="mt-2 text-sm text-red-600">{error}</p>
           )}
@@ -147,18 +176,40 @@ export function SharePlaylistModal({
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleRemoveShare(share.id)}
-                    disabled={removingId === share.id}
-                    className="ml-2 p-1 text-gray-400 hover:text-red-600"
-                    title="Remove access"
-                  >
-                    {removingId === share.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-1 ml-2">
+                    {/* Edit permission toggle */}
+                    <button
+                      onClick={() => handleToggleEdit(share)}
+                      disabled={updatingId === share.id}
+                      className={`p-1.5 rounded ${
+                        share.can_edit
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-gray-200 text-gray-500'
+                      } hover:opacity-80`}
+                      title={share.can_edit ? 'Can edit - click to make view only' : 'View only - click to allow editing'}
+                    >
+                      {updatingId === share.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : share.can_edit ? (
+                        <Pencil className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                    {/* Remove button */}
+                    <button
+                      onClick={() => handleRemoveShare(share.id)}
+                      disabled={removingId === share.id}
+                      className="p-1.5 text-gray-400 hover:text-red-600"
+                      title="Remove access"
+                    >
+                      {removingId === share.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -377,6 +377,7 @@ export interface CollectionListItem {
   recipe_count: number;
   created_at: string;
   is_shared?: boolean;
+  can_edit?: boolean;
   owner_name?: string;
 }
 
@@ -393,6 +394,8 @@ export interface CollectionRecipe {
 
 export interface CollectionDetail extends Collection {
   recipes: CollectionRecipe[];
+  is_shared?: boolean;
+  can_edit?: boolean;
 }
 
 export interface CollectionInput {
@@ -574,7 +577,7 @@ export async function fetchCollectionShares(collectionId: string, token?: string
 }
 
 // Share collection with user by email
-export async function shareCollection(collectionId: string, email: string, token?: string | null): Promise<CollectionShare> {
+export async function shareCollection(collectionId: string, email: string, canEdit: boolean = false, token?: string | null): Promise<CollectionShare> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -585,12 +588,35 @@ export async function shareCollection(collectionId: string, email: string, token
   const res = await fetch(`${API_BASE}/collections/${collectionId}/shares`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, can_edit: canEdit }),
   });
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Failed to share collection' }));
     throw new Error(error.detail || 'Failed to share collection');
+  }
+
+  return res.json();
+}
+
+// Update collection share permissions
+export async function updateCollectionShare(collectionId: string, shareId: string, canEdit: boolean, token?: string | null): Promise<CollectionShare> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/shares/${shareId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ can_edit: canEdit }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update share' }));
+    throw new Error(error.detail || 'Failed to update share');
   }
 
   return res.json();

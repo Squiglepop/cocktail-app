@@ -185,6 +185,19 @@ async def get_collection(
     # Sort recipes by position
     sorted_recipes = sorted(collection.collection_recipes, key=lambda cr: cr.position)
 
+    # Determine is_shared and can_edit
+    is_shared = False
+    can_edit = False
+    if current_user:
+        is_owner = collection.user_id == current_user.id
+        if is_owner:
+            can_edit = True
+        else:
+            is_shared = True
+            share = _get_user_share(collection.id, current_user.id, db)
+            if share and share.can_edit:
+                can_edit = True
+
     return CollectionDetailResponse(
         id=collection.id,
         name=collection.name,
@@ -195,6 +208,8 @@ async def get_collection(
         created_at=collection.created_at,
         updated_at=collection.updated_at,
         recipes=[_build_collection_recipe_response(cr) for cr in sorted_recipes],
+        is_shared=is_shared,
+        can_edit=can_edit,
     )
 
 
