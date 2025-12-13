@@ -79,7 +79,7 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
 
         {/* Dropdown */}
         {isExpanded && categories && (
-          <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-4 space-y-4 z-50">
+          <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-4 space-y-4 z-[60]">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Filters</h3>
               {hasActiveFilters && (
