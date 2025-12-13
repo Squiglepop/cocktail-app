@@ -2,15 +2,26 @@
 
 import Link from 'next/link';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
-import { GlassWater, Wine } from 'lucide-react';
+import { GlassWater, Wine, Share2 } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
+import { shareRecipe } from '@/lib/share';
 
 interface RecipeCardProps {
   recipe: RecipeListItem;
 }
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await shareRecipe({
+      id: recipe.id,
+      name: recipe.name,
+      hasImage: recipe.has_image,
+    });
+  };
+
   return (
     <Link href={`/recipes/${recipe.id}`}>
       <div className="card hover:shadow-md transition-shadow cursor-pointer h-full group">
@@ -25,8 +36,15 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           ) : (
             <GlassWater className="h-16 w-16 text-amber-300" />
           )}
-          {/* Add to playlist button - appears on hover */}
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Action buttons - always visible on mobile, hover on desktop */}
+          <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1">
+            <button
+              onClick={handleShare}
+              className="p-2 bg-white/90 hover:bg-white rounded-full shadow-sm transition-colors"
+              title="Share recipe"
+            >
+              <Share2 className="h-4 w-4 text-gray-600" />
+            </button>
             <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
           </div>
         </div>

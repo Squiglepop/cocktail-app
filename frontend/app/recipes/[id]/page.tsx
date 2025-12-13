@@ -23,7 +23,9 @@ import {
   Trash2,
   Pencil,
   ImagePlus,
+  Share2,
 } from 'lucide-react';
+import { shareRecipe } from '@/lib/share';
 
 export default function RecipeDetailPage() {
   const params = useParams();
@@ -61,6 +63,15 @@ export default function RecipeDetailPage() {
       alert(error instanceof Error ? error.message : 'Failed to delete recipe');
       setDeleting(false);
     }
+  };
+
+  const handleShare = async () => {
+    if (!recipe) return;
+    await shareRecipe({
+      id: recipe.id,
+      name: recipe.name,
+      hasImage: recipe.has_image,
+    });
   };
 
   const handleRatingChange = async (newRating: number) => {
@@ -142,9 +153,18 @@ export default function RecipeDetailPage() {
             <h1 className="text-3xl font-bold text-gray-900">
               {recipe.name}
             </h1>
-            {user && (
-              <AddToPlaylistButton recipeId={recipe.id} variant="icon" className="flex-shrink-0 mt-1" />
-            )}
+            <div className="flex items-center gap-1 flex-shrink-0 mt-1">
+              <button
+                onClick={handleShare}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Share recipe"
+              >
+                <Share2 className="h-5 w-5 text-gray-600" />
+              </button>
+              {user && (
+                <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
+              )}
+            </div>
           </div>
           {recipe.description && (
             <p className="text-gray-600 mt-2">{recipe.description}</p>
