@@ -75,6 +75,7 @@ function UploadPageContent() {
             onRecipeExtracted={handleRecipeExtracted}
             enhanceRecipeId={enhanceRecipeId || undefined}
             onEnhanceComplete={handleEnhanceComplete}
+            onAddMoreImages={handleAddMoreImages}
           />
         </div>
 

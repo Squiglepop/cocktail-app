@@ -13,6 +13,8 @@ interface UploadDropzoneProps {
   enhanceRecipeId?: string;
   /** Callback when enhancement completes */
   onEnhanceComplete?: (recipe: Recipe) => void;
+  /** Callback to add more images to the extracted recipe */
+  onAddMoreImages?: () => void;
 }
 
 type UploadState = 'idle' | 'checking' | 'duplicate_warning' | 'uploading' | 'success' | 'error';
@@ -21,7 +23,8 @@ type InputMode = 'drop' | 'url';
 export function UploadDropzone({
   onRecipeExtracted,
   enhanceRecipeId,
-  onEnhanceComplete
+  onEnhanceComplete,
+  onAddMoreImages
 }: UploadDropzoneProps) {
   const { token } = useAuth();
   const [state, setState] = useState<UploadState>('idle');
@@ -391,6 +394,11 @@ export function UploadDropzone({
               <p className="text-lg font-medium text-green-800">
                 {isEnhanceMode ? 'Recipe enhanced successfully!' : 'Recipe extracted successfully!'}
               </p>
+              {!isEnhanceMode && onAddMoreImages && (
+                <p className="text-sm text-gray-500">
+                  Recipe incomplete? Add more images to enhance it.
+                </p>
+              )}
             </div>
           )}
 
@@ -565,6 +573,11 @@ export function UploadDropzone({
               <p className="text-lg font-medium text-green-800">
                 {isEnhanceMode ? 'Recipe enhanced successfully!' : 'Recipe extracted successfully!'}
               </p>
+              {!isEnhanceMode && onAddMoreImages && (
+                <p className="text-sm text-gray-500">
+                  Recipe incomplete? Add more images to enhance it.
+                </p>
+              )}
             </div>
           )}
 
@@ -585,7 +598,13 @@ export function UploadDropzone({
       )}
 
       {(state === 'success' || state === 'error') && (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
+          {state === 'success' && !isEnhanceMode && onAddMoreImages && (
+            <button onClick={onAddMoreImages} className="btn btn-primary">
+              <Plus className="h-4 w-4 mr-2" />
+              Add More to This Recipe
+            </button>
+          )}
           <button onClick={reset} className="btn btn-secondary">
             {isEnhanceMode ? 'Add Another Image' : 'Upload Another'}
           </button>
