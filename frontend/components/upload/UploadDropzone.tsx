@@ -33,32 +33,7 @@ export function UploadDropzone({
 
   const isEnhanceMode = !!enhanceRecipeId;
 
-  // Handle clipboard paste anywhere on the page
-  useEffect(() => {
-    const handlePaste = async (e: ClipboardEvent) => {
-      if (state === 'uploading') return;
-
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
-            await processFile(file);
-          }
-          return;
-        }
-      }
-    };
-
-    document.addEventListener('paste', handlePaste);
-    return () => document.removeEventListener('paste', handlePaste);
-  }, [state]);
-
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     // Show preview
     const reader = new FileReader();
     reader.onload = () => {
@@ -85,7 +60,32 @@ export function UploadDropzone({
       setState('error');
       setError(err instanceof Error ? err.message : isEnhanceMode ? 'Enhancement failed' : 'Upload failed');
     }
-  };
+  }, [isEnhanceMode, enhanceRecipeId, token, onRecipeExtracted, onEnhanceComplete]);
+
+  // Handle clipboard paste anywhere on the page
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (state === 'uploading') return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            await processFile(file);
+          }
+          return;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [state, processFile]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -93,8 +93,17 @@ export function UploadDropzone({
       if (!file) return;
       await processFile(file);
     },
-    [onRecipeExtracted]
+    [processFile]
   );
+
+  const onDropRejected = useCallback((fileRejections: any[]) => {
+    if (fileRejections.length > 0) {
+      const rejection = fileRejections[0];
+      const errorMessage = rejection.errors?.[0]?.message || 'File rejected';
+      setError(errorMessage);
+      setState('error');
+    }
+  }, []);
 
   const handleUrlSubmit = async () => {
     if (!imageUrl.trim()) return;
@@ -128,6 +137,7 @@ export function UploadDropzone({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
       'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
     },
