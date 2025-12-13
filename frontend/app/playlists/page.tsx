@@ -31,10 +31,19 @@ export default function PlaylistsPage() {
     }
 
     if (token) {
+      console.log('[Playlists] Fetching with token:', !!token);
       fetchCollections(token)
-        .then(setPlaylists)
-        .catch(console.error)
+        .then((data) => {
+          console.log('[Playlists] Fetched:', data);
+          setPlaylists(data);
+        })
+        .catch((err) => {
+          console.error('[Playlists] Error:', err);
+        })
         .finally(() => setLoading(false));
+    } else {
+      console.log('[Playlists] No token, skipping fetch');
+      setLoading(false);
     }
   }, [token, authLoading, user, router]);
 
