@@ -22,6 +22,7 @@ bcrypt>=4.0.0,<4.1.0  # Pin to 4.0.x for passlib 1.7.4 compatibility
 
 # Image handling
 pillow>=10.0.0
+imagehash>=4.3.0
 
 # Utilities
 python-multipart>=0.0.6

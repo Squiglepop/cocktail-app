@@ -178,6 +178,30 @@ class ExtractionJobResponse(BaseModel):
         from_attributes = True
 
 
+# --- Duplicate Detection Schemas ---
+
+
+class DuplicateMatchResponse(BaseModel):
+    """A potential duplicate match."""
+    recipe_id: str
+    recipe_name: str
+    match_type: str  # "exact_image", "similar_image", "same_recipe"
+    confidence: float  # 0.0 to 1.0
+    details: str
+
+
+class DuplicateCheckResponse(BaseModel):
+    """Response from duplicate detection check."""
+    is_duplicate: bool
+    matches: List[DuplicateMatchResponse] = Field(default_factory=list)
+
+
+class UploadWithDuplicateCheckResponse(BaseModel):
+    """Response from upload endpoint with duplicate detection."""
+    job: ExtractionJobResponse
+    duplicates: Optional[DuplicateCheckResponse] = None
+
+
 # --- Filter/Query Schemas ---
 
 

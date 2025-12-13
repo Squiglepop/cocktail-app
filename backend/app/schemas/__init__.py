@@ -21,6 +21,9 @@ from .recipe import (
     CategoryItem,
     CategoryGroup,
     CategoriesResponse,
+    DuplicateMatchResponse,
+    DuplicateCheckResponse,
+    UploadWithDuplicateCheckResponse,
 )
 from .auth import (
     UserCreate,
@@ -66,6 +69,9 @@ __all__ = [
     "CategoryItem",
     "CategoryGroup",
     "CategoriesResponse",
+    "DuplicateMatchResponse",
+    "DuplicateCheckResponse",
+    "UploadWithDuplicateCheckResponse",
     # Auth schemas
     "UserCreate",
     "UserLogin",

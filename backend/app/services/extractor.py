@@ -447,3 +447,4 @@ def map_extracted_to_create(extracted: ExtractedRecipe):
 
 # Keep old function name for backward compatibility
 map_to_enum = map_to_enum_value
+

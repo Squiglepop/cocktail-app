@@ -61,6 +61,11 @@ class Recipe(Base):
     source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     source_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
+    # Duplicate detection hashes
+    image_content_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    image_perceptual_hash: Mapped[Optional[str]] = mapped_column(String(16), nullable=True, index=True)
+    recipe_fingerprint: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+
     # Metadata
     garnish: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

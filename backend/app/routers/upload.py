@@ -5,15 +5,27 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.models import Recipe, Ingredient, RecipeIngredient, ExtractionJob
-from app.schemas import ExtractionJobResponse, RecipeResponse
-from app.services import get_db, RecipeExtractor, map_extracted_to_create
+from app.schemas import (
+    ExtractionJobResponse,
+    RecipeResponse,
+    DuplicateMatchResponse,
+    DuplicateCheckResponse,
+    UploadWithDuplicateCheckResponse,
+)
+from app.services import (
+    get_db,
+    RecipeExtractor,
+    map_extracted_to_create,
+    check_for_duplicates,
+    compute_hashes_for_recipe,
+)
 
 
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -30,12 +42,37 @@ MIME_TYPES = {
 }
 
 
-@router.post("", response_model=ExtractionJobResponse)
+def _convert_duplicate_result(result) -> Optional[DuplicateCheckResponse]:
+    """Convert internal DuplicateCheckResult to API response schema."""
+    if not result or not result.is_duplicate:
+        return None
+    return DuplicateCheckResponse(
+        is_duplicate=result.is_duplicate,
+        matches=[
+            DuplicateMatchResponse(
+                recipe_id=m.recipe_id,
+                recipe_name=m.recipe_name,
+                match_type=m.match_type,
+                confidence=m.confidence,
+                details=m.details,
+            )
+            for m in result.matches
+        ],
+    )
+
+
+@router.post("", response_model=UploadWithDuplicateCheckResponse)
 async def upload_image(
     file: UploadFile = File(...),
+    check_duplicates: bool = Query(True, description="Check for duplicate images before creating job"),
     db: Session = Depends(get_db),
 ):
-    """Upload an image and create an extraction job."""
+    """Upload an image and create an extraction job.
+
+    By default, checks for duplicate images before creating the job.
+    If duplicates are found, returns them in the response but still creates the job.
+    Set check_duplicates=false to skip duplicate detection.
+    """
     # Validate file type
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
@@ -54,6 +91,12 @@ async def upload_image(
     with open(file_path, "wb") as f:
         f.write(content)
 
+    # Check for duplicates (image-based only, no recipe data yet)
+    duplicates = None
+    if check_duplicates:
+        dup_result = check_for_duplicates(db, content)
+        duplicates = _convert_duplicate_result(dup_result)
+
     # Create extraction job
     job = ExtractionJob(
         image_path=str(file_path),
@@ -63,7 +106,7 @@ async def upload_image(
     db.commit()
     db.refresh(job)
 
-    return job
+    return UploadWithDuplicateCheckResponse(job=job, duplicates=duplicates)
 
 
 @router.post("/{job_id}/extract", response_model=RecipeResponse)
@@ -103,6 +146,17 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
             image_data = img_file.read()
         suffix = Path(job.image_path).suffix.lower()
 
+        # Prepare ingredient data for fingerprint computation
+        ingredient_tuples = [
+            (ing.ingredient_name or "", ing.amount, ing.unit)
+            for ing in recipe_data.ingredients
+        ]
+
+        # Compute hashes for duplicate detection
+        content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
+            image_data, recipe_data.name, ingredient_tuples
+        )
+
         # Create recipe
         recipe = Recipe(
             name=recipe_data.name,
@@ -118,6 +172,9 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
             source_type="screenshot",
             source_image_data=image_data,
             source_image_mime=MIME_TYPES.get(suffix, "image/jpeg"),
+            image_content_hash=content_hash,
+            image_perceptual_hash=perceptual_hash,
+            recipe_fingerprint=fingerprint,
         )
         db.add(recipe)
         db.flush()
@@ -229,6 +286,17 @@ async def upload_and_extract(
         # Convert and create recipe
         recipe_data = map_extracted_to_create(extracted)
 
+        # Prepare ingredient data for fingerprint computation
+        ingredient_tuples = [
+            (ing.ingredient_name or "", ing.amount, ing.unit)
+            for ing in recipe_data.ingredients
+        ]
+
+        # Compute hashes for duplicate detection
+        content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
+            content, recipe_data.name, ingredient_tuples
+        )
+
         recipe = Recipe(
             name=recipe_data.name,
             description=recipe_data.description,
@@ -243,6 +311,9 @@ async def upload_and_extract(
             source_type="screenshot",
             source_image_data=content,
             source_image_mime=MIME_TYPES.get(suffix, "image/jpeg"),
+            image_content_hash=content_hash,
+            image_perceptual_hash=perceptual_hash,
+            recipe_fingerprint=fingerprint,
         )
         db.add(recipe)
         db.flush()

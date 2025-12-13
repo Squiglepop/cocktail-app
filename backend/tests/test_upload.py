@@ -20,9 +20,10 @@ class TestUploadImage:
 
         assert response.status_code == 200
         data = response.json()
-        assert "id" in data
-        assert data["status"] == "pending"
-        assert data["image_path"] is not None
+        assert "job" in data
+        assert "id" in data["job"]
+        assert data["job"]["status"] == "pending"
+        assert data["job"]["image_path"] is not None
 
     def test_upload_valid_image_jpg(self, client, test_image_file):
         """Test uploading a valid JPG image creates extraction job."""
@@ -33,7 +34,7 @@ class TestUploadImage:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "pending"
+        assert data["job"]["status"] == "pending"
 
     def test_upload_valid_image_jpeg(self, client, test_image_file):
         """Test uploading a valid JPEG image creates extraction job."""
@@ -80,6 +81,60 @@ class TestUploadImage:
         )
 
         assert response.status_code == 400
+
+    def test_upload_detects_duplicate_image(self, client, test_session, test_image_file):
+        """Test that uploading same image twice returns duplicate info."""
+        from app.models import Recipe
+        from app.services.duplicate_detector import compute_content_hash, compute_perceptual_hash
+
+        # Create a recipe with the same image hash
+        content_hash = compute_content_hash(test_image_file)
+        perceptual_hash = compute_perceptual_hash(test_image_file)
+
+        existing_recipe = Recipe(
+            name="Existing Recipe",
+            image_content_hash=content_hash,
+            image_perceptual_hash=perceptual_hash,
+        )
+        test_session.add(existing_recipe)
+        test_session.commit()
+
+        # Upload same image
+        response = client.post(
+            "/api/upload",
+            files={"file": ("test.png", BytesIO(test_image_file), "image/png")},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["duplicates"] is not None
+        assert data["duplicates"]["is_duplicate"] is True
+        assert len(data["duplicates"]["matches"]) >= 1
+        assert data["duplicates"]["matches"][0]["recipe_id"] == existing_recipe.id
+
+    def test_upload_skip_duplicate_check(self, client, test_session, test_image_file):
+        """Test that duplicate check can be skipped."""
+        from app.models import Recipe
+        from app.services.duplicate_detector import compute_content_hash
+
+        # Create a recipe with the same image hash
+        content_hash = compute_content_hash(test_image_file)
+        existing_recipe = Recipe(
+            name="Existing Recipe",
+            image_content_hash=content_hash,
+        )
+        test_session.add(existing_recipe)
+        test_session.commit()
+
+        # Upload with duplicate check disabled
+        response = client.post(
+            "/api/upload?check_duplicates=false",
+            files={"file": ("test.png", BytesIO(test_image_file), "image/png")},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["duplicates"] is None
 
 
 class TestExtractRecipe:
