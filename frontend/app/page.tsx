@@ -16,17 +16,20 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [totalLoaded, setTotalLoaded] = useState(0);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Use ref to track current skip value to avoid stale closures
+  const skipRef = useRef(0);
 
   // Load initial recipes
   const loadRecipes = useCallback(async () => {
     setLoading(true);
     setHasMore(true);
+    skipRef.current = 0;
     try {
       const data = await fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT });
       setRecipes(data);
-      setTotalLoaded(data.length);
+      skipRef.current = data.length;
       setHasMore(data.length === INITIAL_LIMIT);
     } catch (error) {
       console.error('Failed to load recipes:', error);
@@ -41,10 +44,10 @@ export default function HomePage() {
 
     setLoadingMore(true);
     try {
-      const data = await fetchRecipes(filters, { skip: totalLoaded, limit: LOAD_MORE_LIMIT });
+      const data = await fetchRecipes(filters, { skip: skipRef.current, limit: LOAD_MORE_LIMIT });
       if (data.length > 0) {
         setRecipes((prev) => [...prev, ...data]);
-        setTotalLoaded((prev) => prev + data.length);
+        skipRef.current += data.length;
       }
       setHasMore(data.length === LOAD_MORE_LIMIT);
     } catch (error) {
@@ -52,7 +55,7 @@ export default function HomePage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [filters, totalLoaded, loadingMore, hasMore]);
+  }, [filters, loadingMore, hasMore]);
 
   // Initial load and filter changes
   useEffect(() => {
@@ -61,26 +64,24 @@ export default function HomePage() {
 
   // Infinite scroll observer
   useEffect(() => {
+    const currentRef = loadMoreRef.current;
+    if (!currentRef) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+        if (entries[0].isIntersecting) {
           loadMore();
         }
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { threshold: 0, rootMargin: '200px' }
     );
 
-    const currentRef = loadMoreRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
+    observer.observe(currentRef);
 
     return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
+      observer.disconnect();
     };
-  }, [hasMore, loading, loadingMore, loadMore]);
+  }, [loadMore]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -121,8 +122,6 @@ export default function HomePage() {
 
         {/* Recipe grid */}
         <RecipeGrid recipes={recipes} loading={loading} loadingMore={loadingMore} />
-        {/* Scroll sentinel for infinite scroll */}
-        <div ref={loadMoreRef} className="h-4" />
       </div>
 
       {/* Desktop layout */}
@@ -150,10 +149,11 @@ export default function HomePage() {
             </div>
           </div>
           <RecipeGrid recipes={recipes} loading={loading} loadingMore={loadingMore} />
-          {/* Scroll sentinel for infinite scroll */}
-          <div ref={loadMoreRef} className="h-4" />
         </div>
       </div>
+
+      {/* Scroll sentinel for infinite scroll - single element outside responsive layouts */}
+      <div ref={loadMoreRef} className="h-4" />
     </div>
   );
 }
