@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { RecipeListItem, RecipeFilters, RecipeCount, fetchRecipes, fetchRecipeCount } from '@/lib/api';
 import { FilterSidebar } from '@/components/recipes/FilterSidebar';
 import { RecipeGrid } from '@/components/recipes/RecipeGrid';
+import { useAuth } from '@/lib/auth-context';
 import { Plus, Upload, GlassWater } from 'lucide-react';
 
 const INITIAL_LIMIT = 20;
 const LOAD_MORE_LIMIT = 20;
 
 export default function HomePage() {
+  const { token } = useAuth();
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [filters, setFilters] = useState<RecipeFilters>({});
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,7 @@ export default function HomePage() {
     skipRef.current = 0;
     try {
       const [data, count] = await Promise.all([
-        fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT }),
+        fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT }, token),
         fetchRecipeCount(filters),
       ]);
       setRecipes(data);
@@ -44,7 +46,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, token]);
 
   // Load more recipes
   const loadMore = useCallback(async () => {
@@ -52,7 +54,7 @@ export default function HomePage() {
 
     setLoadingMore(true);
     try {
-      const data = await fetchRecipes(filters, { skip: skipRef.current, limit: LOAD_MORE_LIMIT });
+      const data = await fetchRecipes(filters, { skip: skipRef.current, limit: LOAD_MORE_LIMIT }, token);
       if (data.length > 0) {
         setRecipes((prev) => [...prev, ...data]);
         skipRef.current += data.length;
@@ -63,7 +65,7 @@ export default function HomePage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [filters, loadingMore, hasMore]);
+  }, [filters, loadingMore, hasMore, token]);
 
   // Initial load and filter changes
   useEffect(() => {

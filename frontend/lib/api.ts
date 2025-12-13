@@ -132,7 +132,8 @@ export async function fetchCategories(): Promise<Categories> {
 // Fetch recipes with filters and pagination
 export async function fetchRecipes(
   filters: RecipeFilters = {},
-  pagination: PaginationParams = {}
+  pagination: PaginationParams = {},
+  token?: string | null
 ): Promise<RecipeListItem[]> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
@@ -151,7 +152,12 @@ export async function fetchRecipes(
     ? `${API_BASE}/recipes?${params.toString()}`
     : `${API_BASE}/recipes`;
 
-  const res = await fetch(url);
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error('Failed to fetch recipes');
   return res.json();
 }
@@ -178,8 +184,13 @@ export async function fetchRecipeCount(filters: RecipeFilters = {}): Promise<Rec
 }
 
 // Fetch single recipe
-export async function fetchRecipe(id: string): Promise<Recipe> {
-  const res = await fetch(`${API_BASE}/recipes/${id}`);
+export async function fetchRecipe(id: string, token?: string | null): Promise<Recipe> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/recipes/${id}`, { headers });
   if (!res.ok) throw new Error('Recipe not found');
   return res.json();
 }

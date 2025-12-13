@@ -40,12 +40,12 @@ export default function RecipeDetailPage() {
 
   useEffect(() => {
     if (params.id) {
-      fetchRecipe(params.id as string)
+      fetchRecipe(params.id as string, token)
         .then(setRecipe)
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [params.id]);
+  }, [params.id, token]);
 
   const handleDelete = async () => {
     if (!recipe) return;
