@@ -14,6 +14,7 @@ import {
 } from '@/lib/api';
 import { StarRating } from '@/components/recipes/StarRating';
 import { useAuth } from '@/lib/auth-context';
+import { useFavourites } from '@/lib/favourites-context';
 import { AddToPlaylistButton } from '@/components/playlists/AddToPlaylistButton';
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import {
   Pencil,
   ImagePlus,
   Share2,
+  Heart,
 } from 'lucide-react';
 import { shareRecipe } from '@/lib/share';
 
@@ -31,6 +33,7 @@ export default function RecipeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, token } = useAuth();
+  const { favourites, toggleFavourite } = useFavourites();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -154,6 +157,19 @@ export default function RecipeDetailPage() {
               {recipe.name}
             </h1>
             <div className="flex items-center gap-1 flex-shrink-0 mt-1">
+              <button
+                onClick={() => toggleFavourite(recipe.id)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title={favourites.has(recipe.id) ? 'Remove from favourites' : 'Add to favourites'}
+              >
+                <Heart
+                  className={`h-5 w-5 transition-colors ${
+                    favourites.has(recipe.id)
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-gray-600'
+                  }`}
+                />
+              </button>
               <button
                 onClick={handleShare}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
