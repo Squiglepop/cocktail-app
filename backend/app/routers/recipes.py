@@ -27,6 +27,46 @@ from app.services.auth import get_current_user, get_current_user_optional
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 
+@router.get("/count")
+def get_recipe_count(
+    template: Optional[str] = None,
+    main_spirit: Optional[str] = None,
+    glassware: Optional[str] = None,
+    serving_style: Optional[str] = None,
+    method: Optional[str] = None,
+    search: Optional[str] = None,
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    db: Session = Depends(get_db),
+):
+    """Get total recipe count and filtered count."""
+    # Get total count (no filters)
+    total = db.query(Recipe).count()
+
+    # Build filtered query
+    query = db.query(Recipe)
+    if template:
+        query = query.filter(Recipe.template == template)
+    if main_spirit:
+        query = query.filter(Recipe.main_spirit == main_spirit)
+    if glassware:
+        query = query.filter(Recipe.glassware == glassware)
+    if serving_style:
+        query = query.filter(Recipe.serving_style == serving_style)
+    if method:
+        query = query.filter(Recipe.method == method)
+    if user_id:
+        query = query.filter(Recipe.user_id == user_id)
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(Recipe.name.ilike(search_term), Recipe.description.ilike(search_term))
+        )
+
+    filtered = query.count()
+
+    return {"total": total, "filtered": filtered}
+
+
 @router.get("", response_model=List[RecipeListResponse])
 def list_recipes(
     template: Optional[str] = None,

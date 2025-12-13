@@ -152,6 +152,27 @@ export async function fetchRecipes(
   return res.json();
 }
 
+export interface RecipeCount {
+  total: number;
+  filtered: number;
+}
+
+// Fetch recipe count (total and filtered)
+export async function fetchRecipeCount(filters: RecipeFilters = {}): Promise<RecipeCount> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) params.append(key, value);
+  });
+
+  const url = params.toString()
+    ? `${API_BASE}/recipes/count?${params.toString()}`
+    : `${API_BASE}/recipes/count`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch recipe count');
+  return res.json();
+}
+
 // Fetch single recipe
 export async function fetchRecipe(id: string): Promise<Recipe> {
   const res = await fetch(`${API_BASE}/recipes/${id}`);

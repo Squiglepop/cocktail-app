@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { RecipeListItem, RecipeFilters, fetchRecipes } from '@/lib/api';
+import { RecipeListItem, RecipeFilters, RecipeCount, fetchRecipes, fetchRecipeCount } from '@/lib/api';
 import { FilterSidebar } from '@/components/recipes/FilterSidebar';
 import { RecipeGrid } from '@/components/recipes/RecipeGrid';
 import { Plus, Upload, GlassWater } from 'lucide-react';
@@ -16,19 +16,27 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [recipeCount, setRecipeCount] = useState<RecipeCount | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Use ref to track current skip value to avoid stale closures
   const skipRef = useRef(0);
 
-  // Load initial recipes
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some((v) => v);
+
+  // Load initial recipes and count
   const loadRecipes = useCallback(async () => {
     setLoading(true);
     setHasMore(true);
     skipRef.current = 0;
     try {
-      const data = await fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT });
+      const [data, count] = await Promise.all([
+        fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT }),
+        fetchRecipeCount(filters),
+      ]);
       setRecipes(data);
+      setRecipeCount(count);
       skipRef.current = data.length;
       setHasMore(data.length === INITIAL_LIMIT);
     } catch (error) {
@@ -93,7 +101,11 @@ export default function HomePage() {
           <p className="text-gray-500 mt-1">
             {loading
               ? 'Loading recipes...'
-              : `${recipes.length} recipe${recipes.length !== 1 ? 's' : ''} found`}
+              : recipeCount
+                ? hasActiveFilters
+                  ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
+                  : `${recipeCount.total} recipes`
+                : `${recipes.length} recipes`}
           </p>
         </div>
 
@@ -134,7 +146,11 @@ export default function HomePage() {
               <p className="text-gray-500 mt-1">
                 {loading
                   ? 'Loading recipes...'
-                  : `${recipes.length} recipe${recipes.length !== 1 ? 's' : ''} found`}
+                  : recipeCount
+                    ? hasActiveFilters
+                      ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
+                      : `${recipeCount.total} recipes`
+                    : `${recipes.length} recipes`}
               </p>
             </div>
             <div className="flex gap-2">
