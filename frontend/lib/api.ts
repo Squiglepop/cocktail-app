@@ -98,6 +98,20 @@ export interface PaginationParams {
   limit?: number;
 }
 
+// Duplicate detection types
+export interface DuplicateMatch {
+  recipe_id: string;
+  recipe_name: string;
+  match_type: 'exact_image' | 'similar_image' | 'same_recipe';
+  confidence: number;
+  details: string;
+}
+
+export interface DuplicateCheckResult {
+  is_duplicate: boolean;
+  matches: DuplicateMatch[];
+}
+
 export interface RecipeIngredientInput {
   ingredient_id?: string;
   ingredient_name?: string;
@@ -193,6 +207,30 @@ export async function fetchRecipe(id: string, token?: string | null): Promise<Re
   const res = await fetch(`${API_BASE}/recipes/${id}`, { headers });
   if (!res.ok) throw new Error('Recipe not found');
   return res.json();
+}
+
+// Check for duplicate images before extracting
+export async function checkForDuplicates(file: File, token?: string | null): Promise<DuplicateCheckResult | null> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/upload?check_duplicates=true`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    return null; // Don't block on duplicate check failures
+  }
+
+  const data = await res.json();
+  return data.duplicates || null;
 }
 
 // Upload and extract recipe (supports multiple files for multi-page recipes)
