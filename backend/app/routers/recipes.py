@@ -63,6 +63,7 @@ def get_recipe_count(
     search: Optional[str] = None,
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     visibility: Optional[str] = Query(None, description="Filter by visibility"),
+    min_rating: Optional[int] = Query(None, ge=1, le=5, description="Filter by minimum personal rating"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
@@ -95,6 +96,12 @@ def get_recipe_count(
         query = query.filter(
             or_(Recipe.name.ilike(search_term), Recipe.description.ilike(search_term))
         )
+    if min_rating and current_user:
+        # Filter by user's personal rating
+        query = query.join(UserRating, UserRating.recipe_id == Recipe.id).filter(
+            UserRating.user_id == current_user.id,
+            UserRating.rating >= min_rating
+        )
 
     filtered = query.count()
 
@@ -111,6 +118,7 @@ def list_recipes(
     search: Optional[str] = None,
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     visibility: Optional[str] = Query(None, description="Filter by visibility"),
+    min_rating: Optional[int] = Query(None, ge=1, le=5, description="Filter by minimum personal rating"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -141,6 +149,12 @@ def list_recipes(
         search_term = f"%{search}%"
         query = query.filter(
             or_(Recipe.name.ilike(search_term), Recipe.description.ilike(search_term))
+        )
+    if min_rating and current_user:
+        # Filter by user's personal rating
+        query = query.join(UserRating, UserRating.recipe_id == Recipe.id).filter(
+            UserRating.user_id == current_user.id,
+            UserRating.rating >= min_rating
         )
 
     # Order and paginate

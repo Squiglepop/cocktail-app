@@ -91,6 +91,7 @@ export interface RecipeFilters {
   serving_style?: string;
   method?: string;
   search?: string;
+  min_rating?: string;
 }
 
 export interface PaginationParams {

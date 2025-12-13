@@ -11,6 +11,7 @@ interface FilterSidebarProps {
     glassware?: string;
     serving_style?: string;
     search?: string;
+    min_rating?: string;
   };
   onFilterChange: (filters: FilterSidebarProps['filters']) => void;
   className?: string;
@@ -186,6 +187,25 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 ))}
               </select>
             </div>
+
+            {/* Min Rating */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                My Rating
+              </label>
+              <select
+                value={filters.min_rating || ''}
+                onChange={(e) => updateFilter('min_rating', e.target.value)}
+                className="select"
+              >
+                <option value="">Any rating</option>
+                <option value="5">5 stars</option>
+                <option value="4">4+ stars</option>
+                <option value="3">3+ stars</option>
+                <option value="2">2+ stars</option>
+                <option value="1">1+ stars</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
@@ -320,6 +340,25 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                   {item.display_name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Min Rating */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              My Rating
+            </label>
+            <select
+              value={filters.min_rating || ''}
+              onChange={(e) => updateFilter('min_rating', e.target.value)}
+              className="select"
+            >
+              <option value="">Any rating</option>
+              <option value="5">5 stars</option>
+              <option value="4">4+ stars</option>
+              <option value="3">3+ stars</option>
+              <option value="2">2+ stars</option>
+              <option value="1">1+ stars</option>
             </select>
           </div>
         </div>
