@@ -14,6 +14,7 @@ import {
 } from '@/lib/api';
 import { StarRating } from '@/components/recipes/StarRating';
 import { useAuth } from '@/lib/auth-context';
+import { AddToPlaylistButton } from '@/components/playlists/AddToPlaylistButton';
 import {
   ArrowLeft,
   GlassWater,
@@ -287,32 +288,37 @@ export default function RecipeDetailPage() {
           Added {new Date(recipe.created_at).toLocaleDateString()}
           {recipe.source_type && ` via ${recipe.source_type}`}
         </div>
-        {canEdit && (
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/upload?enhance=${recipe.id}`}
-              className="btn btn-secondary"
-            >
-              <ImagePlus className="h-4 w-4 mr-2" />
-              Add Images
-            </Link>
-            <Link
-              href={`/recipes/${recipe.id}/edit`}
-              className="btn btn-secondary"
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {deleting ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {user && (
+            <AddToPlaylistButton recipeId={recipe.id} variant="button" />
+          )}
+          {canEdit && (
+            <>
+              <Link
+                href={`/upload?enhance=${recipe.id}`}
+                className="btn btn-secondary"
+              >
+                <ImagePlus className="h-4 w-4 mr-2" />
+                Add Images
+              </Link>
+              <Link
+                href={`/recipes/${recipe.id}/edit`}
+                className="btn btn-secondary"
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

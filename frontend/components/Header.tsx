@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { GlassWater, LogOut, User } from 'lucide-react';
+import { GlassWater, LogOut, User, ListMusic } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export function Header() {
@@ -22,21 +22,31 @@ export function Header() {
             {isLoading ? (
               <div className="w-20 h-8 bg-gray-100 rounded animate-pulse" />
             ) : user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {user.display_name || user.email}
-                  </span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="flex items-center gap-1 text-gray-600 hover:text-gray-900 text-sm font-medium"
-                  title="Logout"
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/playlists"
+                  className="flex items-center gap-1 text-gray-600 hover:text-amber-600 text-sm font-medium"
+                  title="My Playlists"
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </button>
+                  <ListMusic className="h-4 w-4" />
+                  <span className="hidden sm:inline">Playlists</span>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      {user.display_name || user.email}
+                    </span>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="flex items-center gap-1 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                    title="Logout"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2">

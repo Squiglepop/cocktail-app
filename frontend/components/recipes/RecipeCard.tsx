@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
 import { GlassWater, Wine } from 'lucide-react';
 import { StarRating } from './StarRating';
+import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 
 interface RecipeCardProps {
   recipe: RecipeListItem;
@@ -12,7 +13,7 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe }: RecipeCardProps) {
   return (
     <Link href={`/recipes/${recipe.id}`}>
-      <div className="card hover:shadow-md transition-shadow cursor-pointer h-full">
+      <div className="card hover:shadow-md transition-shadow cursor-pointer h-full group">
         {/* Image placeholder or actual image */}
         <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center relative overflow-hidden">
           {recipe.has_image ? (
@@ -24,6 +25,10 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           ) : (
             <GlassWater className="h-16 w-16 text-amber-300" />
           )}
+          {/* Add to playlist button - appears on hover */}
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
+          </div>
         </div>
 
         <div className="p-4 space-y-2">

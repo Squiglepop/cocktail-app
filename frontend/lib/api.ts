@@ -357,6 +357,196 @@ export const RATING_CAPTIONS: Record<number, string> = {
   1: '"We saw you cry on the telly"',
 };
 
+// Collection (Playlist) types
+export interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  is_public: boolean;
+  user_id: string;
+  recipe_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionListItem {
+  id: string;
+  name: string;
+  description?: string;
+  is_public: boolean;
+  recipe_count: number;
+  created_at: string;
+}
+
+export interface CollectionRecipe {
+  id: string;
+  recipe_id: string;
+  recipe_name: string;
+  recipe_template?: string;
+  recipe_main_spirit?: string;
+  recipe_has_image: boolean;
+  position: number;
+  added_at: string;
+}
+
+export interface CollectionDetail extends Collection {
+  recipes: CollectionRecipe[];
+}
+
+export interface CollectionInput {
+  name: string;
+  description?: string;
+  is_public?: boolean;
+}
+
+// Fetch user's collections
+export async function fetchCollections(token?: string | null): Promise<CollectionListItem[]> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch collections');
+  return res.json();
+}
+
+// Fetch single collection with recipes
+export async function fetchCollection(id: string, token?: string | null): Promise<CollectionDetail> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${id}`, { headers });
+  if (!res.ok) throw new Error('Collection not found');
+  return res.json();
+}
+
+// Create collection
+export async function createCollection(data: CollectionInput, token?: string | null): Promise<Collection> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to create collection' }));
+    throw new Error(error.detail || 'Failed to create collection');
+  }
+
+  return res.json();
+}
+
+// Update collection
+export async function updateCollection(id: string, data: Partial<CollectionInput>, token?: string | null): Promise<Collection> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update collection' }));
+    throw new Error(error.detail || 'Failed to update collection');
+  }
+
+  return res.json();
+}
+
+// Delete collection
+export async function deleteCollection(id: string, token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to delete collection' }));
+    throw new Error(error.detail || 'Failed to delete collection');
+  }
+}
+
+// Add recipe to collection
+export async function addRecipeToCollection(collectionId: string, recipeId: string, token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/recipes`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ recipe_id: recipeId }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to add recipe to collection' }));
+    throw new Error(error.detail || 'Failed to add recipe to collection');
+  }
+}
+
+// Remove recipe from collection
+export async function removeRecipeFromCollection(collectionId: string, recipeId: string, token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/recipes/${recipeId}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to remove recipe from collection' }));
+    throw new Error(error.detail || 'Failed to remove recipe from collection');
+  }
+}
+
+// Reorder recipes in collection
+export async function reorderCollectionRecipes(collectionId: string, reorderData: { recipe_id: string; position: number }[], token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/recipes/reorder`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(reorderData),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to reorder recipes' }));
+    throw new Error(error.detail || 'Failed to reorder recipes');
+  }
+}
+
 // Format display helpers
 export function formatEnumValue(value?: string): string {
   if (!value) return '';
