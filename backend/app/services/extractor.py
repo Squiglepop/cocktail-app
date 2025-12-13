@@ -63,7 +63,8 @@ For ingredient units, prefer: """ + ", ".join([u.value for u in Unit]) + """
 Important:
 - Extract all ingredients with exact measurements
 - Infer the template/family based on the structure if not explicitly stated
-- If information is not visible, use null
+- If the cocktail name is not visible, create a creative, evocative name based on the ingredients and style (e.g., "Midnight Garden" for a gin drink with floral notes, "Copper Sun" for a bourbon citrus drink). Never use "Unknown Cocktail" or "Unnamed Cocktail".
+- If other information is not visible, use null
 - Return ONLY the JSON object, no other text
 """
 
@@ -110,7 +111,8 @@ Important:
 - Combine information from ALL images into one complete recipe
 - If the same information appears in multiple images, use the clearest/most detailed version
 - Extract all ingredients with exact measurements
-- If information is not visible in any image, use null
+- If the cocktail name is not visible in any image, create a creative, evocative name based on the ingredients and style (e.g., "Midnight Garden" for a gin drink with floral notes, "Copper Sun" for a bourbon citrus drink). Never use "Unknown Cocktail" or "Unnamed Cocktail".
+- If other information is not visible in any image, use null
 - Return ONLY the JSON object, no other text
 """
 
@@ -118,10 +120,15 @@ ENHANCEMENT_PROMPT_TEMPLATE = """You previously extracted this cocktail recipe:
 
 {existing_recipe}
 
-The user has provided additional image(s) that contain more information about the SAME recipe.
+The user has provided additional image(s) showing the SAME cocktail recipe. These images may show:
+- Different parts/pages of the same recipe (e.g., ingredients on one screenshot, instructions on another)
+- The same recipe from a different angle or section
+- Additional details that weren't visible in the original screenshot
+
+IMPORTANT: All images represent ONE SINGLE RECIPE. Combine all information from ALL images into a single, complete recipe.
 
 Review ALL images (original and new) along with the existing extraction.
-Return an UPDATED and COMPLETE recipe that incorporates any new information from the additional images.
+Return an UPDATED and COMPLETE recipe that merges information from all screenshots.
 
 Return a JSON object with this structure:
 {
@@ -159,10 +166,13 @@ For method, choose from: """ + ", ".join([m.value for m in Method]) + """
 For ingredient units, prefer: """ + ", ".join([u.value for u in Unit]) + """
 
 Important:
+- All images show the SAME recipe - combine them into ONE unified output
+- Merge ingredients from all images into a single complete list (avoid duplicates)
+- Combine instructions from all images into one coherent set of steps
+- If the same information appears in multiple images, use the clearest/most detailed version
 - Keep information from the original extraction if it's accurate
-- ADD any new ingredients, instructions, or details from the new images
-- If the new images have BETTER/CLEARER information, update the existing data
-- If there are conflicts, prefer the clearer/more detailed source
+- If new images have BETTER/CLEARER information, update the existing data
+- If the cocktail name is still unknown or generic (like "Unknown Cocktail"), create a creative, evocative name based on the ingredients and style. Never leave it as "Unknown Cocktail" or "Unnamed Cocktail".
 - Return ONLY the JSON object, no other text
 """
 
