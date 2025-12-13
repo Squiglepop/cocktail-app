@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -19,18 +20,28 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create collection_shares table with unique constraint inline (SQLite compatible)
-    op.create_table(
-        'collection_shares',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('collection_id', sa.String(36), sa.ForeignKey('collections.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('shared_with_user_id', sa.String(36), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('can_edit', sa.Boolean, nullable=False, server_default='0'),
-        sa.Column('shared_at', sa.DateTime, nullable=False),
-        sa.UniqueConstraint('collection_id', 'shared_with_user_id', name='uq_collection_share'),
-    )
-    op.create_index('ix_collection_shares_collection_id', 'collection_shares', ['collection_id'])
-    op.create_index('ix_collection_shares_shared_with_user_id', 'collection_shares', ['shared_with_user_id'])
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    existing_tables = inspector.get_table_names()
+
+    if 'collection_shares' not in existing_tables:
+        # Create collection_shares table with unique constraint inline (SQLite compatible)
+        op.create_table(
+            'collection_shares',
+            sa.Column('id', sa.String(36), primary_key=True),
+            sa.Column('collection_id', sa.String(36), sa.ForeignKey('collections.id', ondelete='CASCADE'), nullable=False),
+            sa.Column('shared_with_user_id', sa.String(36), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+            sa.Column('can_edit', sa.Boolean, nullable=False, server_default='0'),
+            sa.Column('shared_at', sa.DateTime, nullable=False),
+            sa.UniqueConstraint('collection_id', 'shared_with_user_id', name='uq_collection_share'),
+        )
+        op.create_index('ix_collection_shares_collection_id', 'collection_shares', ['collection_id'])
+        op.create_index('ix_collection_shares_shared_with_user_id', 'collection_shares', ['shared_with_user_id'])
+    else:
+        # Table exists, check if can_edit column exists
+        existing_columns = [col['name'] for col in inspector.get_columns('collection_shares')]
+        if 'can_edit' not in existing_columns:
+            op.add_column('collection_shares', sa.Column('can_edit', sa.Boolean, nullable=False, server_default='0'))
 
 
 def downgrade() -> None:
