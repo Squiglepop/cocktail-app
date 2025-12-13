@@ -12,21 +12,32 @@ Usage:
     source venv/bin/activate
     python scripts/backfill_hashes.py [--dry-run]
 
+    # For production (via Railway):
+    railway run python scripts/backfill_hashes.py
+
 Options:
     --dry-run   Show what would be updated without making changes
 """
 import argparse
+import os
 import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Check if DATABASE_URL is set in environment (e.g., from Railway)
+# before importing app.config which loads .env with override=True
+_db_url_from_env = os.environ.get("DATABASE_URL")
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 from app.models import Recipe
+
+# Use environment DATABASE_URL if it was set before config loaded
+DATABASE_URL = _db_url_from_env or str(settings.database_url)
 from app.services.duplicate_detector import (
     compute_content_hash,
     compute_perceptual_hash,
@@ -37,7 +48,8 @@ from app.services.duplicate_detector import (
 def backfill_hashes(dry_run: bool = False) -> None:
     """Compute and store hashes for all existing recipes."""
     # Create database connection
-    engine = create_engine(str(settings.database_url))
+    print(f"Connecting to: {DATABASE_URL[:50]}...")
+    engine = create_engine(DATABASE_URL)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
 
