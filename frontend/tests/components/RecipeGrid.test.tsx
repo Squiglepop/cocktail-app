@@ -2,6 +2,18 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RecipeGrid } from '@/components/recipes/RecipeGrid'
 import { RecipeListItem } from '@/lib/api'
+import { AuthProvider } from '@/lib/auth-context'
+import { FavouritesProvider } from '@/lib/favourites-context'
+
+function renderRecipeGrid(props: Parameters<typeof RecipeGrid>[0]) {
+  return render(
+    <AuthProvider>
+      <FavouritesProvider>
+        <RecipeGrid {...props} />
+      </FavouritesProvider>
+    </AuthProvider>
+  )
+}
 
 const mockRecipes: RecipeListItem[] = [
   {
@@ -42,7 +54,7 @@ const mockRecipes: RecipeListItem[] = [
 describe('RecipeGrid', () => {
   describe('Rendering Recipes', () => {
     it('renders recipe cards for each recipe', () => {
-      render(<RecipeGrid recipes={mockRecipes} />)
+      renderRecipeGrid({ recipes: mockRecipes })
 
       // Recipe names may appear multiple times due to template badges (e.g., "Old Fashioned", "Martini")
       expect(screen.getAllByText('Margarita').length).toBeGreaterThanOrEqual(1)
@@ -51,7 +63,7 @@ describe('RecipeGrid', () => {
     })
 
     it('renders correct number of cards', () => {
-      render(<RecipeGrid recipes={mockRecipes} />)
+      renderRecipeGrid({ recipes: mockRecipes })
 
       const links = screen.getAllByRole('link')
       expect(links).toHaveLength(3)
@@ -60,7 +72,7 @@ describe('RecipeGrid', () => {
 
   describe('Loading State', () => {
     it('shows loading skeleton when loading', () => {
-      render(<RecipeGrid recipes={[]} loading={true} />)
+      renderRecipeGrid({ recipes: [], loading: true })
 
       // Should show skeleton cards with animate-pulse
       const skeletons = document.querySelectorAll('.animate-pulse')
@@ -68,14 +80,14 @@ describe('RecipeGrid', () => {
     })
 
     it('shows 6 skeleton cards', () => {
-      render(<RecipeGrid recipes={[]} loading={true} />)
+      renderRecipeGrid({ recipes: [], loading: true })
 
       const skeletons = document.querySelectorAll('.animate-pulse')
       expect(skeletons).toHaveLength(6)
     })
 
     it('does not show recipes when loading', () => {
-      render(<RecipeGrid recipes={mockRecipes} loading={true} />)
+      renderRecipeGrid({ recipes: mockRecipes, loading: true })
 
       expect(screen.queryByText('Margarita')).not.toBeInTheDocument()
     })
@@ -83,13 +95,13 @@ describe('RecipeGrid', () => {
 
   describe('Empty State', () => {
     it('shows empty message when no recipes', () => {
-      render(<RecipeGrid recipes={[]} />)
+      renderRecipeGrid({ recipes: [] })
 
       expect(screen.getByText('No recipes found')).toBeInTheDocument()
     })
 
     it('shows helpful message in empty state', () => {
-      render(<RecipeGrid recipes={[]} />)
+      renderRecipeGrid({ recipes: [] })
 
       expect(
         screen.getByText(/try adjusting your filters or upload a new recipe/i)
@@ -97,7 +109,7 @@ describe('RecipeGrid', () => {
     })
 
     it('does not show empty state when loading', () => {
-      render(<RecipeGrid recipes={[]} loading={true} />)
+      renderRecipeGrid({ recipes: [], loading: true })
 
       expect(screen.queryByText('No recipes found')).not.toBeInTheDocument()
     })
@@ -105,7 +117,7 @@ describe('RecipeGrid', () => {
 
   describe('Grid Layout', () => {
     it('renders grid container', () => {
-      render(<RecipeGrid recipes={mockRecipes} />)
+      renderRecipeGrid({ recipes: mockRecipes })
 
       const grid = document.querySelector('.grid')
       expect(grid).toBeInTheDocument()

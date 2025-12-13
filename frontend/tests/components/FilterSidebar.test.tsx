@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FilterSidebar } from '@/components/recipes/FilterSidebar'
+import { FavouritesProvider } from '@/lib/favourites-context'
+
+function renderFilterSidebar(props: Parameters<typeof FilterSidebar>[0]) {
+  return render(
+    <FavouritesProvider>
+      <FilterSidebar {...props} />
+    </FavouritesProvider>
+  )
+}
 
 describe('FilterSidebar', () => {
   const mockOnFilterChange = vi.fn()
@@ -21,9 +30,7 @@ describe('FilterSidebar', () => {
 
   describe('Rendering', () => {
     it('renders all filter sections after loading', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('Search')).toBeInTheDocument()
@@ -35,9 +42,7 @@ describe('FilterSidebar', () => {
     })
 
     it('shows loading skeleton initially', () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       // Should show loading skeleton
       const skeleton = document.querySelector('.animate-pulse')
@@ -45,9 +50,7 @@ describe('FilterSidebar', () => {
     })
 
     it('renders Filters heading', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('Filters')).toBeInTheDocument()
@@ -57,9 +60,7 @@ describe('FilterSidebar', () => {
 
   describe('Search Input', () => {
     it('renders search input', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText('Search recipes...')).toBeInTheDocument()
@@ -69,9 +70,7 @@ describe('FilterSidebar', () => {
     it('calls onFilterChange when typing in search', async () => {
       const user = userEvent.setup()
 
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText('Search recipes...')).toBeInTheDocument()
@@ -87,12 +86,10 @@ describe('FilterSidebar', () => {
     })
 
     it('displays current search value', async () => {
-      render(
-        <FilterSidebar
-          filters={{ search: 'mojito' }}
-          onFilterChange={mockOnFilterChange}
-        />
-      )
+      renderFilterSidebar({
+        filters: { search: 'mojito' },
+        onFilterChange: mockOnFilterChange
+      })
 
       await waitFor(() => {
         const searchInput = screen.getByPlaceholderText('Search recipes...')
@@ -105,9 +102,7 @@ describe('FilterSidebar', () => {
     it('calls onFilterChange when selecting template', async () => {
       const user = userEvent.setup()
 
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('Template / Family')).toBeInTheDocument()
@@ -124,9 +119,7 @@ describe('FilterSidebar', () => {
     it('calls onFilterChange when selecting spirit', async () => {
       const user = userEvent.setup()
 
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('Main Spirit')).toBeInTheDocument()
@@ -141,12 +134,10 @@ describe('FilterSidebar', () => {
     })
 
     it('displays current filter values', async () => {
-      render(
-        <FilterSidebar
-          filters={{ template: 'sour', main_spirit: 'tequila' }}
-          onFilterChange={mockOnFilterChange}
-        />
-      )
+      renderFilterSidebar({
+        filters: { template: 'sour', main_spirit: 'tequila' },
+        onFilterChange: mockOnFilterChange
+      })
 
       await waitFor(() => {
         const templateSelect = getSelectByLabel('Template / Family')
@@ -160,12 +151,10 @@ describe('FilterSidebar', () => {
 
   describe('Clear Filters', () => {
     it('shows clear button when filters are active', async () => {
-      render(
-        <FilterSidebar
-          filters={{ template: 'sour' }}
-          onFilterChange={mockOnFilterChange}
-        />
-      )
+      renderFilterSidebar({
+        filters: { template: 'sour' },
+        onFilterChange: mockOnFilterChange
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Clear all')).toBeInTheDocument()
@@ -173,9 +162,7 @@ describe('FilterSidebar', () => {
     })
 
     it('does not show clear button when no filters', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('Filters')).toBeInTheDocument()
@@ -187,12 +174,10 @@ describe('FilterSidebar', () => {
     it('calls onFilterChange with empty object when clearing', async () => {
       const user = userEvent.setup()
 
-      render(
-        <FilterSidebar
-          filters={{ template: 'sour', main_spirit: 'vodka' }}
-          onFilterChange={mockOnFilterChange}
-        />
-      )
+      renderFilterSidebar({
+        filters: { template: 'sour', main_spirit: 'vodka' },
+        onFilterChange: mockOnFilterChange
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Clear all')).toBeInTheDocument()
@@ -206,9 +191,7 @@ describe('FilterSidebar', () => {
 
   describe('Filter Dropdowns Options', () => {
     it('populates template options from categories', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('Template / Family')).toBeInTheDocument()
@@ -220,9 +203,7 @@ describe('FilterSidebar', () => {
     })
 
     it('populates spirit options from categories', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('All spirits')).toBeInTheDocument()
@@ -231,9 +212,7 @@ describe('FilterSidebar', () => {
     })
 
     it('populates glassware with grouped options', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('All glassware')).toBeInTheDocument()
@@ -242,9 +221,7 @@ describe('FilterSidebar', () => {
     })
 
     it('populates serving styles from categories', async () => {
-      render(
-        <FilterSidebar filters={defaultFilters} onFilterChange={mockOnFilterChange} />
-      )
+      renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
         expect(screen.getByText('All styles')).toBeInTheDocument()

@@ -2,6 +2,18 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RecipeCard } from '@/components/recipes/RecipeCard'
 import { RecipeListItem } from '@/lib/api'
+import { AuthProvider } from '@/lib/auth-context'
+import { FavouritesProvider } from '@/lib/favourites-context'
+
+function renderRecipeCard(recipe: RecipeListItem) {
+  return render(
+    <AuthProvider>
+      <FavouritesProvider>
+        <RecipeCard recipe={recipe} />
+      </FavouritesProvider>
+    </AuthProvider>
+  )
+}
 
 const mockRecipe: RecipeListItem = {
   id: '1',
@@ -32,7 +44,7 @@ const mockMinimalRecipe: RecipeListItem = {
 describe('RecipeCard', () => {
   describe('Recipe Name', () => {
     it('renders recipe name', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       expect(screen.getByText('Margarita')).toBeInTheDocument()
     })
@@ -40,7 +52,7 @@ describe('RecipeCard', () => {
 
   describe('Image', () => {
     it('renders placeholder when no image', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       // Check for the placeholder icon (GlassWater)
       const card = screen.getByRole('link')
@@ -50,7 +62,7 @@ describe('RecipeCard', () => {
     })
 
     it('renders image when has_image is true', () => {
-      render(<RecipeCard recipe={mockRecipeWithImage} />)
+      renderRecipeCard(mockRecipeWithImage)
 
       const image = screen.getByRole('img')
       // Image URL is now constructed from recipe ID
@@ -61,19 +73,19 @@ describe('RecipeCard', () => {
 
   describe('Badges', () => {
     it('renders template badge', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       expect(screen.getByText('Sour')).toBeInTheDocument()
     })
 
     it('renders main spirit badge', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       expect(screen.getByText('Tequila')).toBeInTheDocument()
     })
 
     it('does not render badges when template/spirit are missing', () => {
-      render(<RecipeCard recipe={mockMinimalRecipe} />)
+      renderRecipeCard(mockMinimalRecipe)
 
       expect(screen.queryByText('Sour')).not.toBeInTheDocument()
       expect(screen.queryByText('Tequila')).not.toBeInTheDocument()
@@ -82,19 +94,19 @@ describe('RecipeCard', () => {
 
   describe('Glassware and Serving Style', () => {
     it('renders glassware', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       expect(screen.getByText('Coupe')).toBeInTheDocument()
     })
 
     it('renders serving style', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       expect(screen.getByText('Up')).toBeInTheDocument()
     })
 
     it('does not render when missing', () => {
-      render(<RecipeCard recipe={mockMinimalRecipe} />)
+      renderRecipeCard(mockMinimalRecipe)
 
       expect(screen.queryByText('Coupe')).not.toBeInTheDocument()
       expect(screen.queryByText('Up')).not.toBeInTheDocument()
@@ -103,7 +115,7 @@ describe('RecipeCard', () => {
 
   describe('Navigation', () => {
     it('links to recipe detail page', () => {
-      render(<RecipeCard recipe={mockRecipe} />)
+      renderRecipeCard(mockRecipe)
 
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('href', '/recipes/1')
@@ -116,7 +128,7 @@ describe('RecipeCard', () => {
         ...mockRecipe,
         template: 'old_fashioned',
       }
-      render(<RecipeCard recipe={recipe} />)
+      renderRecipeCard(recipe)
 
       expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
     })
@@ -126,7 +138,7 @@ describe('RecipeCard', () => {
         ...mockRecipe,
         main_spirit: 'white_rum',
       }
-      render(<RecipeCard recipe={recipe} />)
+      renderRecipeCard(recipe)
 
       expect(screen.getByText('White Rum')).toBeInTheDocument()
     })

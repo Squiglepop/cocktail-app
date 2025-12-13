@@ -4,6 +4,7 @@ import './globals.css';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { Header } from '@/components/Header';
 import { AuthProvider } from '@/lib/auth-context';
+import { FavouritesProvider } from '@/lib/favourites-context';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -37,8 +38,9 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <ServiceWorkerRegistration />
-          <div className="min-h-screen flex flex-col">
+          <FavouritesProvider>
+            <ServiceWorkerRegistration />
+            <div className="min-h-screen flex flex-col">
             <Header />
             <main className="flex-1">{children}</main>
             <footer className="border-t border-gray-200 bg-white py-6">
@@ -49,6 +51,7 @@ export default function RootLayout({
               </div>
             </footer>
           </div>
+          </FavouritesProvider>
         </AuthProvider>
       </body>
     </html>

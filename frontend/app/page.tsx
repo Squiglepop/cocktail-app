@@ -1,20 +1,27 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { RecipeListItem, RecipeFilters, RecipeCount, fetchRecipes, fetchRecipeCount } from '@/lib/api';
 import { FilterSidebar } from '@/components/recipes/FilterSidebar';
 import { RecipeGrid } from '@/components/recipes/RecipeGrid';
 import { useAuth } from '@/lib/auth-context';
+import { useFavourites } from '@/lib/favourites-context';
 import { Plus, Upload, GlassWater } from 'lucide-react';
 
 const INITIAL_LIMIT = 20;
 const LOAD_MORE_LIMIT = 20;
 
+// Extended filters type to include favourites_only (client-side filter)
+interface ExtendedFilters extends RecipeFilters {
+  favourites_only?: string;
+}
+
 export default function HomePage() {
   const { token } = useAuth();
+  const { favourites, isFavourite } = useFavourites();
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
-  const [filters, setFilters] = useState<RecipeFilters>({});
+  const [filters, setFilters] = useState<ExtendedFilters>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -24,8 +31,17 @@ export default function HomePage() {
   // Use ref to track current skip value to avoid stale closures
   const skipRef = useRef(0);
 
+  // Separate API filters from client-side filters
+  const { favourites_only, ...apiFilters } = filters;
+
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some((v) => v);
+
+  // Filter recipes by favourites on the client side
+  const displayedRecipes = useMemo(() => {
+    if (!favourites_only) return recipes;
+    return recipes.filter((recipe) => isFavourite(recipe.id));
+  }, [recipes, favourites_only, isFavourite]);
 
   // Load initial recipes and count
   const loadRecipes = useCallback(async () => {
@@ -34,8 +50,8 @@ export default function HomePage() {
     skipRef.current = 0;
     try {
       const [data, count] = await Promise.all([
-        fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT }, token),
-        fetchRecipeCount(filters),
+        fetchRecipes(apiFilters, { skip: 0, limit: INITIAL_LIMIT }, token),
+        fetchRecipeCount(apiFilters),
       ]);
       setRecipes(data);
       setRecipeCount(count);
@@ -46,7 +62,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, token]);
+  }, [apiFilters, token]);
 
   // Load more recipes
   const loadMore = useCallback(async () => {
@@ -54,7 +70,7 @@ export default function HomePage() {
 
     setLoadingMore(true);
     try {
-      const data = await fetchRecipes(filters, { skip: skipRef.current, limit: LOAD_MORE_LIMIT }, token);
+      const data = await fetchRecipes(apiFilters, { skip: skipRef.current, limit: LOAD_MORE_LIMIT }, token);
       if (data.length > 0) {
         setRecipes((prev) => [...prev, ...data]);
         skipRef.current += data.length;
@@ -65,7 +81,7 @@ export default function HomePage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [filters, loadingMore, hasMore, token]);
+  }, [apiFilters, loadingMore, hasMore, token]);
 
   // Initial load and filter changes
   useEffect(() => {
@@ -103,11 +119,13 @@ export default function HomePage() {
           <p className="text-gray-500 mt-1">
             {loading
               ? 'Loading recipes...'
-              : recipeCount
-                ? hasActiveFilters
-                  ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
-                  : `${recipeCount.total} recipes`
-                : `${recipes.length} recipes`}
+              : favourites_only
+                ? `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`
+                : recipeCount
+                  ? hasActiveFilters
+                    ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
+                    : `${recipeCount.total} recipes`
+                  : `${recipes.length} recipes`}
           </p>
         </div>
 
@@ -135,7 +153,7 @@ export default function HomePage() {
         </div>
 
         {/* Recipe grid */}
-        <RecipeGrid recipes={recipes} loading={loading} loadingMore={loadingMore} />
+        <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} />
       </div>
 
       {/* Desktop layout */}
@@ -148,11 +166,13 @@ export default function HomePage() {
               <p className="text-gray-500 mt-1">
                 {loading
                   ? 'Loading recipes...'
-                  : recipeCount
-                    ? hasActiveFilters
-                      ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
-                      : `${recipeCount.total} recipes`
-                    : `${recipes.length} recipes`}
+                  : favourites_only
+                    ? `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`
+                    : recipeCount
+                      ? hasActiveFilters
+                        ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
+                        : `${recipeCount.total} recipes`
+                      : `${recipes.length} recipes`}
               </p>
             </div>
             <div className="flex gap-2">
@@ -166,7 +186,7 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-          <RecipeGrid recipes={recipes} loading={loading} loadingMore={loadingMore} />
+          <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} />
         </div>
       </div>
 

@@ -45,6 +45,25 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 })
 
+// Mock IntersectionObserver
+class MockIntersectionObserver {
+  readonly root: Element | null = null;
+  readonly rootMargin: string = '';
+  readonly thresholds: ReadonlyArray<number> = [];
+
+  constructor(private callback: IntersectionObserverCallback) {}
+
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] { return []; }
+}
+
+Object.defineProperty(window, 'IntersectionObserver', {
+  writable: true,
+  value: MockIntersectionObserver,
+})
+
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useRouter: () => ({

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import HomePage from '@/app/page'
 import { AuthProvider } from '@/lib/auth-context'
+import { FavouritesProvider } from '@/lib/favourites-context'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
@@ -11,7 +12,9 @@ const API_BASE = '*/api'
 function renderHomePage() {
   return render(
     <AuthProvider>
-      <HomePage />
+      <FavouritesProvider>
+        <HomePage />
+      </FavouritesProvider>
     </AuthProvider>
   )
 }

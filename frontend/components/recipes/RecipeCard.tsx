@@ -2,16 +2,20 @@
 
 import Link from 'next/link';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
-import { GlassWater, Wine, Share2 } from 'lucide-react';
+import { GlassWater, Wine, Share2, Heart } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
+import { useFavourites } from '@/lib/favourites-context';
 
 interface RecipeCardProps {
   recipe: RecipeListItem;
 }
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
+  const { isFavourite, toggleFavourite } = useFavourites();
+  const favourited = isFavourite(recipe.id);
+
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -22,10 +26,31 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     });
   };
 
+  const handleFavourite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavourite(recipe.id);
+  };
+
   return (
     <div className="relative h-full group">
       {/* Action buttons - positioned outside Link to prevent stacking context issues */}
       <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1 z-50">
+        <button
+          onClick={handleFavourite}
+          className={`p-2 rounded-full shadow-sm transition-colors ${
+            favourited
+              ? 'bg-red-500 hover:bg-red-600'
+              : 'bg-white/90 hover:bg-white'
+          }`}
+          title={favourited ? 'Remove from favourites' : 'Add to favourites'}
+        >
+          <Heart
+            className={`h-4 w-4 ${
+              favourited ? 'text-white fill-white' : 'text-gray-600'
+            }`}
+          />
+        </button>
         <button
           onClick={handleShare}
           className="p-2 bg-white/90 hover:bg-white rounded-full shadow-sm transition-colors"

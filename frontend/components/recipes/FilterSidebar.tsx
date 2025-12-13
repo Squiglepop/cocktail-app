@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Categories, CategoryItem, CategoryGroup, fetchCategories } from '@/lib/api';
-import { X, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, SlidersHorizontal, Heart } from 'lucide-react';
+import { useFavourites } from '@/lib/favourites-context';
 
 interface FilterSidebarProps {
   filters: {
@@ -12,6 +13,7 @@ interface FilterSidebarProps {
     serving_style?: string;
     search?: string;
     min_rating?: string;
+    favourites_only?: string;
   };
   onFilterChange: (filters: FilterSidebarProps['filters']) => void;
   className?: string;
@@ -23,6 +25,7 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { favouriteCount } = useFavourites();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -93,6 +96,26 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 </button>
               )}
             </div>
+
+            {/* Favourites toggle */}
+            <button
+              onClick={() => updateFilter('favourites_only', filters.favourites_only ? '' : 'true')}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                filters.favourites_only
+                  ? 'bg-red-50 border-red-200 text-red-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Heart className={`h-4 w-4 ${filters.favourites_only ? 'fill-red-500 text-red-500' : ''}`} />
+              <span className="text-sm font-medium">Favourites only</span>
+              {favouriteCount > 0 && (
+                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${
+                  filters.favourites_only ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {favouriteCount}
+                </span>
+              )}
+            </button>
 
             {/* Search */}
             <div>
@@ -249,6 +272,26 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
 
         {/* Filter content */}
         <div className="space-y-6">
+          {/* Favourites toggle */}
+          <button
+            onClick={() => updateFilter('favourites_only', filters.favourites_only ? '' : 'true')}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+              filters.favourites_only
+                ? 'bg-red-50 border-red-200 text-red-700'
+                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Heart className={`h-4 w-4 ${filters.favourites_only ? 'fill-red-500 text-red-500' : ''}`} />
+            <span className="text-sm font-medium">Favourites only</span>
+            {favouriteCount > 0 && (
+              <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${
+                filters.favourites_only ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {favouriteCount}
+              </span>
+            )}
+          </button>
+
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

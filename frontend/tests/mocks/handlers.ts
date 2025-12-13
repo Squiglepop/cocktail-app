@@ -234,6 +234,32 @@ export const handlers = [
     return HttpResponse.json(filtered)
   }),
 
+  http.get(`${API_BASE}/recipes/count`, ({ request }) => {
+    const url = new URL(request.url)
+    const template = url.searchParams.get('template')
+    const main_spirit = url.searchParams.get('main_spirit')
+    const search = url.searchParams.get('search')
+
+    let filtered = [...mockRecipes]
+
+    if (template) {
+      filtered = filtered.filter((r) => r.template === template)
+    }
+    if (main_spirit) {
+      filtered = filtered.filter((r) => r.main_spirit === main_spirit)
+    }
+    if (search) {
+      filtered = filtered.filter((r) =>
+        r.name.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+
+    return HttpResponse.json({
+      total: mockRecipes.length,
+      filtered: filtered.length,
+    })
+  }),
+
   http.get(`${API_BASE}/recipes/:id`, ({ params }) => {
     const { id } = params
 
