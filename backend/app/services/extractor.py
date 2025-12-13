@@ -378,10 +378,15 @@ class RecipeExtractor:
             else:
                 json_str = response_text
 
+        # Strip any leading/trailing whitespace that might cause issues
+        json_str = json_str.strip()
+
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse extraction response: {e}")
+            # Log the first 500 chars of what we tried to parse for debugging
+            preview = json_str[:500] if len(json_str) > 500 else json_str
+            raise ValueError(f"Failed to parse JSON. Preview: {preview!r}. Error: {e}")
 
         return self._parse_extracted_data(data)
 
