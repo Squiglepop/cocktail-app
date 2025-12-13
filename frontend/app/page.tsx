@@ -19,7 +19,7 @@ interface ExtendedFilters extends RecipeFilters {
 
 export default function HomePage() {
   const { token } = useAuth();
-  const { favourites, isFavourite } = useFavourites();
+  const { favourites } = useFavourites();
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [filters, setFilters] = useState<ExtendedFilters>({});
   const [loading, setLoading] = useState(true);
@@ -31,8 +31,23 @@ export default function HomePage() {
   // Use ref to track current skip value to avoid stale closures
   const skipRef = useRef(0);
 
-  // Separate API filters from client-side filters
-  const { favourites_only, ...apiFilters } = filters;
+  // Extract favourites_only for client-side filtering (won't trigger API reload)
+  const favourites_only = filters.favourites_only;
+
+  // Memoize API filters to prevent unnecessary re-renders
+  // Only include filters that actually go to the API
+  const apiFiltersKey = useMemo(() => {
+    return JSON.stringify({
+      template: filters.template,
+      main_spirit: filters.main_spirit,
+      glassware: filters.glassware,
+      serving_style: filters.serving_style,
+      search: filters.search,
+      min_rating: filters.min_rating,
+    });
+  }, [filters.template, filters.main_spirit, filters.glassware, filters.serving_style, filters.search, filters.min_rating]);
+
+  const apiFilters: RecipeFilters = useMemo(() => JSON.parse(apiFiltersKey), [apiFiltersKey]);
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some((v) => v);
@@ -40,8 +55,8 @@ export default function HomePage() {
   // Filter recipes by favourites on the client side
   const displayedRecipes = useMemo(() => {
     if (!favourites_only) return recipes;
-    return recipes.filter((recipe) => isFavourite(recipe.id));
-  }, [recipes, favourites_only, isFavourite]);
+    return recipes.filter((recipe) => favourites.has(recipe.id));
+  }, [recipes, favourites_only, favourites]);
 
   // Load initial recipes and count
   const loadRecipes = useCallback(async () => {
