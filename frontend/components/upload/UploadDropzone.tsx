@@ -131,7 +131,7 @@ export function UploadDropzone({
     accept: {
       'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
     },
-    maxFiles: 1,
+    multiple: false,
     disabled: state === 'uploading',
   });
 

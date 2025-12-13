@@ -24,9 +24,9 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
   return (
     <Link href={`/recipes/${recipe.id}`}>
-      <div className="card hover:shadow-md transition-shadow cursor-pointer h-full group">
+      <div className="card hover:shadow-md transition-shadow cursor-pointer h-full group relative">
         {/* Image placeholder or actual image */}
-        <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center relative overflow-hidden">
+        <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center relative">
           {recipe.has_image ? (
             <img
               src={getRecipeImageUrl(recipe.id)}
@@ -36,20 +36,20 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           ) : (
             <GlassWater className="h-16 w-16 text-amber-300" />
           )}
-          {/* Action buttons - always visible on mobile, hover on desktop */}
-          <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1">
-            <button
-              onClick={handleShare}
-              className="p-2 bg-white/90 hover:bg-white rounded-full shadow-sm transition-colors"
-              title="Share recipe"
-            >
-              <Share2 className="h-4 w-4 text-gray-600" />
-            </button>
-            <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
-          </div>
+        </div>
+        {/* Action buttons - positioned outside image container to prevent z-index conflicts */}
+        <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+          <button
+            onClick={handleShare}
+            className="p-2 bg-white/90 hover:bg-white rounded-full shadow-sm transition-colors"
+            title="Share recipe"
+          >
+            <Share2 className="h-4 w-4 text-gray-600" />
+          </button>
+          <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
         </div>
 
-        <div className="p-4 space-y-2">
+        <div className="p-4 space-y-2 relative z-0">
           <h3 className="font-semibold text-gray-900 line-clamp-1">
             {recipe.name}
           </h3>

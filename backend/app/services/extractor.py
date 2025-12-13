@@ -235,20 +235,7 @@ class RecipeExtractor:
 
         # Parse the response
         response_text = message.content[0].text
-
-        # Extract JSON from response (handle markdown code blocks)
-        json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response_text)
-        if json_match:
-            json_str = json_match.group(1)
-        else:
-            json_str = response_text
-
-        try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse extraction response: {e}")
-
-        return self._parse_extracted_data(data)
+        return self._parse_response(response_text)
 
     def _parse_extracted_data(self, data: dict) -> ExtractedRecipe:
         """Parse raw extraction data into structured schema."""
@@ -384,7 +371,12 @@ class RecipeExtractor:
         if json_match:
             json_str = json_match.group(1)
         else:
-            json_str = response_text
+            # Try to find JSON object in the response (look for opening brace)
+            brace_match = re.search(r'\{[\s\S]*\}', response_text)
+            if brace_match:
+                json_str = brace_match.group(0)
+            else:
+                json_str = response_text
 
         try:
             data = json.loads(json_str)
