@@ -23,6 +23,7 @@ export default function PlaylistsPage() {
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
   const [newPlaylistPublic, setNewPlaylistPublic] = useState(false);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -31,18 +32,18 @@ export default function PlaylistsPage() {
     }
 
     if (token) {
-      console.log('[Playlists] Fetching with token:', !!token);
+      setDebugInfo(`Fetching... token=${token.substring(0, 10)}...`);
       fetchCollections(token)
         .then((data) => {
-          console.log('[Playlists] Fetched:', data);
+          setDebugInfo(`Fetched ${data.length} playlists`);
           setPlaylists(data);
         })
         .catch((err) => {
-          console.error('[Playlists] Error:', err);
+          setDebugInfo(`Error: ${err.message}`);
         })
         .finally(() => setLoading(false));
     } else {
-      console.log('[Playlists] No token, skipping fetch');
+      setDebugInfo('No token available');
       setLoading(false);
     }
   }, [token, authLoading, user, router]);
@@ -135,6 +136,10 @@ export default function PlaylistsPage() {
             Create Playlist
           </button>
         </div>
+        {/* Debug info - remove later */}
+        {debugInfo && (
+          <p className="text-xs text-gray-400 mt-2 font-mono">{debugInfo}</p>
+        )}
       </div>
 
       {/* Playlists Grid */}
