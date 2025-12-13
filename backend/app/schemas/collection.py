@@ -70,6 +70,7 @@ class CollectionListResponse(BaseModel):
     recipe_count: int
     created_at: datetime
     is_shared: bool = False  # True if this collection is shared with the current user (not owned)
+    can_edit: bool = False  # True if user can edit (owner or shared with edit permission)
     owner_name: Optional[str] = None  # Display name of owner (for shared collections)
 
     class Config:
@@ -81,6 +82,12 @@ class CollectionListResponse(BaseModel):
 class CollectionShareCreate(BaseModel):
     """Share a collection with a user by email."""
     email: str = Field(..., description="Email of user to share with")
+    can_edit: bool = Field(False, description="Allow user to add/remove/reorder recipes")
+
+
+class CollectionShareUpdate(BaseModel):
+    """Update share permissions."""
+    can_edit: bool = Field(..., description="Allow user to add/remove/reorder recipes")
 
 
 class CollectionShareResponse(BaseModel):
@@ -90,6 +97,7 @@ class CollectionShareResponse(BaseModel):
     shared_with_user_id: str
     shared_with_email: str
     shared_with_display_name: Optional[str] = None
+    can_edit: bool = False
     shared_at: datetime
 
     class Config:

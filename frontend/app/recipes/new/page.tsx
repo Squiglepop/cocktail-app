@@ -428,7 +428,7 @@ export default function NewRecipePage() {
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={2}
+              rows={4}
               className="input w-full"
               placeholder="Additional notes, tips, or variations..."
             />

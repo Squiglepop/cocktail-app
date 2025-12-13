@@ -41,6 +41,7 @@ from .collection import (
     CollectionDetailResponse,
     CollectionListResponse,
     CollectionShareCreate,
+    CollectionShareUpdate,
     CollectionShareResponse,
     CollectionShareListResponse,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "CollectionDetailResponse",
     "CollectionListResponse",
     "CollectionShareCreate",
+    "CollectionShareUpdate",
     "CollectionShareResponse",
     "CollectionShareListResponse",
 ]

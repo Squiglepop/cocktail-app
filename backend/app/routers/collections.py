@@ -1,7 +1,7 @@
 """
 Collection (Playlist) CRUD endpoints.
 """
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
@@ -18,6 +18,7 @@ from app.schemas import (
     CollectionListResponse,
     CollectionRecipeResponse,
     CollectionShareCreate,
+    CollectionShareUpdate,
     CollectionShareResponse,
     CollectionShareListResponse,
 )
@@ -42,6 +43,18 @@ def _build_collection_recipe_response(cr: CollectionRecipe) -> CollectionRecipeR
     )
 
 
+def _get_user_share(collection_id: str, user_id: str, db: Session) -> Optional[CollectionShare]:
+    """Get the share record for a user on a collection, if any."""
+    return (
+        db.query(CollectionShare)
+        .filter(
+            CollectionShare.collection_id == collection_id,
+            CollectionShare.shared_with_user_id == user_id
+        )
+        .first()
+    )
+
+
 def _user_can_view_collection(collection: Collection, user: Optional[User], db: Session) -> bool:
     """Check if a user can view a collection (owner, shared with, or public)."""
     if collection.is_public:
@@ -51,15 +64,24 @@ def _user_can_view_collection(collection: Collection, user: Optional[User], db: 
     if collection.user_id == user.id:
         return True
     # Check if shared with this user
-    share = (
-        db.query(CollectionShare)
-        .filter(
-            CollectionShare.collection_id == collection.id,
-            CollectionShare.shared_with_user_id == user.id
-        )
-        .first()
-    )
+    share = _get_user_share(collection.id, user.id, db)
     return share is not None
+
+
+def _user_can_edit_collection(collection: Collection, user: User, db: Session) -> Tuple[bool, bool]:
+    """
+    Check if a user can edit a collection's recipes.
+    Returns (can_edit, is_owner).
+    Owner can always edit. Shared users can edit if can_edit=True on their share.
+    """
+    if collection.user_id == user.id:
+        return True, True
+
+    share = _get_user_share(collection.id, user.id, db)
+    if share and share.can_edit:
+        return True, False
+
+    return False, False
 
 
 def _user_is_owner(collection: Collection, user: User) -> bool:
@@ -80,21 +102,22 @@ async def list_collections(
     List collections. Returns user's own collections plus collections shared with them.
     If include_public=true, also returns public collections from other users.
     """
+    # Build a map of shared collection IDs to their can_edit status
+    shared_permissions = {}
+
     if current_user:
-        # Get IDs of collections shared with this user
-        shared_collection_ids = []
         if include_shared:
-            shared_ids = (
-                db.query(CollectionShare.collection_id)
+            shares = (
+                db.query(CollectionShare.collection_id, CollectionShare.can_edit)
                 .filter(CollectionShare.shared_with_user_id == current_user.id)
                 .all()
             )
-            shared_collection_ids = [sid[0] for sid in shared_ids]
+            shared_permissions = {s[0]: s[1] for s in shares}
 
         # Build query conditions
         conditions = [Collection.user_id == current_user.id]
-        if shared_collection_ids:
-            conditions.append(Collection.id.in_(shared_collection_ids))
+        if shared_permissions:
+            conditions.append(Collection.id.in_(shared_permissions.keys()))
         if include_public:
             conditions.append(Collection.is_public == True)
 
@@ -106,10 +129,17 @@ async def list_collections(
     query = query.order_by(Collection.updated_at.desc())
     collections = query.offset(skip).limit(limit).all()
 
-    # Build response with is_shared and owner_name info
+    # Build response with is_shared, can_edit, and owner_name info
     results = []
     for c in collections:
+        is_owner = current_user is not None and c.user_id == current_user.id
         is_shared = current_user is not None and c.user_id != current_user.id
+
+        # Determine can_edit: owner always can, shared users check permission
+        can_edit = is_owner
+        if not can_edit and c.id in shared_permissions:
+            can_edit = shared_permissions[c.id]
+
         owner_name = None
         if is_shared:
             owner_name = c.user.display_name or c.user.email
@@ -123,6 +153,7 @@ async def list_collections(
                 recipe_count=c.recipe_count,
                 created_at=c.created_at,
                 is_shared=is_shared,
+                can_edit=can_edit,
                 owner_name=owner_name,
             )
         )
@@ -204,7 +235,7 @@ async def update_collection(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a collection. Only the owner can update."""
+    """Update a collection's metadata (name, description, visibility). Only the owner can update."""
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
 
     if not collection:
@@ -213,7 +244,7 @@ async def update_collection(
     if not _user_is_owner(collection, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to edit this collection"
+            detail="You don't have permission to edit this collection's settings"
         )
 
     update_data = collection_data.model_dump(exclude_unset=True)
@@ -268,13 +299,14 @@ async def add_recipe_to_collection(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Add a recipe to a collection. Only the owner can modify."""
+    """Add a recipe to a collection. Owner or users with edit permission can modify."""
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
 
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if not _user_is_owner(collection, current_user):
+    can_edit, _ = _user_can_edit_collection(collection, current_user, db)
+    if not can_edit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to modify this collection"
@@ -337,13 +369,14 @@ async def remove_recipe_from_collection(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Remove a recipe from a collection. Only the owner can modify."""
+    """Remove a recipe from a collection. Owner or users with edit permission can modify."""
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
 
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if not _user_is_owner(collection, current_user):
+    can_edit, _ = _user_can_edit_collection(collection, current_user, db)
+    if not can_edit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to modify this collection"
@@ -374,13 +407,14 @@ async def reorder_collection_recipes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Reorder recipes in a collection. Only the owner can modify."""
+    """Reorder recipes in a collection. Owner or users with edit permission can modify."""
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
 
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if not _user_is_owner(collection, current_user):
+    can_edit, _ = _user_can_edit_collection(collection, current_user, db)
+    if not can_edit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to modify this collection"
@@ -439,6 +473,7 @@ async def list_collection_shares(
                 shared_with_user_id=s.shared_with_user_id,
                 shared_with_email=s.shared_with_user.email,
                 shared_with_display_name=s.shared_with_user.display_name,
+                can_edit=s.can_edit,
                 shared_at=s.shared_at,
             )
             for s in shares
@@ -490,6 +525,7 @@ async def share_collection(
     share = CollectionShare(
         collection_id=collection_id,
         shared_with_user_id=target_user.id,
+        can_edit=share_data.can_edit,
     )
 
     db.add(share)
@@ -502,6 +538,55 @@ async def share_collection(
         shared_with_user_id=share.shared_with_user_id,
         shared_with_email=target_user.email,
         shared_with_display_name=target_user.display_name,
+        can_edit=share.can_edit,
+        shared_at=share.shared_at,
+    )
+
+
+@router.put("/{collection_id}/shares/{share_id}", response_model=CollectionShareResponse)
+async def update_collection_share(
+    collection_id: str,
+    share_id: str,
+    share_data: CollectionShareUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update share permissions. Only the owner can modify shares."""
+    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    if not _user_is_owner(collection, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to modify shares for this collection"
+        )
+
+    share = (
+        db.query(CollectionShare)
+        .options(joinedload(CollectionShare.shared_with_user))
+        .filter(
+            CollectionShare.id == share_id,
+            CollectionShare.collection_id == collection_id
+        )
+        .first()
+    )
+
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found")
+
+    share.can_edit = share_data.can_edit
+    db.commit()
+    db.refresh(share)
+
+    return CollectionShareResponse(
+        id=share.id,
+        collection_id=share.collection_id,
+        shared_with_user_id=share.shared_with_user_id,
+        shared_with_email=share.shared_with_user.email,
+        shared_with_display_name=share.shared_with_user.display_name,
+        can_edit=share.can_edit,
         shared_at=share.shared_at,
     )
 

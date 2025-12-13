@@ -556,6 +556,7 @@ export interface CollectionShare {
   shared_with_user_id: string;
   shared_with_email: string;
   shared_with_display_name?: string;
+  can_edit: boolean;
   shared_at: string;
 }
 

@@ -25,6 +25,7 @@ def upgrade() -> None:
         sa.Column('id', sa.String(36), primary_key=True),
         sa.Column('collection_id', sa.String(36), sa.ForeignKey('collections.id', ondelete='CASCADE'), nullable=False),
         sa.Column('shared_with_user_id', sa.String(36), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('can_edit', sa.Boolean, nullable=False, server_default='0'),
         sa.Column('shared_at', sa.DateTime, nullable=False),
     )
     op.create_index('ix_collection_shares_collection_id', 'collection_shares', ['collection_id'])

@@ -100,6 +100,9 @@ class CollectionShare(Base):
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
+    # Permission level - can the shared user edit (add/remove/reorder recipes)?
+    can_edit: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # When the share was created
     shared_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
