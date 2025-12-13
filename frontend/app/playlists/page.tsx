@@ -32,18 +32,18 @@ export default function PlaylistsPage() {
     }
 
     if (token) {
-      setDebugInfo(`Fetching... token=${token.substring(0, 10)}...`);
+      setDebugInfo(`Fetching with user=${user?.email}...`);
       fetchCollections(token)
         .then((data) => {
-          setDebugInfo(`Fetched ${data.length} playlists`);
+          setDebugInfo(`OK: ${data.length} playlists for ${user?.email}`);
           setPlaylists(data);
         })
         .catch((err) => {
-          setDebugInfo(`Error: ${err.message}`);
+          setDebugInfo(`ERR: ${err.message} (user=${user?.email})`);
         })
         .finally(() => setLoading(false));
     } else {
-      setDebugInfo('No token available');
+      setDebugInfo(`No token (user=${user?.email || 'none'}, authLoading=${authLoading})`);
       setLoading(false);
     }
   }, [token, authLoading, user, router]);

@@ -102,12 +102,12 @@ export function AddToPlaylistButton({
 
     setCreating(true);
     try {
-      console.log('[Playlist] Creating playlist:', newPlaylistName.trim(), 'with token:', !!token);
+      console.log('[Playlist] Creating playlist:', newPlaylistName.trim(), 'for user:', user?.email);
       const newPlaylist = await createCollection(
         { name: newPlaylistName.trim() },
         token
       );
-      console.log('[Playlist] Created:', newPlaylist);
+      console.log('[Playlist] Created:', newPlaylist, 'user_id:', newPlaylist.user_id);
       // Add recipe to the new playlist
       await addRecipeToCollection(newPlaylist.id, recipeId, token);
       console.log('[Playlist] Added recipe to playlist');
