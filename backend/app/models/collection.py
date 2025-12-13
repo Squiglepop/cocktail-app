@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 
-from sqlalchemy import String, Text, DateTime, ForeignKey, Boolean, Integer
+from sqlalchemy import String, Text, DateTime, ForeignKey, Boolean, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from .recipe import Base, generate_uuid
@@ -46,6 +46,9 @@ class Collection(Base):
     collection_recipes: Mapped[List["CollectionRecipe"]] = relationship(
         "CollectionRecipe", back_populates="collection", cascade="all, delete-orphan"
     )
+    shares: Mapped[List["CollectionShare"]] = relationship(
+        "CollectionShare", back_populates="collection", cascade="all, delete-orphan"
+    )
 
     @property
     def recipe_count(self) -> int:
@@ -78,3 +81,30 @@ class CollectionRecipe(Base):
     # Relationships
     collection: Mapped["Collection"] = relationship("Collection", back_populates="collection_recipes")
     recipe: Mapped["Recipe"] = relationship("Recipe")
+
+
+class CollectionShare(Base):
+    """Sharing a collection with another user."""
+    __tablename__ = "collection_shares"
+    __table_args__ = (
+        UniqueConstraint("collection_id", "shared_with_user_id", name="uq_collection_share"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=generate_uuid
+    )
+    collection_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    shared_with_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    # When the share was created
+    shared_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    # Relationships
+    collection: Mapped["Collection"] = relationship("Collection", back_populates="shares")
+    shared_with_user: Mapped["User"] = relationship("User", back_populates="shared_collections")

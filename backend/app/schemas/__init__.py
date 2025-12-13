@@ -40,6 +40,9 @@ from .collection import (
     CollectionResponse,
     CollectionDetailResponse,
     CollectionListResponse,
+    CollectionShareCreate,
+    CollectionShareResponse,
+    CollectionShareListResponse,
 )
 
 __all__ = [
@@ -79,4 +82,7 @@ __all__ = [
     "CollectionResponse",
     "CollectionDetailResponse",
     "CollectionListResponse",
+    "CollectionShareCreate",
+    "CollectionShareResponse",
+    "CollectionShareListResponse",
 ]

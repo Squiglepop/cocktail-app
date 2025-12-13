@@ -26,7 +26,7 @@ from .recipe import (
     ExtractionJob,
 )
 from .user import User
-from .collection import Collection, CollectionRecipe
+from .collection import Collection, CollectionRecipe, CollectionShare
 from .user_rating import UserRating
 
 __all__ = [
@@ -56,5 +56,6 @@ __all__ = [
     "User",
     "Collection",
     "CollectionRecipe",
+    "CollectionShare",
     "UserRating",
 ]

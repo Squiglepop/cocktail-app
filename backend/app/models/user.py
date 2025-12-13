@@ -42,9 +42,12 @@ class User(Base):
     ratings: Mapped[List["UserRating"]] = relationship(
         "UserRating", back_populates="user", cascade="all, delete-orphan"
     )
+    shared_collections: Mapped[List["CollectionShare"]] = relationship(
+        "CollectionShare", back_populates="shared_with_user", cascade="all, delete-orphan"
+    )
 
 
 # Import Recipe here to avoid circular import - the relationship is defined via string reference
 from .recipe import Recipe
-from .collection import Collection
+from .collection import Collection, CollectionShare
 from .user_rating import UserRating

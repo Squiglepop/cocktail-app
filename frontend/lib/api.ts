@@ -376,6 +376,8 @@ export interface CollectionListItem {
   is_public: boolean;
   recipe_count: number;
   created_at: string;
+  is_shared?: boolean;
+  owner_name?: string;
 }
 
 export interface CollectionRecipe {
@@ -544,6 +546,70 @@ export async function reorderCollectionRecipes(collectionId: string, reorderData
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Failed to reorder recipes' }));
     throw new Error(error.detail || 'Failed to reorder recipes');
+  }
+}
+
+// Collection sharing types
+export interface CollectionShare {
+  id: string;
+  collection_id: string;
+  shared_with_user_id: string;
+  shared_with_email: string;
+  shared_with_display_name?: string;
+  shared_at: string;
+}
+
+// Fetch collection shares
+export async function fetchCollectionShares(collectionId: string, token?: string | null): Promise<CollectionShare[]> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/shares`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch shares');
+  const data = await res.json();
+  return data.shares;
+}
+
+// Share collection with user by email
+export async function shareCollection(collectionId: string, email: string, token?: string | null): Promise<CollectionShare> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/shares`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to share collection' }));
+    throw new Error(error.detail || 'Failed to share collection');
+  }
+
+  return res.json();
+}
+
+// Remove collection share
+export async function removeCollectionShare(collectionId: string, shareId: string, token?: string | null): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/shares/${shareId}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to remove share' }));
+    throw new Error(error.detail || 'Failed to remove share');
   }
 }
 

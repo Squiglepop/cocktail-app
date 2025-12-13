@@ -4,9 +4,10 @@ Collection (Playlist) CRUD endpoints.
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import Collection, CollectionRecipe, Recipe, User
+from app.models import Collection, CollectionRecipe, CollectionShare, Recipe, User
 from app.schemas import (
     CollectionCreate,
     CollectionUpdate,
@@ -16,6 +17,9 @@ from app.schemas import (
     CollectionDetailResponse,
     CollectionListResponse,
     CollectionRecipeResponse,
+    CollectionShareCreate,
+    CollectionShareResponse,
+    CollectionShareListResponse,
 )
 from app.services import get_db
 from app.services.auth import get_current_user, get_current_user_optional
@@ -38,47 +42,92 @@ def _build_collection_recipe_response(cr: CollectionRecipe) -> CollectionRecipeR
     )
 
 
+def _user_can_view_collection(collection: Collection, user: Optional[User], db: Session) -> bool:
+    """Check if a user can view a collection (owner, shared with, or public)."""
+    if collection.is_public:
+        return True
+    if user is None:
+        return False
+    if collection.user_id == user.id:
+        return True
+    # Check if shared with this user
+    share = (
+        db.query(CollectionShare)
+        .filter(
+            CollectionShare.collection_id == collection.id,
+            CollectionShare.shared_with_user_id == user.id
+        )
+        .first()
+    )
+    return share is not None
+
+
+def _user_is_owner(collection: Collection, user: User) -> bool:
+    """Check if user is the owner of the collection."""
+    return collection.user_id == user.id
+
+
 @router.get("", response_model=List[CollectionListResponse])
 async def list_collections(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     include_public: bool = Query(False, description="Include public collections from other users"),
+    include_shared: bool = Query(True, description="Include collections shared with me"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
-    List collections. Returns user's own collections.
+    List collections. Returns user's own collections plus collections shared with them.
     If include_public=true, also returns public collections from other users.
     """
-    query = db.query(Collection)
-
     if current_user:
-        if include_public:
-            # User's own + public from others
-            query = query.filter(
-                (Collection.user_id == current_user.id) | (Collection.is_public == True)
+        # Get IDs of collections shared with this user
+        shared_collection_ids = []
+        if include_shared:
+            shared_ids = (
+                db.query(CollectionShare.collection_id)
+                .filter(CollectionShare.shared_with_user_id == current_user.id)
+                .all()
             )
-        else:
-            # Only user's own
-            query = query.filter(Collection.user_id == current_user.id)
+            shared_collection_ids = [sid[0] for sid in shared_ids]
+
+        # Build query conditions
+        conditions = [Collection.user_id == current_user.id]
+        if shared_collection_ids:
+            conditions.append(Collection.id.in_(shared_collection_ids))
+        if include_public:
+            conditions.append(Collection.is_public == True)
+
+        query = db.query(Collection).options(joinedload(Collection.user)).filter(or_(*conditions))
     else:
         # Anonymous: only public collections
-        query = query.filter(Collection.is_public == True)
+        query = db.query(Collection).options(joinedload(Collection.user)).filter(Collection.is_public == True)
 
     query = query.order_by(Collection.updated_at.desc())
     collections = query.offset(skip).limit(limit).all()
 
-    return [
-        CollectionListResponse(
-            id=c.id,
-            name=c.name,
-            description=c.description,
-            is_public=c.is_public,
-            recipe_count=c.recipe_count,
-            created_at=c.created_at,
+    # Build response with is_shared and owner_name info
+    results = []
+    for c in collections:
+        is_shared = current_user is not None and c.user_id != current_user.id
+        owner_name = None
+        if is_shared:
+            owner_name = c.user.display_name or c.user.email
+
+        results.append(
+            CollectionListResponse(
+                id=c.id,
+                name=c.name,
+                description=c.description,
+                is_public=c.is_public,
+                recipe_count=c.recipe_count,
+                created_at=c.created_at,
+                is_shared=is_shared,
+                owner_name=owner_name,
+            )
         )
-        for c in collections
-    ]
+
+    return results
 
 
 @router.get("/{collection_id}", response_model=CollectionDetailResponse)
@@ -98,10 +147,9 @@ async def get_collection(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    # Check access: owner or public
-    if not collection.is_public:
-        if current_user is None or collection.user_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Collection not found")
+    # Check access: owner, shared with, or public
+    if not _user_can_view_collection(collection, current_user, db):
+        raise HTTPException(status_code=404, detail="Collection not found")
 
     # Sort recipes by position
     sorted_recipes = sorted(collection.collection_recipes, key=lambda cr: cr.position)
@@ -162,7 +210,7 @@ async def update_collection(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if collection.user_id != current_user.id:
+    if not _user_is_owner(collection, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to edit this collection"
@@ -199,7 +247,7 @@ async def delete_collection(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if collection.user_id != current_user.id:
+    if not _user_is_owner(collection, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to delete this collection"
@@ -226,7 +274,7 @@ async def add_recipe_to_collection(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if collection.user_id != current_user.id:
+    if not _user_is_owner(collection, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to modify this collection"
@@ -295,7 +343,7 @@ async def remove_recipe_from_collection(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if collection.user_id != current_user.id:
+    if not _user_is_owner(collection, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to modify this collection"
@@ -332,7 +380,7 @@ async def reorder_collection_recipes(
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
-    if collection.user_id != current_user.id:
+    if not _user_is_owner(collection, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to modify this collection"
@@ -353,3 +401,143 @@ async def reorder_collection_recipes(
     db.commit()
 
     return {"message": "Collection reordered successfully"}
+
+
+# --- Collection Sharing ---
+
+@router.get("/{collection_id}/shares", response_model=CollectionShareListResponse)
+async def list_collection_shares(
+    collection_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all users a collection is shared with. Only the owner can view."""
+    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    if not _user_is_owner(collection, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to view shares for this collection"
+        )
+
+    shares = (
+        db.query(CollectionShare)
+        .options(joinedload(CollectionShare.shared_with_user))
+        .filter(CollectionShare.collection_id == collection_id)
+        .order_by(CollectionShare.shared_at.desc())
+        .all()
+    )
+
+    return CollectionShareListResponse(
+        shares=[
+            CollectionShareResponse(
+                id=s.id,
+                collection_id=s.collection_id,
+                shared_with_user_id=s.shared_with_user_id,
+                shared_with_email=s.shared_with_user.email,
+                shared_with_display_name=s.shared_with_user.display_name,
+                shared_at=s.shared_at,
+            )
+            for s in shares
+        ]
+    )
+
+
+@router.post("/{collection_id}/shares", response_model=CollectionShareResponse, status_code=status.HTTP_201_CREATED)
+async def share_collection(
+    collection_id: str,
+    share_data: CollectionShareCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Share a collection with another user by email. Only the owner can share."""
+    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    if not _user_is_owner(collection, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to share this collection"
+        )
+
+    # Find user by email
+    target_user = db.query(User).filter(User.email == share_data.email.lower()).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found with that email")
+
+    # Can't share with yourself
+    if target_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot share a collection with yourself")
+
+    # Check if already shared
+    existing = (
+        db.query(CollectionShare)
+        .filter(
+            CollectionShare.collection_id == collection_id,
+            CollectionShare.shared_with_user_id == target_user.id
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Collection is already shared with this user")
+
+    # Create share
+    share = CollectionShare(
+        collection_id=collection_id,
+        shared_with_user_id=target_user.id,
+    )
+
+    db.add(share)
+    db.commit()
+    db.refresh(share)
+
+    return CollectionShareResponse(
+        id=share.id,
+        collection_id=share.collection_id,
+        shared_with_user_id=share.shared_with_user_id,
+        shared_with_email=target_user.email,
+        shared_with_display_name=target_user.display_name,
+        shared_at=share.shared_at,
+    )
+
+
+@router.delete("/{collection_id}/shares/{share_id}")
+async def remove_collection_share(
+    collection_id: str,
+    share_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove a share from a collection. Only the owner can remove shares."""
+    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    if not _user_is_owner(collection, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to modify shares for this collection"
+        )
+
+    share = (
+        db.query(CollectionShare)
+        .filter(
+            CollectionShare.id == share_id,
+            CollectionShare.collection_id == collection_id
+        )
+        .first()
+    )
+
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found")
+
+    db.delete(share)
+    db.commit()
+
+    return {"message": "Share removed successfully"}

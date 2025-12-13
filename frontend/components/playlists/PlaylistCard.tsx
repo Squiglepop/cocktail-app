@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { CollectionListItem } from '@/lib/api';
-import { ListMusic, Lock, Globe } from 'lucide-react';
+import { ListMusic, Lock, Globe, Users } from 'lucide-react';
 
 interface PlaylistCardProps {
   playlist: CollectionListItem;
@@ -40,7 +40,21 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
             <span>
               {playlist.recipe_count} {playlist.recipe_count === 1 ? 'recipe' : 'recipes'}
             </span>
+            {playlist.is_shared && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="flex items-center gap-1 text-amber-600">
+                  <Users className="h-3 w-3" />
+                  Shared
+                </span>
+              </>
+            )}
           </div>
+          {playlist.is_shared && playlist.owner_name && (
+            <p className="text-xs text-gray-400 truncate">
+              by {playlist.owner_name}
+            </p>
+          )}
         </div>
       </div>
     </Link>

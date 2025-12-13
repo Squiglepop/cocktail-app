@@ -15,6 +15,7 @@ import {
   getRecipeImageUrl,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { SharePlaylistModal } from '@/components/playlists/SharePlaylistModal';
 import {
   ArrowLeft,
   GlassWater,
@@ -26,6 +27,7 @@ import {
   Check,
   Lock,
   Globe,
+  Share2,
 } from 'lucide-react';
 
 export default function PlaylistDetailPage() {
@@ -41,6 +43,7 @@ export default function PlaylistDetailPage() {
   const [tempDescription, setTempDescription] = useState('');
   const [draggedItem, setDraggedItem] = useState<CollectionRecipe | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const isOwner = user && playlist && playlist.user_id === user.id;
 
@@ -339,17 +342,36 @@ export default function PlaylistDetailPage() {
             )}
           </div>
           {isOwner && (
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {deleting ? 'Deleting...' : 'Delete Playlist'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="btn btn-secondary"
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && playlist && (
+        <SharePlaylistModal
+          playlistId={playlist.id}
+          playlistName={playlist.name}
+          token={token}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
 
       {/* Recipes List */}
       {playlist.recipes.length === 0 ? (

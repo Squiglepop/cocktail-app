@@ -69,6 +69,33 @@ class CollectionListResponse(BaseModel):
     is_public: bool
     recipe_count: int
     created_at: datetime
+    is_shared: bool = False  # True if this collection is shared with the current user (not owned)
+    owner_name: Optional[str] = None  # Display name of owner (for shared collections)
 
     class Config:
         from_attributes = True
+
+
+# --- Collection Sharing Schemas ---
+
+class CollectionShareCreate(BaseModel):
+    """Share a collection with a user by email."""
+    email: str = Field(..., description="Email of user to share with")
+
+
+class CollectionShareResponse(BaseModel):
+    """Response for a share entry."""
+    id: str
+    collection_id: str
+    shared_with_user_id: str
+    shared_with_email: str
+    shared_with_display_name: Optional[str] = None
+    shared_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CollectionShareListResponse(BaseModel):
+    """List of users a collection is shared with."""
+    shares: List[CollectionShareResponse] = Field(default_factory=list)
