@@ -316,15 +316,36 @@ class RecipeExtractor:
     def enhance_recipe(
         self,
         existing_recipe: dict,
-        original_image_path: Optional[Path],
-        new_image_paths: List[Path],
+        original_image_path: Optional[Path] = None,
+        new_image_paths: Optional[List[Path]] = None,
+        original_image_data: Optional[bytes] = None,
+        original_image_mime: Optional[str] = None,
     ) -> ExtractedRecipe:
-        """Enhance an existing recipe with additional images."""
+        """Enhance an existing recipe with additional images.
+
+        Args:
+            existing_recipe: Dict of existing recipe data
+            original_image_path: Path to original image file (if stored on disk)
+            new_image_paths: Paths to new image files
+            original_image_data: Original image as bytes (if stored in DB)
+            original_image_mime: MIME type of original image data
+        """
         # Build content array with all images
         content = []
+        new_image_paths = new_image_paths or []
 
-        # Add original image if available
-        if original_image_path and original_image_path.exists():
+        # Add original image if available (prefer DB data over file path)
+        if original_image_data:
+            image_b64 = base64.standard_b64encode(original_image_data).decode("utf-8")
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": original_image_mime or "image/jpeg",
+                    "data": image_b64,
+                },
+            })
+        elif original_image_path and original_image_path.exists():
             image_data, media_type = self._load_image_from_file(original_image_path)
             content.append({
                 "type": "image",

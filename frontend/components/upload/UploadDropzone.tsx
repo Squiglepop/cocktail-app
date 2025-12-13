@@ -33,26 +33,28 @@ export function UploadDropzone({
 
   const isEnhanceMode = !!enhanceRecipeId;
 
-  const processFile = useCallback(async (file: File) => {
-    // Show preview
+  const processFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+
+    // Show preview of first file
     const reader = new FileReader();
     reader.onload = () => {
       setPreview(reader.result as string);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(files[0]);
 
     setState('uploading');
     setError(null);
 
     try {
       if (isEnhanceMode && enhanceRecipeId) {
-        // Enhancement mode - add to existing recipe
-        const recipe = await enhanceRecipeWithImages(enhanceRecipeId, [file], token);
+        // Enhancement mode - add all files to existing recipe
+        const recipe = await enhanceRecipeWithImages(enhanceRecipeId, files, token);
         setState('success');
         onEnhanceComplete?.(recipe);
       } else {
-        // Normal mode - create new recipe
-        const recipe = await uploadAndExtract(file, token);
+        // Normal mode - create new recipe from all files
+        const recipe = await uploadAndExtract(files, token);
         setState('success');
         onRecipeExtracted(recipe);
       }
@@ -70,30 +72,33 @@ export function UploadDropzone({
       const items = e.clipboardData?.items;
       if (!items) return;
 
+      const files: File[] = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.type.startsWith('image/')) {
-          e.preventDefault();
           const file = item.getAsFile();
           if (file) {
-            await processFile(file);
+            files.push(file);
           }
-          return;
         }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        await processFiles(files);
       }
     };
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [state, processFile]);
+  }, [state, processFiles]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0];
-      if (!file) return;
-      await processFile(file);
+      if (acceptedFiles.length === 0) return;
+      await processFiles(acceptedFiles);
     },
-    [processFile]
+    [processFiles]
   );
 
   const onDropRejected = useCallback((fileRejections: any[]) => {
@@ -120,15 +125,7 @@ export function UploadDropzone({
       const blob = await response.blob();
       const file = new File([blob], 'image.jpg', { type: blob.type });
 
-      if (isEnhanceMode && enhanceRecipeId) {
-        const recipe = await enhanceRecipeWithImages(enhanceRecipeId, [file], token);
-        setState('success');
-        onEnhanceComplete?.(recipe);
-      } else {
-        const recipe = await uploadAndExtract(file, token);
-        setState('success');
-        onRecipeExtracted(recipe);
-      }
+      await processFiles([file]);
     } catch (err) {
       setState('error');
       setError(err instanceof Error ? err.message : 'Failed to process URL');
@@ -141,7 +138,7 @@ export function UploadDropzone({
     accept: {
       'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
     },
-    multiple: false,
+    multiple: true,
     disabled: state === 'uploading',
   });
 

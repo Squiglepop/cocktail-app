@@ -371,6 +371,133 @@ async def upload_and_extract(
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
+@router.post("/extract-multi", response_model=RecipeResponse)
+async def upload_and_extract_multi(
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload multiple images and extract a single recipe from them.
+
+    Use this when a recipe spans multiple screenshots or pages.
+    All images are sent to Claude together to extract one combined recipe.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+
+    # Validate and save all files
+    image_paths: List[Path] = []
+    all_content: List[bytes] = []
+
+    for file in files:
+        suffix = Path(file.filename or "").suffix.lower()
+        if suffix not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type: {file.filename}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+            )
+
+        file_id = uuid.uuid4()
+        filename = f"{file_id}{suffix}"
+        file_path = settings.upload_dir / filename
+
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        image_paths.append(file_path)
+        all_content.append(content)
+
+    # Use first image as the primary for storage
+    primary_content = all_content[0]
+    primary_suffix = image_paths[0].suffix.lower()
+
+    try:
+        # Run multi-image extraction
+        extractor = RecipeExtractor()
+        extracted = extractor.extract_from_multiple_files(image_paths)
+
+        # Convert to create schema
+        recipe_data = map_extracted_to_create(extracted)
+
+        # Prepare ingredient data for fingerprint computation
+        ingredient_tuples = [
+            (ing.ingredient_name or "", ing.amount, ing.unit)
+            for ing in recipe_data.ingredients
+        ]
+
+        # Compute hashes for duplicate detection (using primary image)
+        content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
+            primary_content, recipe_data.name, ingredient_tuples
+        )
+
+        # Create recipe
+        recipe = Recipe(
+            name=recipe_data.name,
+            description=recipe_data.description,
+            instructions=recipe_data.instructions,
+            template=recipe_data.template,
+            main_spirit=recipe_data.main_spirit,
+            glassware=recipe_data.glassware,
+            serving_style=recipe_data.serving_style,
+            method=recipe_data.method,
+            garnish=recipe_data.garnish,
+            notes=recipe_data.notes,
+            source_type="screenshot",
+            source_image_data=primary_content,
+            source_image_mime=MIME_TYPES.get(primary_suffix, "image/jpeg"),
+            image_content_hash=content_hash,
+            image_perceptual_hash=perceptual_hash,
+            recipe_fingerprint=fingerprint,
+        )
+        db.add(recipe)
+        db.flush()
+
+        # Add ingredients
+        for idx, ing_data in enumerate(recipe_data.ingredients):
+            ingredient = None
+            if ing_data.ingredient_name:
+                ingredient = (
+                    db.query(Ingredient)
+                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
+                    .first()
+                )
+                if not ingredient:
+                    ingredient = Ingredient(
+                        name=ing_data.ingredient_name,
+                        type=ing_data.ingredient_type or "other",
+                    )
+                    db.add(ingredient)
+                    db.flush()
+
+            if ingredient:
+                recipe_ingredient = RecipeIngredient(
+                    recipe_id=recipe.id,
+                    ingredient_id=ingredient.id,
+                    amount=ing_data.amount,
+                    unit=ing_data.unit,
+                    notes=ing_data.notes,
+                    optional=ing_data.optional,
+                    order=idx,
+                )
+                db.add(recipe_ingredient)
+
+        db.commit()
+
+        # Return full recipe
+        recipe = (
+            db.query(Recipe)
+            .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+            .filter(Recipe.id == recipe.id)
+            .first()
+        )
+
+        return recipe
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
+
 @router.post("/enhance/{recipe_id}", response_model=RecipeResponse)
 async def enhance_recipe_with_images(
     recipe_id: str,
@@ -439,18 +566,14 @@ async def enhance_recipe_with_images(
         "notes": recipe.notes,
     }
 
-    # Get original image path if stored on disk
-    original_image_path = None
-    if recipe.source_image_path:
-        original_image_path = Path(recipe.source_image_path)
-
     try:
         # Run enhancement extraction
         extractor = RecipeExtractor()
         extracted = extractor.enhance_recipe(
             existing_recipe=existing_recipe_data,
-            original_image_path=original_image_path,
             new_image_paths=new_image_paths,
+            original_image_data=recipe.source_image_data,
+            original_image_mime=recipe.source_image_mime,
         )
 
         # Convert to update format

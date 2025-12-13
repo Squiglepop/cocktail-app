@@ -195,28 +195,56 @@ export async function fetchRecipe(id: string, token?: string | null): Promise<Re
   return res.json();
 }
 
-// Upload and extract recipe
-export async function uploadAndExtract(file: File, token?: string | null): Promise<Recipe> {
+// Upload and extract recipe (supports multiple files for multi-page recipes)
+export async function uploadAndExtract(files: File | File[], token?: string | null): Promise<Recipe> {
   const formData = new FormData();
-  formData.append('file', file);
+  const fileArray = Array.isArray(files) ? files : [files];
 
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (fileArray.length === 1) {
+    // Single file - use the original endpoint
+    formData.append('file', fileArray[0]);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/upload/extract-immediate`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || 'Upload failed');
+    }
+
+    return res.json();
+  } else {
+    // Multiple files - use multi-file endpoint
+    fileArray.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/upload/extract-multi`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || 'Upload failed');
+    }
+
+    return res.json();
   }
-
-  const res = await fetch(`${API_BASE}/upload/extract-immediate`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Upload failed' }));
-    throw new Error(error.detail || 'Upload failed');
-  }
-
-  return res.json();
 }
 
 // Enhance existing recipe with additional images
