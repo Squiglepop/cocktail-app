@@ -2,14 +2,15 @@
 
 import { RecipeListItem } from '@/lib/api';
 import { RecipeCard } from './RecipeCard';
-import { GlassWater } from 'lucide-react';
+import { GlassWater, Loader2 } from 'lucide-react';
 
 interface RecipeGridProps {
   recipes: RecipeListItem[];
   loading?: boolean;
+  loadingMore?: boolean;
 }
 
-export function RecipeGrid({ recipes, loading }: RecipeGridProps) {
+export function RecipeGrid({ recipes, loading, loadingMore }: RecipeGridProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
@@ -41,10 +42,17 @@ export function RecipeGrid({ recipes, loading }: RecipeGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-      {recipes.map((recipe) => (
-        <RecipeCard key={recipe.id} recipe={recipe} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        {recipes.map((recipe) => (
+          <RecipeCard key={recipe.id} recipe={recipe} />
+        ))}
+      </div>
+      {loadingMore && (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+        </div>
+      )}
+    </>
   );
 }

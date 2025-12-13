@@ -1,22 +1,33 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { RecipeListItem, RecipeFilters, fetchRecipes } from '@/lib/api';
 import { FilterSidebar } from '@/components/recipes/FilterSidebar';
 import { RecipeGrid } from '@/components/recipes/RecipeGrid';
 import { Plus, Upload, GlassWater } from 'lucide-react';
 
+const INITIAL_LIMIT = 20;
+const LOAD_MORE_LIMIT = 20;
+
 export default function HomePage() {
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [filters, setFilters] = useState<RecipeFilters>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalLoaded, setTotalLoaded] = useState(0);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // Load initial recipes
   const loadRecipes = useCallback(async () => {
     setLoading(true);
+    setHasMore(true);
     try {
-      const data = await fetchRecipes(filters);
+      const data = await fetchRecipes(filters, { skip: 0, limit: INITIAL_LIMIT });
       setRecipes(data);
+      setTotalLoaded(data.length);
+      setHasMore(data.length === INITIAL_LIMIT);
     } catch (error) {
       console.error('Failed to load recipes:', error);
     } finally {
@@ -24,9 +35,52 @@ export default function HomePage() {
     }
   }, [filters]);
 
+  // Load more recipes
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const data = await fetchRecipes(filters, { skip: totalLoaded, limit: LOAD_MORE_LIMIT });
+      if (data.length > 0) {
+        setRecipes((prev) => [...prev, ...data]);
+        setTotalLoaded((prev) => prev + data.length);
+      }
+      setHasMore(data.length === LOAD_MORE_LIMIT);
+    } catch (error) {
+      console.error('Failed to load more recipes:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [filters, totalLoaded, loadingMore, hasMore]);
+
+  // Initial load and filter changes
   useEffect(() => {
     loadRecipes();
   }, [loadRecipes]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [hasMore, loading, loadingMore, loadMore]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -66,7 +120,9 @@ export default function HomePage() {
         </div>
 
         {/* Recipe grid */}
-        <RecipeGrid recipes={recipes} loading={loading} />
+        <RecipeGrid recipes={recipes} loading={loading} loadingMore={loadingMore} />
+        {/* Scroll sentinel for infinite scroll */}
+        <div ref={loadMoreRef} className="h-4" />
       </div>
 
       {/* Desktop layout */}
@@ -93,7 +149,9 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-          <RecipeGrid recipes={recipes} loading={loading} />
+          <RecipeGrid recipes={recipes} loading={loading} loadingMore={loadingMore} />
+          {/* Scroll sentinel for infinite scroll */}
+          <div ref={loadMoreRef} className="h-4" />
         </div>
       </div>
     </div>

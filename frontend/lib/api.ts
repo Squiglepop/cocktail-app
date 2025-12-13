@@ -89,6 +89,11 @@ export interface RecipeFilters {
   search?: string;
 }
 
+export interface PaginationParams {
+  skip?: number;
+  limit?: number;
+}
+
 export interface RecipeIngredientInput {
   ingredient_id?: string;
   ingredient_name?: string;
@@ -120,12 +125,23 @@ export async function fetchCategories(): Promise<Categories> {
   return res.json();
 }
 
-// Fetch recipes with filters
-export async function fetchRecipes(filters: RecipeFilters = {}): Promise<RecipeListItem[]> {
+// Fetch recipes with filters and pagination
+export async function fetchRecipes(
+  filters: RecipeFilters = {},
+  pagination: PaginationParams = {}
+): Promise<RecipeListItem[]> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (value) params.append(key, value);
   });
+
+  // Add pagination params
+  if (pagination.skip !== undefined) {
+    params.append('skip', pagination.skip.toString());
+  }
+  if (pagination.limit !== undefined) {
+    params.append('limit', pagination.limit.toString());
+  }
 
   const url = params.toString()
     ? `${API_BASE}/recipes?${params.toString()}`
