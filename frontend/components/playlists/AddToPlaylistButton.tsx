@@ -150,10 +150,10 @@ export function AddToPlaylistButton({
       ) : (
         <button
           onClick={handleToggle}
-          className="btn btn-secondary"
+          className="btn btn-secondary w-full justify-center"
         >
-          <Bookmark className={`h-4 w-4 mr-2 ${isInAnyPlaylist ? 'fill-current text-amber-600' : ''}`} />
-          Add to Playlist
+          <Bookmark className={`h-4 w-4 mr-1 ${isInAnyPlaylist ? 'fill-current text-amber-600' : ''}`} />
+          <span className="hidden sm:inline">Add to </span>Playlist
         </button>
       )}
 

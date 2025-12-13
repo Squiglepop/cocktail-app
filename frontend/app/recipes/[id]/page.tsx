@@ -283,41 +283,50 @@ export default function RecipeDetailPage() {
       )}
 
       {/* Actions */}
-      <div className="mt-8 pt-6 border-t border-gray-200 flex items-center justify-between">
-        <div className="text-sm text-gray-500">
+      <div className="mt-8 pt-6 border-t border-gray-200 space-y-4">
+        {/* Action buttons */}
+        {(user || canEdit) && (
+          <div className="grid grid-cols-3 gap-2">
+            {user && (
+              <AddToPlaylistButton recipeId={recipe.id} variant="button" className="w-full" />
+            )}
+            {canEdit && (
+              <>
+                <Link
+                  href={`/upload?enhance=${recipe.id}`}
+                  className="btn btn-secondary w-full justify-center"
+                >
+                  <ImagePlus className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Add </span>Images
+                </Link>
+                <Link
+                  href={`/recipes/${recipe.id}/edit`}
+                  className="btn btn-secondary w-full justify-center"
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Edit
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Delete button - separate row */}
+        {canEdit && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50 w-full justify-center"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {deleting ? 'Deleting...' : 'Delete Recipe'}
+          </button>
+        )}
+
+        {/* Date added */}
+        <div className="text-sm text-gray-500 text-center">
           Added {new Date(recipe.created_at).toLocaleDateString()}
           {recipe.source_type && ` via ${recipe.source_type}`}
-        </div>
-        <div className="flex items-center gap-2">
-          {user && (
-            <AddToPlaylistButton recipeId={recipe.id} variant="button" />
-          )}
-          {canEdit && (
-            <>
-              <Link
-                href={`/upload?enhance=${recipe.id}`}
-                className="btn btn-secondary"
-              >
-                <ImagePlus className="h-4 w-4 mr-2" />
-                Add Images
-              </Link>
-              <Link
-                href={`/recipes/${recipe.id}/edit`}
-                className="btn btn-secondary"
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </>
-          )}
         </div>
       </div>
     </div>
