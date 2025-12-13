@@ -7,10 +7,12 @@ import {
   Recipe,
   fetchRecipe,
   deleteRecipe,
+  updateRecipeRating,
   formatEnumValue,
   formatUnit,
   getRecipeImageUrl,
 } from '@/lib/api';
+import { StarRating } from '@/components/recipes/StarRating';
 import { useAuth } from '@/lib/auth-context';
 import {
   ArrowLeft,
@@ -29,6 +31,7 @@ export default function RecipeDetailPage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [updatingRating, setUpdatingRating] = useState(false);
 
   // Check if current user is the owner of this recipe
   const isOwner = user && recipe && recipe.user_id === user.id;
@@ -56,6 +59,25 @@ export default function RecipeDetailPage() {
       console.error('Failed to delete:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete recipe');
       setDeleting(false);
+    }
+  };
+
+  const handleRatingChange = async (newRating: number) => {
+    if (!recipe || !isOwner) return;
+
+    setUpdatingRating(true);
+    try {
+      const updatedRecipe = await updateRecipeRating(
+        recipe.id,
+        newRating === 0 ? null : newRating,
+        token
+      );
+      setRecipe(updatedRecipe);
+    } catch (error) {
+      console.error('Failed to update rating:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update rating');
+    } finally {
+      setUpdatingRating(false);
     }
   };
 
@@ -137,6 +159,23 @@ export default function RecipeDetailPage() {
             </span>
           )}
         </div>
+
+        {/* Rating - only shown if user owns the recipe */}
+        {isOwner && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">Your Rating:</span>
+            <StarRating
+              rating={recipe.rating}
+              onRate={handleRatingChange}
+              size="lg"
+              showCaption
+              interactive={!updatingRating}
+            />
+            {updatingRating && (
+              <span className="text-sm text-gray-400">Saving...</span>
+            )}
+          </div>
+        )}
 
         {/* Glass and serving style */}
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">

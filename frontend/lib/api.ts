@@ -43,6 +43,8 @@ export interface Recipe {
   source_url?: string;
   source_type?: string;
   user_id?: string;
+  visibility: string;
+  rating?: number;
   has_image: boolean;
   created_at: string;
   updated_at: string;
@@ -58,6 +60,8 @@ export interface RecipeListItem {
   serving_style?: string;
   has_image: boolean;
   user_id?: string;
+  visibility: string;
+  rating?: number;
   created_at: string;
 }
 
@@ -297,6 +301,38 @@ export async function updateRecipe(id: string, data: Partial<RecipeInput>, token
 
   return res.json();
 }
+
+// Update recipe rating
+export async function updateRecipeRating(id: string, rating: number | null, token?: string | null): Promise<Recipe> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/recipes/${id}/rating`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ rating }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update rating' }));
+    throw new Error(error.detail || 'Failed to update rating');
+  }
+
+  return res.json();
+}
+
+// Rating captions (cricket-themed)
+export const RATING_CAPTIONS: Record<number, string> = {
+  5: 'KW',
+  4: 'J Root',
+  3: 'V-Rat',
+  2: 'Monty Panesar',
+  1: '"We saw you cry on the telly"',
+};
 
 // Format display helpers
 export function formatEnumValue(value?: string): string {

@@ -14,6 +14,7 @@ from app.models.enums import (
     SpiritCategory,
     IngredientType,
     Unit,
+    Visibility,
 )
 
 
@@ -82,6 +83,7 @@ class RecipeBase(BaseModel):
 
 class RecipeCreate(RecipeBase):
     ingredients: List[RecipeIngredientCreate] = Field(default_factory=list)
+    visibility: str = Field(default=Visibility.PUBLIC.value)
 
 
 class RecipeUpdate(BaseModel):
@@ -96,6 +98,11 @@ class RecipeUpdate(BaseModel):
     garnish: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     ingredients: Optional[List[RecipeIngredientCreate]] = None
+    visibility: Optional[str] = None
+
+
+class RecipeRatingUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5)
 
 
 class RecipeResponse(RecipeBase):
@@ -103,6 +110,8 @@ class RecipeResponse(RecipeBase):
     source_url: Optional[str] = None
     source_type: Optional[str] = None
     user_id: Optional[str] = None
+    visibility: str = Visibility.PUBLIC.value
+    rating: Optional[int] = None  # Only included for owner
     has_image: bool = False
     created_at: datetime
     updated_at: datetime
@@ -121,6 +130,8 @@ class RecipeListResponse(BaseModel):
     serving_style: Optional[str] = None
     has_image: bool = False
     user_id: Optional[str] = None
+    visibility: str = Visibility.PUBLIC.value
+    rating: Optional[int] = None  # Only included for owner
     created_at: datetime
 
     class Config:

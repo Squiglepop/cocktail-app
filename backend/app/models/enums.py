@@ -298,3 +298,10 @@ METHOD_DESCRIPTIONS = {
     Method.DRY_SHAKE: "Shaken without ice first (for egg drinks)",
     Method.WHIP_SHAKE: "Quick shake with just a little crushed ice",
 }
+
+
+class Visibility(str, Enum):
+    """Recipe visibility settings."""
+    PUBLIC = "public"
+    PRIVATE = "private"
+    GROUP = "group"  # Placeholder for future group sharing feature

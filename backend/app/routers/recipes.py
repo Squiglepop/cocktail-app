@@ -13,10 +13,12 @@ from app.models import (
     Ingredient,
     RecipeIngredient,
     User,
+    Visibility,
 )
 from app.schemas import (
     RecipeCreate,
     RecipeUpdate,
+    RecipeRatingUpdate,
     RecipeResponse,
     RecipeListResponse,
 )
@@ -25,6 +27,27 @@ from app.services.auth import get_current_user, get_current_user_optional
 
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
+
+
+def _apply_visibility_filter(query, current_user: Optional[User], include_own: bool = True):
+    """
+    Apply visibility filtering to a recipe query.
+    - Public recipes are visible to everyone
+    - Private recipes are only visible to their owner
+    - Group recipes are placeholder (treated as private for now)
+    """
+    if current_user and include_own:
+        # User can see: public recipes OR their own recipes (any visibility)
+        query = query.filter(
+            or_(
+                Recipe.visibility == Visibility.PUBLIC.value,
+                Recipe.user_id == current_user.id
+            )
+        )
+    else:
+        # Anonymous users only see public recipes
+        query = query.filter(Recipe.visibility == Visibility.PUBLIC.value)
+    return query
 
 
 @router.get("/count")
@@ -36,14 +59,20 @@ def get_recipe_count(
     method: Optional[str] = None,
     search: Optional[str] = None,
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    visibility: Optional[str] = Query(None, description="Filter by visibility"),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """Get total recipe count and filtered count."""
-    # Get total count (no filters)
-    total = db.query(Recipe).count()
+    # Get total count (respecting visibility)
+    total_query = db.query(Recipe)
+    total_query = _apply_visibility_filter(total_query, current_user)
+    total = total_query.count()
 
     # Build filtered query
     query = db.query(Recipe)
+    query = _apply_visibility_filter(query, current_user)
+
     if template:
         query = query.filter(Recipe.template == template)
     if main_spirit:
@@ -56,6 +85,8 @@ def get_recipe_count(
         query = query.filter(Recipe.method == method)
     if user_id:
         query = query.filter(Recipe.user_id == user_id)
+    if visibility:
+        query = query.filter(Recipe.visibility == visibility)
     if search:
         search_term = f"%{search}%"
         query = query.filter(
@@ -76,14 +107,19 @@ def list_recipes(
     method: Optional[str] = None,
     search: Optional[str] = None,
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    visibility: Optional[str] = Query(None, description="Filter by visibility"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """List recipes with optional filters."""
+    """List recipes with optional filters. Respects visibility settings."""
     query = db.query(Recipe)
 
-    # Apply filters
+    # Apply visibility filter
+    query = _apply_visibility_filter(query, current_user)
+
+    # Apply other filters
     if template:
         query = query.filter(Recipe.template == template)
     if main_spirit:
@@ -96,6 +132,8 @@ def list_recipes(
         query = query.filter(Recipe.method == method)
     if user_id:
         query = query.filter(Recipe.user_id == user_id)
+    if visibility:
+        query = query.filter(Recipe.visibility == visibility)
     if search:
         search_term = f"%{search}%"
         query = query.filter(
@@ -106,12 +144,34 @@ def list_recipes(
     query = query.order_by(Recipe.created_at.desc())
     recipes = query.offset(skip).limit(limit).all()
 
-    return recipes
+    # Strip rating from recipes not owned by current user
+    result = []
+    for recipe in recipes:
+        recipe_dict = {
+            "id": recipe.id,
+            "name": recipe.name,
+            "template": recipe.template,
+            "main_spirit": recipe.main_spirit,
+            "glassware": recipe.glassware,
+            "serving_style": recipe.serving_style,
+            "has_image": recipe.has_image,
+            "user_id": recipe.user_id,
+            "visibility": recipe.visibility,
+            "rating": recipe.rating if current_user and recipe.user_id == current_user.id else None,
+            "created_at": recipe.created_at,
+        }
+        result.append(RecipeListResponse(**recipe_dict))
+
+    return result
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
-def get_recipe(recipe_id: str, db: Session = Depends(get_db)):
-    """Get a single recipe by ID."""
+def get_recipe(
+    recipe_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Get a single recipe by ID. Respects visibility settings."""
     recipe = (
         db.query(Recipe)
         .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
@@ -120,6 +180,16 @@ def get_recipe(recipe_id: str, db: Session = Depends(get_db)):
     )
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Check visibility
+    is_owner = current_user and recipe.user_id == current_user.id
+    if recipe.visibility != Visibility.PUBLIC.value and not is_owner:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Strip rating if not owner
+    if not is_owner:
+        recipe.rating = None
+
     return recipe
 
 
@@ -162,6 +232,7 @@ def create_recipe(
         notes=recipe_data.notes,
         source_type="manual",
         user_id=current_user.id if current_user else None,
+        visibility=recipe_data.visibility,
     )
 
     db.add(recipe)
@@ -323,3 +394,40 @@ def delete_recipe(
     db.commit()
 
     return {"message": "Recipe deleted successfully"}
+
+
+@router.put("/{recipe_id}/rating", response_model=RecipeResponse)
+def update_recipe_rating(
+    recipe_id: str,
+    rating_data: RecipeRatingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Update personal rating for a recipe. Only the owner can rate their own recipes.
+    Rating is private and not visible to other users.
+    """
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Only owner can rate their own recipes
+    if recipe.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only rate your own recipes"
+        )
+
+    recipe.rating = rating_data.rating
+    db.commit()
+    db.refresh(recipe)
+
+    # Load relationships for response
+    recipe = (
+        db.query(Recipe)
+        .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+        .filter(Recipe.id == recipe.id)
+        .first()
+    )
+
+    return recipe

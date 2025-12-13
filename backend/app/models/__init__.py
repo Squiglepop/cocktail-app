@@ -10,6 +10,7 @@ from .enums import (
     SpiritCategory,
     IngredientType,
     Unit,
+    Visibility,
     GLASSWARE_CATEGORIES,
     TEMPLATE_DISPLAY_NAMES,
     TEMPLATE_DESCRIPTIONS,
@@ -25,6 +26,7 @@ from .recipe import (
     ExtractionJob,
 )
 from .user import User
+from .collection import Collection, CollectionRecipe
 
 __all__ = [
     # Enums
@@ -36,6 +38,7 @@ __all__ = [
     "SpiritCategory",
     "IngredientType",
     "Unit",
+    "Visibility",
     # Enum mappings
     "GLASSWARE_CATEGORIES",
     "TEMPLATE_DISPLAY_NAMES",
@@ -50,4 +53,6 @@ __all__ = [
     "RecipeIngredient",
     "ExtractionJob",
     "User",
+    "Collection",
+    "CollectionRecipe",
 ]

@@ -24,6 +24,7 @@ from .enums import (
     SpiritCategory,
     IngredientType,
     Unit,
+    Visibility,
 )
 
 
@@ -68,6 +69,14 @@ class Recipe(Base):
     user_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+
+    # Visibility: public (default), private, or group (future)
+    visibility: Mapped[str] = mapped_column(
+        String(20), default=Visibility.PUBLIC.value, nullable=False, index=True
+    )
+
+    # Personal rating (1-5, only visible to owner)
+    rating: Mapped[Optional[int]] = mapped_column(nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.services import create_tables, run_migrations
-from app.routers import recipes_router, upload_router, categories_router, auth_router
+from app.routers import recipes_router, upload_router, categories_router, auth_router, collections_router
 
 
 def validate_production_config():
@@ -70,6 +70,7 @@ app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(recipes_router, prefix=settings.api_prefix)
 app.include_router(upload_router, prefix=settings.api_prefix)
 app.include_router(categories_router, prefix=settings.api_prefix)
+app.include_router(collections_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

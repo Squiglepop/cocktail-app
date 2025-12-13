@@ -11,6 +11,7 @@ from .recipe import (
     RecipeBase,
     RecipeCreate,
     RecipeUpdate,
+    RecipeRatingUpdate,
     RecipeResponse,
     RecipeListResponse,
     ExtractedIngredient,
@@ -29,6 +30,17 @@ from .auth import (
     Token,
     TokenData,
 )
+from .collection import (
+    CollectionBase,
+    CollectionCreate,
+    CollectionUpdate,
+    CollectionRecipeAdd,
+    CollectionRecipeReorder,
+    CollectionRecipeResponse,
+    CollectionResponse,
+    CollectionDetailResponse,
+    CollectionListResponse,
+)
 
 __all__ = [
     "IngredientBase",
@@ -40,6 +52,7 @@ __all__ = [
     "RecipeBase",
     "RecipeCreate",
     "RecipeUpdate",
+    "RecipeRatingUpdate",
     "RecipeResponse",
     "RecipeListResponse",
     "ExtractedIngredient",
@@ -56,4 +69,14 @@ __all__ = [
     "UserResponse",
     "Token",
     "TokenData",
+    # Collection schemas
+    "CollectionBase",
+    "CollectionCreate",
+    "CollectionUpdate",
+    "CollectionRecipeAdd",
+    "CollectionRecipeReorder",
+    "CollectionRecipeResponse",
+    "CollectionResponse",
+    "CollectionDetailResponse",
+    "CollectionListResponse",
 ]

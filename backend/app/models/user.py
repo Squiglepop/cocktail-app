@@ -36,7 +36,11 @@ class User(Base):
     recipes: Mapped[List["Recipe"]] = relationship(
         "Recipe", back_populates="user", lazy="dynamic"
     )
+    collections: Mapped[List["Collection"]] = relationship(
+        "Collection", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 # Import Recipe here to avoid circular import - the relationship is defined via string reference
 from .recipe import Recipe
+from .collection import Collection

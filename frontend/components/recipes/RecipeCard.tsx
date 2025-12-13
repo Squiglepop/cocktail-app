@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
 import { GlassWater, Wine } from 'lucide-react';
+import { StarRating } from './StarRating';
 
 interface RecipeCardProps {
   recipe: RecipeListItem;
@@ -29,6 +30,10 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           <h3 className="font-semibold text-gray-900 line-clamp-1">
             {recipe.name}
           </h3>
+
+          {recipe.rating && (
+            <StarRating rating={recipe.rating} size="sm" showCaption />
+          )}
 
           <div className="flex flex-wrap gap-1">
             {recipe.template && (
