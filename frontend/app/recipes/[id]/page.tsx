@@ -138,11 +138,16 @@ export default function RecipeDetailPage() {
       {/* Recipe Details */}
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {recipe.name}
-          </h1>
+          <div className="flex items-start justify-between gap-2">
+            <h1 className="text-3xl font-bold text-gray-900">
+              {recipe.name}
+            </h1>
+            {user && (
+              <AddToPlaylistButton recipeId={recipe.id} variant="icon" className="flex-shrink-0 mt-1" />
+            )}
+          </div>
           {recipe.description && (
-            <p className="text-gray-600">{recipe.description}</p>
+            <p className="text-gray-600 mt-2">{recipe.description}</p>
           )}
         </div>
 
@@ -285,42 +290,31 @@ export default function RecipeDetailPage() {
       {/* Actions */}
       <div className="mt-8 pt-6 border-t border-gray-200 space-y-4">
         {/* Action buttons */}
-        {(user || canEdit) && (
-          <div className="grid grid-cols-3 gap-2">
-            {user && (
-              <AddToPlaylistButton recipeId={recipe.id} variant="button" className="w-full" />
-            )}
-            {canEdit && (
-              <>
-                <Link
-                  href={`/upload?enhance=${recipe.id}`}
-                  className="btn btn-secondary w-full justify-center"
-                >
-                  <ImagePlus className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Add </span>Images
-                </Link>
-                <Link
-                  href={`/recipes/${recipe.id}/edit`}
-                  className="btn btn-secondary w-full justify-center"
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Edit
-                </Link>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Delete button - separate row */}
         {canEdit && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50 w-full justify-center"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            {deleting ? 'Deleting...' : 'Delete Recipe'}
-          </button>
+          <div className="grid grid-cols-3 gap-2">
+            <Link
+              href={`/upload?enhance=${recipe.id}`}
+              className="btn btn-secondary w-full justify-center"
+            >
+              <ImagePlus className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Add </span>Images
+            </Link>
+            <Link
+              href={`/recipes/${recipe.id}/edit`}
+              className="btn btn-secondary w-full justify-center"
+            >
+              <Pencil className="h-4 w-4 mr-1" />
+              Edit
+            </Link>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50 w-full justify-center"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         )}
 
         {/* Date added */}
