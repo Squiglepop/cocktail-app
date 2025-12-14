@@ -8,6 +8,8 @@ from .duplicate_detector import (
     compute_hashes_for_recipe,
     DuplicateCheckResult,
     DuplicateMatch,
+    ImageHashes,
+    clear_hash_cache,
 )
 from .image_storage import ImageStorageService, get_image_storage
 from .cleanup import OrphanedFileCleanupService, CleanupStats, get_cleanup_service
@@ -24,6 +26,8 @@ __all__ = [
     "compute_hashes_for_recipe",
     "DuplicateCheckResult",
     "DuplicateMatch",
+    "ImageHashes",
+    "clear_hash_cache",
     "ImageStorageService",
     "get_image_storage",
     "OrphanedFileCleanupService",

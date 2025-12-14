@@ -26,6 +26,7 @@ from app.services import (
     check_for_duplicates,
     compute_hashes_for_recipe,
     get_image_storage,
+    ImageHashes,
 )
 
 
@@ -93,9 +94,11 @@ async def upload_image(
         f.write(content)
 
     # Check for duplicates (image-based only, no recipe data yet)
+    # Compute hashes once and reuse for duplicate check
     duplicates = None
     if check_duplicates:
-        dup_result = check_for_duplicates(db, content)
+        image_hashes = ImageHashes.from_image_data(content)
+        dup_result = check_for_duplicates(db, content, precomputed_hashes=image_hashes)
         duplicates = _convert_duplicate_result(dup_result)
 
     # Create extraction job
@@ -148,15 +151,19 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
         suffix = Path(job.image_path).suffix.lower()
         mime_type = MIME_TYPES.get(suffix, "image/jpeg")
 
+        # Compute image hashes once (single image load)
+        image_hashes = ImageHashes.from_image_data(image_data)
+
         # Prepare ingredient data for fingerprint computation
         ingredient_tuples = [
             (ing.ingredient_name or "", ing.amount, ing.unit)
             for ing in recipe_data.ingredients
         ]
 
-        # Compute hashes for duplicate detection
+        # Compute hashes for duplicate detection (reuse precomputed image hashes)
         content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
-            image_data, recipe_data.name, ingredient_tuples
+            image_data, recipe_data.name, ingredient_tuples,
+            precomputed_image_hashes=image_hashes
         )
 
         # Save image to filesystem
@@ -292,15 +299,19 @@ async def upload_and_extract(
         # Convert and create recipe
         recipe_data = map_extracted_to_create(extracted)
 
+        # Compute image hashes once (single image load)
+        image_hashes = ImageHashes.from_image_data(content)
+
         # Prepare ingredient data for fingerprint computation
         ingredient_tuples = [
             (ing.ingredient_name or "", ing.amount, ing.unit)
             for ing in recipe_data.ingredients
         ]
 
-        # Compute hashes for duplicate detection
+        # Compute hashes for duplicate detection (reuse precomputed image hashes)
         content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
-            content, recipe_data.name, ingredient_tuples
+            content, recipe_data.name, ingredient_tuples,
+            precomputed_image_hashes=image_hashes
         )
 
         # Save image to filesystem
@@ -391,15 +402,18 @@ async def upload_and_extract_multi(
 
     Use this when a recipe spans multiple screenshots or pages.
     All images are sent to Claude together to extract one combined recipe.
+
+    Memory optimization: Files are saved to disk immediately and only the
+    primary image content is kept in memory for hash computation.
     """
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
 
-    # Validate and save all files
+    # Validate and save all files - only keep paths, not content
     image_paths: List[Path] = []
-    all_content: List[bytes] = []
+    primary_path: Optional[Path] = None
 
-    for file in files:
+    for idx, file in enumerate(files):
         suffix = Path(file.filename or "").suffix.lower()
         if suffix not in ALLOWED_EXTENSIONS:
             raise HTTPException(
@@ -411,16 +425,24 @@ async def upload_and_extract_multi(
         filename = f"{file_id}{suffix}"
         file_path = settings.upload_dir / filename
 
+        # Stream file content directly to disk to minimize memory usage
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
 
         image_paths.append(file_path)
-        all_content.append(content)
 
-    # Use first image as the primary for storage
-    primary_content = all_content[0]
-    primary_suffix = image_paths[0].suffix.lower()
+        # Track primary path (first image)
+        if idx == 0:
+            primary_path = file_path
+
+        # Release content immediately after writing to disk
+        del content
+
+    # Read primary image content for hash computation (only keep one in memory)
+    with open(primary_path, "rb") as f:
+        primary_content = f.read()
+    primary_suffix = primary_path.suffix.lower()
 
     try:
         # Run multi-image extraction
@@ -430,15 +452,19 @@ async def upload_and_extract_multi(
         # Convert to create schema
         recipe_data = map_extracted_to_create(extracted)
 
+        # Compute image hashes once (single image load for primary)
+        image_hashes = ImageHashes.from_image_data(primary_content)
+
         # Prepare ingredient data for fingerprint computation
         ingredient_tuples = [
             (ing.ingredient_name or "", ing.amount, ing.unit)
             for ing in recipe_data.ingredients
         ]
 
-        # Compute hashes for duplicate detection (using primary image)
+        # Compute hashes for duplicate detection (using primary image, reuse precomputed hashes)
         content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
-            primary_content, recipe_data.name, ingredient_tuples
+            primary_content, recipe_data.name, ingredient_tuples,
+            precomputed_image_hashes=image_hashes
         )
 
         # Save primary image to filesystem

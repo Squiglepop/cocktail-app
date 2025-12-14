@@ -15,6 +15,8 @@ from app.services.duplicate_detector import (
     check_exact_duplicate,
     check_similar_images,
     check_recipe_fingerprint,
+    ImageHashes,
+    clear_hash_cache,
 )
 
 
@@ -389,3 +391,122 @@ class TestComputeHashesForRecipe:
         )
 
         assert result1 == result2
+
+
+class TestImageHashes:
+    """Tests for the ImageHashes dataclass for single-load optimization."""
+
+    def test_from_image_data_computes_both_hashes(self):
+        """ImageHashes.from_image_data computes content and perceptual hash."""
+        image_data = create_test_image()
+        hashes = ImageHashes.from_image_data(image_data)
+
+        assert len(hashes.content_hash) == 64
+        assert len(hashes.perceptual_hash) == 16
+
+    def test_from_image_data_matches_individual_functions(self):
+        """ImageHashes produces same results as individual hash functions."""
+        image_data = create_test_image()
+        hashes = ImageHashes.from_image_data(image_data)
+
+        assert hashes.content_hash == compute_content_hash(image_data)
+        assert hashes.perceptual_hash == compute_perceptual_hash(image_data)
+
+    def test_precomputed_hashes_work_with_check_for_duplicates(self, test_session):
+        """Precomputed hashes work correctly with check_for_duplicates."""
+        image_data = create_test_image()
+        hashes = ImageHashes.from_image_data(image_data)
+
+        # Create a recipe with matching content hash
+        recipe = Recipe(
+            name="Test Recipe",
+            image_content_hash=hashes.content_hash,
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        # Use precomputed hashes for duplicate check
+        result = check_for_duplicates(
+            test_session, image_data, precomputed_hashes=hashes
+        )
+
+        assert result.is_duplicate
+        assert result.best_match.recipe_id == recipe.id
+
+    def test_precomputed_hashes_work_with_compute_hashes_for_recipe(self):
+        """Precomputed hashes work correctly with compute_hashes_for_recipe."""
+        image_data = create_test_image()
+        hashes = ImageHashes.from_image_data(image_data)
+
+        # Compute with precomputed hashes
+        content1, perceptual1, fingerprint1 = compute_hashes_for_recipe(
+            image_data, "Test", [("Vodka", 1.0, "oz")],
+            precomputed_image_hashes=hashes
+        )
+
+        # Compute without precomputed hashes
+        content2, perceptual2, fingerprint2 = compute_hashes_for_recipe(
+            image_data, "Test", [("Vodka", 1.0, "oz")]
+        )
+
+        assert content1 == content2
+        assert perceptual1 == perceptual2
+        assert fingerprint1 == fingerprint2
+
+
+class TestHashCache:
+    """Tests for LRU cache functionality."""
+
+    def test_clear_hash_cache(self):
+        """clear_hash_cache clears the LRU cache."""
+        image_data = create_test_image()
+
+        # Compute hash to populate cache
+        compute_perceptual_hash(image_data)
+
+        # Clear cache should not raise
+        clear_hash_cache()
+
+        # Computing again should work
+        hash_after_clear = compute_perceptual_hash(image_data)
+        assert len(hash_after_clear) == 16
+
+
+class TestStreamingHashComparison:
+    """Tests for streaming hash comparison (memory optimization)."""
+
+    def test_check_similar_images_with_max_matches(self, test_session):
+        """check_similar_images respects max_matches limit."""
+        image_data = create_test_image()
+        perceptual_hash = compute_perceptual_hash(image_data)
+
+        # Create multiple recipes with the same hash
+        for i in range(5):
+            recipe = Recipe(
+                name=f"Test Recipe {i}",
+                image_perceptual_hash=perceptual_hash,
+            )
+            test_session.add(recipe)
+        test_session.commit()
+
+        # Request fewer matches than available
+        matches = check_similar_images(test_session, perceptual_hash, max_matches=3)
+        assert len(matches) == 3
+
+    def test_check_similar_images_returns_all_when_under_limit(self, test_session):
+        """check_similar_images returns all matches when under limit."""
+        image_data = create_test_image()
+        perceptual_hash = compute_perceptual_hash(image_data)
+
+        # Create 2 recipes with the same hash
+        for i in range(2):
+            recipe = Recipe(
+                name=f"Test Recipe {i}",
+                image_perceptual_hash=perceptual_hash,
+            )
+            test_session.add(recipe)
+        test_session.commit()
+
+        # Request more matches than available
+        matches = check_similar_images(test_session, perceptual_hash, max_matches=10)
+        assert len(matches) == 2
