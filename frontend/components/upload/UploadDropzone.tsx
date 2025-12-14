@@ -2,8 +2,9 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Image as ImageIcon, Loader2, CheckCircle, AlertCircle, Link, Clipboard, Plus, AlertTriangle } from 'lucide-react';
+import { Upload, Image as ImageIcon, Loader2, CheckCircle, AlertCircle, Link, Clipboard, Plus, AlertTriangle, ArrowRight } from 'lucide-react';
 import NextImage from 'next/image';
+import NextLink from 'next/link';
 import { uploadAndExtract, enhanceRecipeWithImages, checkForDuplicates, Recipe, DuplicateMatch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ export function UploadDropzone({
   const [imageUrl, setImageUrl] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [extractedRecipeId, setExtractedRecipeId] = useState<string | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   const isEnhanceMode = !!enhanceRecipeId;
@@ -64,11 +66,13 @@ export function UploadDropzone({
         // Enhancement mode - add all files to existing recipe
         const recipe = await enhanceRecipeWithImages(enhanceRecipeId, files, token);
         setState('success');
+        setExtractedRecipeId(recipe.id);
         onEnhanceComplete?.(recipe);
       } else {
         // Normal mode - create new recipe from all files
         const recipe = await uploadAndExtract(files, token);
         setState('success');
+        setExtractedRecipeId(recipe.id);
         onRecipeExtracted(recipe);
       }
     } catch (err) {
@@ -216,6 +220,7 @@ export function UploadDropzone({
     setImageUrl('');
     setPendingFiles([]);
     setDuplicateMatches([]);
+    setExtractedRecipeId(null);
   };
 
   return (
@@ -649,11 +654,22 @@ export function UploadDropzone({
 
       {(state === 'success' || state === 'error') && (
         <div className="flex flex-col items-center gap-2">
-          {state === 'success' && !isEnhanceMode && onAddMoreImages && (
-            <button onClick={onAddMoreImages} className="btn btn-primary">
-              <Plus className="h-4 w-4 mr-2" />
-              Add More to This Recipe
-            </button>
+          {state === 'success' && extractedRecipeId && (
+            <div className="flex gap-2">
+              <NextLink
+                href={`/recipes/${extractedRecipeId}`}
+                className="btn btn-primary"
+              >
+                View Recipe
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </NextLink>
+              {!isEnhanceMode && onAddMoreImages && (
+                <button onClick={onAddMoreImages} className="btn btn-secondary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add More
+                </button>
+              )}
+            </div>
           )}
           <button onClick={reset} className="btn btn-secondary">
             {isEnhanceMode ? 'Add Another Image' : 'Upload Another'}
