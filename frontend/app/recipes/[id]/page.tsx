@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Recipe,
   fetchRecipe,
@@ -313,11 +314,14 @@ export default function RecipeDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
             Original Screenshot
           </h2>
-          <div className="bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg overflow-hidden">
-            <img
+          <div className="bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg overflow-hidden relative aspect-[4/3]">
+            <Image
               src={getRecipeImageUrl(recipe.id)}
               alt={recipe.name}
-              className="w-full h-auto object-contain"
+              fill
+              sizes="(max-width: 768px) 100vw, 800px"
+              className="object-contain"
+              loading="lazy"
             />
           </div>
         </div>

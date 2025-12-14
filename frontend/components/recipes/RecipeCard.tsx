@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
 import { GlassWater, Wine, Share2, Heart } from 'lucide-react';
 import { StarRating } from './StarRating';
@@ -64,12 +65,15 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       <Link href={`/recipes/${recipe.id}`} className="block h-full">
         <div className="card hover:shadow-md transition-shadow cursor-pointer h-full">
           {/* Image placeholder or actual image */}
-          <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center overflow-hidden">
+          <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center overflow-hidden relative">
             {recipe.has_image ? (
-              <img
+              <Image
                 src={getRecipeImageUrl(recipe.id)}
                 alt={recipe.name}
-                className="w-full h-full object-cover object-top"
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover object-top"
+                loading="lazy"
               />
             ) : (
               <GlassWater className="h-16 w-16 text-amber-300" />

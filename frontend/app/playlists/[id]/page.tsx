@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   CollectionDetail,
   CollectionRecipe,
@@ -415,12 +416,15 @@ export default function PlaylistDetailPage() {
                 className="flex items-center gap-4 flex-1 min-w-0"
               >
                 {/* Thumbnail */}
-                <div className="w-16 h-12 bg-gradient-to-br from-amber-100 to-amber-50 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="w-16 h-12 bg-gradient-to-br from-amber-100 to-amber-50 rounded flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                   {recipe.recipe_has_image ? (
-                    <img
+                    <Image
                       src={getRecipeImageUrl(recipe.recipe_id)}
                       alt={recipe.recipe_name}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <GlassWater className="h-6 w-6 text-amber-300" />

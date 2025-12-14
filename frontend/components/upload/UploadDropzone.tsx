@@ -2,7 +2,8 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Image, Loader2, CheckCircle, AlertCircle, Link, Clipboard, Plus, AlertTriangle } from 'lucide-react';
+import { Upload, Image as ImageIcon, Loader2, CheckCircle, AlertCircle, Link, Clipboard, Plus, AlertTriangle } from 'lucide-react';
+import NextImage from 'next/image';
 import { uploadAndExtract, enhanceRecipeWithImages, checkForDuplicates, Recipe, DuplicateMatch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
@@ -254,17 +255,21 @@ export function UploadDropzone({
             <div className="space-y-4">
               <div className="flex justify-center">
                 {preview ? (
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="max-h-48 rounded-lg"
-                  />
+                  <div className="relative h-48 w-full">
+                    <NextImage
+                      src={preview}
+                      alt="Preview"
+                      fill
+                      className="object-contain rounded-lg"
+                      unoptimized
+                    />
+                  </div>
                 ) : (
                   <div className={cn("p-4 rounded-full", isEnhanceMode ? "bg-blue-100" : "bg-amber-100")}>
                     {isEnhanceMode ? (
                       <Plus className="h-12 w-12 text-blue-600" />
                     ) : (
-                      <Image className="h-12 w-12 text-amber-600" />
+                      <ImageIcon className="h-12 w-12 text-amber-600" />
                     )}
                   </div>
                 )}
@@ -292,11 +297,15 @@ export function UploadDropzone({
           {state === 'checking' && (
             <div className="space-y-4">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg mx-auto opacity-75"
-                />
+                <div className="relative h-48 w-full">
+                  <NextImage
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-contain rounded-lg opacity-75"
+                    unoptimized
+                  />
+                </div>
               )}
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
@@ -310,11 +319,15 @@ export function UploadDropzone({
           {state === 'duplicate_warning' && (
             <div className="space-y-4">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg mx-auto opacity-75"
-                />
+                <div className="relative h-48 w-full">
+                  <NextImage
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-contain rounded-lg opacity-75"
+                    unoptimized
+                  />
+                </div>
               )}
               <div className="flex justify-center">
                 <div className="p-4 bg-yellow-100 rounded-full">
@@ -366,11 +379,15 @@ export function UploadDropzone({
           {state === 'uploading' && (
             <div className="space-y-4">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg mx-auto opacity-75"
-                />
+                <div className="relative h-48 w-full">
+                  <NextImage
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-contain rounded-lg opacity-75"
+                    unoptimized
+                  />
+                </div>
               )}
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
@@ -471,11 +488,15 @@ export function UploadDropzone({
           {state === 'checking' && (
             <div className="space-y-4">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg mx-auto opacity-75"
-                />
+                <div className="relative h-48 w-full">
+                  <NextImage
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-contain rounded-lg opacity-75"
+                    unoptimized
+                  />
+                </div>
               )}
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
@@ -489,11 +510,15 @@ export function UploadDropzone({
           {state === 'duplicate_warning' && (
             <div className="space-y-4">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg mx-auto opacity-75"
-                />
+                <div className="relative h-48 w-full">
+                  <NextImage
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-contain rounded-lg opacity-75"
+                    unoptimized
+                  />
+                </div>
               )}
               <div className="flex justify-center">
                 <div className="p-4 bg-yellow-100 rounded-full">
@@ -545,11 +570,15 @@ export function UploadDropzone({
           {state === 'uploading' && (
             <div className="space-y-4">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg mx-auto opacity-75"
-                />
+                <div className="relative h-48 w-full">
+                  <NextImage
+                    src={preview}
+                    alt="Preview"
+                    fill
+                    className="object-contain rounded-lg opacity-75"
+                    unoptimized
+                  />
+                </div>
               )}
               <div className="flex items-center justify-center gap-3">
                 <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
