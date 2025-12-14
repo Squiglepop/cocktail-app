@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     secret_key: str = _get_secret_key()
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
 
+    # Image preprocessing for Claude Vision API
+    # Downsampling reduces token costs by ~60-70% for mobile screenshots
+    vision_max_dimension: int = 1568  # Max width/height, preserves aspect ratio
+    vision_jpeg_quality: int = 85  # JPEG compression quality (1-100)
+    vision_preprocessing_enabled: bool = True  # Set False to disable
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""

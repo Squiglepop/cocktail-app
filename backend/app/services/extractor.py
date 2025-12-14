@@ -185,20 +185,7 @@ class RecipeExtractor:
 
     def extract_from_file(self, image_path: Path) -> ExtractedRecipe:
         """Extract recipe from an image file."""
-        with open(image_path, "rb") as f:
-            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
-
-        # Determine media type
-        suffix = image_path.suffix.lower()
-        media_type_map = {
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".png": "image/png",
-            ".gif": "image/gif",
-            ".webp": "image/webp",
-        }
-        media_type = media_type_map.get(suffix, "image/jpeg")
-
+        image_data, media_type = self._load_image_from_file(image_path)
         return self._extract(image_data, media_type)
 
     def extract_from_base64(
@@ -266,19 +253,16 @@ class RecipeExtractor:
         )
 
     def _load_image_from_file(self, image_path: Path) -> tuple[str, str]:
-        """Load image file and return (base64_data, media_type)."""
-        with open(image_path, "rb") as f:
-            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+        """Load and preprocess image file for Claude Vision.
 
-        suffix = image_path.suffix.lower()
-        media_type_map = {
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".png": "image/png",
-            ".gif": "image/gif",
-            ".webp": "image/webp",
-        }
-        media_type = media_type_map.get(suffix, "image/jpeg")
+        Preprocessing (when enabled) downsamples large images to reduce
+        token costs by ~60-70% while preserving text readability.
+        """
+        from app.services.image_preprocessor import get_preprocessor
+
+        preprocessor = get_preprocessor()
+        image_bytes, media_type = preprocessor.process_file(image_path)
+        image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
         return image_data, media_type
 
     def extract_from_multiple_files(self, image_paths: List[Path]) -> ExtractedRecipe:
@@ -336,12 +320,18 @@ class RecipeExtractor:
 
         # Add original image if available (prefer DB data over file path)
         if original_image_data:
-            image_b64 = base64.standard_b64encode(original_image_data).decode("utf-8")
+            from app.services.image_preprocessor import get_preprocessor
+            preprocessor = get_preprocessor()
+            processed_bytes, media_type = preprocessor.process_bytes(
+                original_image_data,
+                original_media_type=original_image_mime,
+            )
+            image_b64 = base64.standard_b64encode(processed_bytes).decode("utf-8")
             content.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
-                    "media_type": original_image_mime or "image/jpeg",
+                    "media_type": media_type,
                     "data": image_b64,
                 },
             })
