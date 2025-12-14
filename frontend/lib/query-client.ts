@@ -20,7 +20,8 @@ export const queryKeys = {
     list: (filters: Record<string, unknown>) => [...queryKeys.recipes.lists(), filters] as const,
     details: () => [...queryKeys.recipes.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.recipes.details(), id] as const,
-    count: (filters: Record<string, unknown>) => [...queryKeys.recipes.all, 'count', filters] as const,
+    counts: () => [...queryKeys.recipes.all, 'count'] as const,
+    count: (filters: Record<string, unknown>) => [...queryKeys.recipes.counts(), filters] as const,
   },
   categories: {
     all: ['categories'] as const,

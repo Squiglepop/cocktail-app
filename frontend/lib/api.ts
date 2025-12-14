@@ -92,6 +92,7 @@ export interface RecipeFilters {
   method?: string;
   search?: string;
   min_rating?: string;
+  [key: string]: string | undefined;
 }
 
 export interface PaginationParams {

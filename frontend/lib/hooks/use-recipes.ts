@@ -91,7 +91,7 @@ export function useCreateRecipe() {
     onSuccess: (newRecipe) => {
       // Invalidate recipe list queries to refetch with new recipe
       queryClient.invalidateQueries({ queryKey: queryKeys.recipes.lists() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.recipes.all.concat(['count']) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.recipes.counts() });
 
       // Add the new recipe to the cache
       queryClient.setQueryData(queryKeys.recipes.detail(newRecipe.id), newRecipe);
@@ -180,7 +180,7 @@ export function useDeleteRecipe() {
     onSettled: () => {
       // Refetch lists to ensure cache is in sync
       queryClient.invalidateQueries({ queryKey: queryKeys.recipes.lists() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.recipes.all.concat(['count']) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.recipes.counts() });
     },
   });
 }
