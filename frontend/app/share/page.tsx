@@ -105,8 +105,14 @@ function ShareContent() {
                 View Recipe
               </Link>
               <Link
-                href="/recipes"
+                href={`/upload?enhance=${recipe.id}`}
                 className="btn btn-secondary w-full justify-center"
+              >
+                Add More Images
+              </Link>
+              <Link
+                href="/recipes"
+                className="btn btn-ghost w-full justify-center text-gray-500"
               >
                 Browse All Recipes
               </Link>
