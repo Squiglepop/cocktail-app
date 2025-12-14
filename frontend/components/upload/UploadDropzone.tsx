@@ -39,6 +39,22 @@ export function UploadDropzone({
 
   const isEnhanceMode = !!enhanceRecipeId;
 
+  // Cleanup blob URLs when preview changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (preview?.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
+
+  // Helper to revoke blob URL before setting new preview
+  const revokePreviewIfBlob = useCallback(() => {
+    if (preview?.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
+  }, [preview]);
+
   const doExtraction = useCallback(async (files: File[]) => {
     setState('uploading');
     setError(null);
@@ -64,12 +80,12 @@ export function UploadDropzone({
   const processFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
 
-    // Show preview of first file
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(files[0]);
+    // Clean up previous blob URL before creating new one
+    revokePreviewIfBlob();
+
+    // Show preview of first file using blob URL (more memory efficient than data URL)
+    const objectUrl = URL.createObjectURL(files[0]);
+    setPreview(objectUrl);
 
     setError(null);
     setPendingFiles(files);
@@ -96,7 +112,7 @@ export function UploadDropzone({
 
     // No duplicates found, proceed with extraction
     await doExtraction(files);
-  }, [isEnhanceMode, token, doExtraction]);
+  }, [isEnhanceMode, token, doExtraction, revokePreviewIfBlob]);
 
   const proceedWithUpload = useCallback(async () => {
     if (pendingFiles.length > 0) {
@@ -105,11 +121,12 @@ export function UploadDropzone({
   }, [pendingFiles, doExtraction]);
 
   const cancelUpload = useCallback(() => {
+    revokePreviewIfBlob();
     setState('idle');
     setPendingFiles([]);
     setDuplicateMatches([]);
     setPreview(null);
-  }, []);
+  }, [revokePreviewIfBlob]);
 
   // Handle clipboard paste anywhere on the page
   useEffect(() => {
@@ -160,6 +177,9 @@ export function UploadDropzone({
   const handleUrlSubmit = async () => {
     if (!imageUrl.trim()) return;
 
+    // Clean up any existing blob URL before setting the regular URL preview
+    revokePreviewIfBlob();
+
     setError(null);
     setPreview(imageUrl);
 
@@ -189,6 +209,7 @@ export function UploadDropzone({
   });
 
   const reset = () => {
+    revokePreviewIfBlob();
     setState('idle');
     setError(null);
     setPreview(null);
