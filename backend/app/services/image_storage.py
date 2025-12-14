@@ -50,17 +50,42 @@ class ImageStorageService:
         """
         Get the full filesystem path for an image filename.
 
+        Handles both new storage format (just filename) and legacy format
+        (uploads/filename path) for backwards compatibility.
+
         Args:
             filename: The image filename (relative path).
 
         Returns:
             Full Path object to the image file.
         """
-        return self.storage_dir / filename
+        # Try the standard storage location first
+        standard_path = self.storage_dir / filename
+        if standard_path.exists():
+            return standard_path
+
+        # Legacy support: if filename has 'uploads/' prefix, check the old location
+        # Old recipes stored full paths like 'uploads/xxx.jpg' and files were in ./uploads/
+        if filename.startswith("uploads/"):
+            legacy_path = Path(filename)
+            if legacy_path.exists():
+                return legacy_path
+
+        # Also check for the filename without uploads/ prefix at the root
+        if filename.startswith("uploads/"):
+            bare_filename = filename.replace("uploads/", "", 1)
+            bare_path = self.storage_dir / bare_filename
+            if bare_path.exists():
+                return bare_path
+
+        # Return the standard path (may not exist, caller handles 404)
+        return standard_path
 
     def delete_image(self, filename: str) -> bool:
         """
         Delete an image file from the filesystem.
+
+        Handles both new storage format and legacy format for backwards compatibility.
 
         Args:
             filename: The image filename to delete.
@@ -68,7 +93,8 @@ class ImageStorageService:
         Returns:
             True if the file was deleted, False if it didn't exist.
         """
-        filepath = self.storage_dir / filename
+        # Use get_image_path to find the actual file location (handles legacy paths)
+        filepath = self.get_image_path(filename)
         if filepath.exists():
             filepath.unlink()
             return True

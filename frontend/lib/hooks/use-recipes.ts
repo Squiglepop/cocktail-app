@@ -147,6 +147,12 @@ export function useUpdateRecipe() {
   });
 }
 
+// Type for infinite query data structure
+interface InfiniteRecipeData {
+  pages: RecipeListItem[][];
+  pageParams: number[];
+}
+
 // Hook for deleting a recipe with optimistic updates
 export function useDeleteRecipe() {
   const queryClient = useQueryClient();
@@ -159,14 +165,36 @@ export function useDeleteRecipe() {
       await queryClient.cancelQueries({ queryKey: queryKeys.recipes.lists() });
 
       // Snapshot previous list data for potential rollback
-      const previousLists = queryClient.getQueriesData<RecipeListItem[]>({
+      // Use unknown type since data could be flat array or infinite query structure
+      const previousLists = queryClient.getQueriesData<unknown>({
         queryKey: queryKeys.recipes.lists(),
       });
 
       // Optimistically remove from all list caches
-      queryClient.setQueriesData<RecipeListItem[]>(
+      // Handle both flat arrays (useRecipes) and infinite query structure (useInfiniteRecipes)
+      queryClient.setQueriesData<unknown>(
         { queryKey: queryKeys.recipes.lists() },
-        (old) => old?.filter((recipe) => recipe.id !== id)
+        (old: unknown) => {
+          if (!old) return old;
+
+          // Check if it's an infinite query structure (has pages array)
+          if (typeof old === 'object' && old !== null && 'pages' in old) {
+            const infiniteData = old as InfiniteRecipeData;
+            return {
+              ...infiniteData,
+              pages: infiniteData.pages.map((page) =>
+                page.filter((recipe) => recipe.id !== id)
+              ),
+            };
+          }
+
+          // It's a flat array
+          if (Array.isArray(old)) {
+            return old.filter((recipe: RecipeListItem) => recipe.id !== id);
+          }
+
+          return old;
+        }
       );
 
       return { previousLists };
