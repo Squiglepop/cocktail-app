@@ -10,6 +10,7 @@ from .duplicate_detector import (
     DuplicateMatch,
 )
 from .image_storage import ImageStorageService, get_image_storage
+from .cleanup import OrphanedFileCleanupService, CleanupStats, get_cleanup_service
 
 __all__ = [
     "get_db",
@@ -25,4 +26,7 @@ __all__ = [
     "DuplicateMatch",
     "ImageStorageService",
     "get_image_storage",
+    "OrphanedFileCleanupService",
+    "CleanupStats",
+    "get_cleanup_service",
 ]

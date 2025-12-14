@@ -48,6 +48,7 @@ from .collection import (
     CollectionShareResponse,
     CollectionShareListResponse,
 )
+from .cleanup import CleanupStatsResponse
 
 __all__ = [
     "IngredientBase",
@@ -93,4 +94,6 @@ __all__ = [
     "CollectionShareUpdate",
     "CollectionShareResponse",
     "CollectionShareListResponse",
+    # Cleanup schemas
+    "CleanupStatsResponse",
 ]
