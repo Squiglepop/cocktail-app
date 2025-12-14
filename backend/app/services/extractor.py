@@ -131,17 +131,17 @@ Review ALL images (original and new) along with the existing extraction.
 Return an UPDATED and COMPLETE recipe that merges information from all screenshots.
 
 Return a JSON object with this structure:
-{
+{{
   "name": "Name of the cocktail",
   "description": "Brief description if visible",
   "ingredients": [
-    {
+    {{
       "name": "ingredient name",
       "amount": 2.0,
       "unit": "oz",
       "notes": "any notes like 'muddled' or 'fresh'",
       "type": "spirit|liqueur|juice|syrup|bitter|mixer|garnish|other"
-    }
+    }}
   ],
   "instructions": "Step by step instructions if visible",
   "template": "The cocktail family/template",
@@ -151,7 +151,7 @@ Return a JSON object with this structure:
   "method": "Preparation method (shaken, stirred, etc.)",
   "garnish": "Garnish description",
   "notes": "Any additional notes"
-}
+}}
 
 For template, choose from: """ + ", ".join([f"{t.value} ({TEMPLATE_DESCRIPTIONS.get(t, '')})" for t in CocktailTemplate]) + """
 
