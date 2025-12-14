@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { Categories, CategoryItem, CategoryGroup, fetchCategories } from '@/lib/api';
-import { X, ChevronDown, ChevronUp, SlidersHorizontal, Heart } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useCategories } from '@/lib/hooks';
+import { X, SlidersHorizontal, Heart } from 'lucide-react';
 import { useFavourites } from '@/lib/favourites-context';
 
 interface FilterSidebarProps {
@@ -21,8 +21,7 @@ interface FilterSidebarProps {
 }
 
 export function FilterSidebar({ filters, onFilterChange, className = '', variant = 'sidebar' }: FilterSidebarProps) {
-  const [categories, setCategories] = useState<Categories | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: categories, isLoading: loading } = useCategories();
   const [isExpanded, setIsExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { favouriteCount } = useFavourites();
@@ -40,13 +39,6 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [variant, isExpanded]);
-
-  useEffect(() => {
-    fetchCategories()
-      .then(setCategories)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
 
   const updateFilter = (key: string, value: string) => {
     onFilterChange({

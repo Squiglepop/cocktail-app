@@ -1,13 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Recipe,
-  fetchRecipe,
-  deleteRecipe,
   updateRecipeRating,
   formatEnumValue,
   formatUnit,
@@ -16,6 +13,7 @@ import {
 import { StarRating } from '@/components/recipes/StarRating';
 import { useAuth } from '@/lib/auth-context';
 import { useFavourites } from '@/lib/favourites-context';
+import { useRecipe, useDeleteRecipe } from '@/lib/hooks';
 import { AddToPlaylistButton } from '@/components/playlists/AddToPlaylistButton';
 import {
   ArrowLeft,
@@ -35,37 +33,32 @@ export default function RecipeDetailPage() {
   const router = useRouter();
   const { user, token } = useAuth();
   const { favourites, toggleFavourite } = useFavourites();
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
   const [updatingRating, setUpdatingRating] = useState(false);
+
+  const recipeId = params.id as string;
+
+  // Fetch recipe using React Query
+  const { data: recipe, isLoading: loading, refetch } = useRecipe(recipeId, token);
+
+  // Delete mutation
+  const deleteRecipeMutation = useDeleteRecipe();
+  const deleting = deleteRecipeMutation.isPending;
 
   // Check if current user is the owner of this recipe
   const isOwner = user && recipe && recipe.user_id === user.id;
   // Allow editing for recipes without an owner (backwards compatibility) or if user is owner
   const canEdit = recipe && (recipe.user_id === null || recipe.user_id === undefined || isOwner);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchRecipe(params.id as string, token)
-        .then(setRecipe)
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-  }, [params.id, token]);
-
   const handleDelete = async () => {
     if (!recipe) return;
     if (!confirm('Are you sure you want to delete this recipe?')) return;
 
-    setDeleting(true);
     try {
-      await deleteRecipe(recipe.id, token);
+      await deleteRecipeMutation.mutateAsync({ id: recipe.id, token });
       router.push('/');
     } catch (error) {
       console.error('Failed to delete:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete recipe');
-      setDeleting(false);
     }
   };
 
@@ -88,11 +81,8 @@ export default function RecipeDetailPage() {
         newRating === 0 ? null : newRating,
         token
       );
-      // Update local state with new rating
-      setRecipe({
-        ...recipe,
-        my_rating: newRating === 0 ? undefined : newRating,
-      });
+      // Refetch to update the cache
+      refetch();
     } catch (error) {
       console.error('Failed to update rating:', error);
       alert(error instanceof Error ? error.message : 'Failed to update rating');

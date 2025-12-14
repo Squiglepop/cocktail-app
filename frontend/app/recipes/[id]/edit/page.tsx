@@ -4,16 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Recipe,
-  Categories,
   RecipeInput,
-  RecipeIngredientInput,
-  fetchRecipe,
-  fetchCategories,
-  updateRecipe,
   formatEnumValue,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useRecipe, useCategories, useUpdateRecipe } from '@/lib/hooks';
 import { ArrowLeft, Plus, Trash2, Save, Loader2 } from 'lucide-react';
 
 interface IngredientFormData {
@@ -30,12 +25,9 @@ export default function EditRecipePage() {
   const params = useParams();
   const router = useRouter();
   const { user, token, isLoading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Categories | null>(null);
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   // Form state
   const [name, setName] = useState('');
@@ -50,66 +42,58 @@ export default function EditRecipePage() {
   const [notes, setNotes] = useState('');
   const [ingredients, setIngredients] = useState<IngredientFormData[]>([]);
 
+  const recipeId = params.id as string;
+
+  // Use React Query hooks
+  const { data: recipe, isLoading: recipeLoading } = useRecipe(recipeId, token);
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const updateRecipeMutation = useUpdateRecipe();
+  const saving = updateRecipeMutation.isPending;
+
+  const loading = recipeLoading || categoriesLoading || authLoading;
+
+  // Initialize form when recipe data is loaded
   useEffect(() => {
-    async function loadData() {
-      if (!params.id || authLoading) return;
+    if (!recipe || formInitialized) return;
 
-      try {
-        const [loadedRecipe, cats] = await Promise.all([
-          fetchRecipe(params.id as string),
-          fetchCategories(),
-        ]);
+    // Check if user has permission to edit
+    const canEdit = recipe.user_id === null ||
+                   recipe.user_id === undefined ||
+                   (user && recipe.user_id === user.id);
 
-        setRecipe(loadedRecipe);
-
-        // Check if user has permission to edit
-        // Allow if recipe has no owner (backwards compatibility) or user is owner
-        const canEdit = loadedRecipe.user_id === null ||
-                       loadedRecipe.user_id === undefined ||
-                       (user && loadedRecipe.user_id === user.id);
-
-        if (!canEdit) {
-          setUnauthorized(true);
-          setLoading(false);
-          return;
-        }
-
-        setCategories(cats);
-        setName(loadedRecipe.name);
-        setDescription(loadedRecipe.description || '');
-        setInstructions(loadedRecipe.instructions || '');
-        setTemplate(loadedRecipe.template || '');
-        setMainSpirit(loadedRecipe.main_spirit || '');
-        setGlassware(loadedRecipe.glassware || '');
-        setServingStyle(loadedRecipe.serving_style || '');
-        setMethod(loadedRecipe.method || '');
-        setGarnish(loadedRecipe.garnish || '');
-        setNotes(loadedRecipe.notes || '');
-
-        // Convert recipe ingredients to form data
-        setIngredients(
-          loadedRecipe.ingredients
-            .sort((a, b) => a.order - b.order)
-            .map((ri) => ({
-              id: ri.ingredient.id,
-              ingredient_name: ri.ingredient.name,
-              ingredient_type: ri.ingredient.type,
-              amount: ri.amount?.toString() || '',
-              unit: ri.unit || '',
-              notes: ri.notes || '',
-              optional: ri.optional,
-            }))
-        );
-      } catch (err) {
-        setError('Failed to load recipe');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    if (!canEdit) {
+      setUnauthorized(true);
+      return;
     }
 
-    loadData();
-  }, [params.id, authLoading, user]);
+    setName(recipe.name);
+    setDescription(recipe.description || '');
+    setInstructions(recipe.instructions || '');
+    setTemplate(recipe.template || '');
+    setMainSpirit(recipe.main_spirit || '');
+    setGlassware(recipe.glassware || '');
+    setServingStyle(recipe.serving_style || '');
+    setMethod(recipe.method || '');
+    setGarnish(recipe.garnish || '');
+    setNotes(recipe.notes || '');
+
+    // Convert recipe ingredients to form data
+    setIngredients(
+      recipe.ingredients
+        .sort((a, b) => a.order - b.order)
+        .map((ri) => ({
+          id: ri.ingredient.id,
+          ingredient_name: ri.ingredient.name,
+          ingredient_type: ri.ingredient.type,
+          amount: ri.amount?.toString() || '',
+          unit: ri.unit || '',
+          notes: ri.notes || '',
+          optional: ri.optional,
+        }))
+    );
+
+    setFormInitialized(true);
+  }, [recipe, user, formInitialized]);
 
   const addIngredient = () => {
     setIngredients([
@@ -139,7 +123,6 @@ export default function EditRecipePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
 
     try {
@@ -167,15 +150,14 @@ export default function EditRecipePage() {
           })),
       };
 
-      await updateRecipe(params.id as string, recipeData, token);
-      router.push(`/recipes/${params.id}`);
+      await updateRecipeMutation.mutateAsync({ id: recipeId, data: recipeData, token });
+      router.push(`/recipes/${recipeId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save recipe');
-      setSaving(false);
     }
   };
 
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-center py-12">
@@ -195,7 +177,7 @@ export default function EditRecipePage() {
           <p className="text-gray-600 mb-4">
             You don&apos;t have permission to edit this recipe.
           </p>
-          <Link href={`/recipes/${params.id}`} className="text-amber-600 hover:text-amber-700">
+          <Link href={`/recipes/${recipeId}`} className="text-amber-600 hover:text-amber-700">
             Back to recipe
           </Link>
         </div>
@@ -216,6 +198,8 @@ export default function EditRecipePage() {
     );
   }
 
+  if (!categories) return null;
+
   const units = ['oz', 'ml', 'cl', 'dash', 'drop', 'barspoon', 'tsp', 'tbsp', 'rinse', 'float', 'top', 'whole', 'half', 'wedge', 'slice', 'peel', 'sprig', 'leaf'];
   const ingredientTypes = ['spirit', 'liqueur', 'wine_fortified', 'bitter', 'syrup', 'juice', 'mixer', 'dairy', 'egg', 'garnish', 'other'];
 
@@ -223,7 +207,7 @@ export default function EditRecipePage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Back button */}
       <Link
-        href={`/recipes/${params.id}`}
+        href={`/recipes/${recipeId}`}
         className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -511,7 +495,7 @@ export default function EditRecipePage() {
         {/* Actions */}
         <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
           <Link
-            href={`/recipes/${params.id}`}
+            href={`/recipes/${recipeId}`}
             className="btn btn-ghost"
           >
             Cancel

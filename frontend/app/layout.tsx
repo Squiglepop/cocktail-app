@@ -5,6 +5,7 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 import { Header } from '@/components/Header';
 import { AuthProvider } from '@/lib/auth-context';
 import { FavouritesProvider } from '@/lib/favourites-context';
+import { QueryProvider } from '@/lib/query-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -37,22 +38,24 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={inter.className}>
-        <AuthProvider>
-          <FavouritesProvider>
-            <ServiceWorkerRegistration />
-            <div className="min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <footer className="border-t border-gray-200 bg-white py-6">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <p className="text-center text-gray-500 text-sm">
-                  Cocktail Recipe Library - Extract recipes from screenshots using AI
-                </p>
+        <QueryProvider>
+          <AuthProvider>
+            <FavouritesProvider>
+              <ServiceWorkerRegistration />
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-1">{children}</main>
+                <footer className="border-t border-gray-200 bg-white py-6">
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <p className="text-center text-gray-500 text-sm">
+                      Cocktail Recipe Library - Extract recipes from screenshots using AI
+                    </p>
+                  </div>
+                </footer>
               </div>
-            </footer>
-          </div>
-          </FavouritesProvider>
-        </AuthProvider>
+            </FavouritesProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

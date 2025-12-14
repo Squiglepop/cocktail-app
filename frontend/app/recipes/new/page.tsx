@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Categories,
   RecipeInput,
-  fetchCategories,
-  createRecipe,
   formatEnumValue,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useCategories, useCreateRecipe } from '@/lib/hooks';
 import { ArrowLeft, Plus, Trash2, Save, Loader2 } from 'lucide-react';
 
 interface IngredientFormData {
@@ -25,10 +23,7 @@ interface IngredientFormData {
 export default function NewRecipePage() {
   const router = useRouter();
   const { token } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Categories | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -52,15 +47,10 @@ export default function NewRecipePage() {
     },
   ]);
 
-  useEffect(() => {
-    fetchCategories()
-      .then(setCategories)
-      .catch((err) => {
-        setError('Failed to load categories');
-        console.error(err);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  // Use React Query hooks
+  const { data: categories, isLoading: loading } = useCategories();
+  const createRecipeMutation = useCreateRecipe();
+  const saving = createRecipeMutation.isPending;
 
   const addIngredient = () => {
     setIngredients([
@@ -90,7 +80,6 @@ export default function NewRecipePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
 
     try {
@@ -117,11 +106,10 @@ export default function NewRecipePage() {
           })),
       };
 
-      const recipe = await createRecipe(recipeData, token);
+      const recipe = await createRecipeMutation.mutateAsync({ data: recipeData, token });
       router.push(`/recipes/${recipe.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create recipe');
-      setSaving(false);
     }
   };
 

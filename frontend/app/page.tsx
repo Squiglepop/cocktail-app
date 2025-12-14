@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { RecipeListItem, RecipeFilters, RecipeCount, fetchRecipes, fetchRecipeCount } from '@/lib/api';
+import { RecipeFilters } from '@/lib/api';
 import { FilterSidebar } from '@/components/recipes/FilterSidebar';
 import { RecipeGrid } from '@/components/recipes/RecipeGrid';
 import { useAuth } from '@/lib/auth-context';
 import { useFavourites } from '@/lib/favourites-context';
-import { Plus, Upload, GlassWater } from 'lucide-react';
+import { useInfiniteRecipes, useRecipeCount } from '@/lib/hooks';
+import { Plus, Upload } from 'lucide-react';
 
-const INITIAL_LIMIT = 10;
-const LOAD_MORE_LIMIT = 20;
+const PAGE_SIZE = 20;
 
 // Extended filters type to include favourites_only (client-side filter)
 interface ExtendedFilters extends RecipeFilters {
@@ -20,37 +20,37 @@ interface ExtendedFilters extends RecipeFilters {
 export default function HomePage() {
   const { token } = useAuth();
   const { favourites } = useFavourites();
-  const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [filters, setFilters] = useState<ExtendedFilters>({});
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [recipeCount, setRecipeCount] = useState<RecipeCount | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  // Use ref to track current skip value to avoid stale closures
-  const skipRef = useRef(0);
 
   // Extract favourites_only for client-side filtering (won't trigger API reload)
   const favourites_only = filters.favourites_only;
 
-  // Memoize API filters to prevent unnecessary re-renders
-  // Only include filters that actually go to the API
-  const apiFiltersKey = useMemo(() => {
-    return JSON.stringify({
-      template: filters.template,
-      main_spirit: filters.main_spirit,
-      glassware: filters.glassware,
-      serving_style: filters.serving_style,
-      search: filters.search,
-      min_rating: filters.min_rating,
-    });
-  }, [filters.template, filters.main_spirit, filters.glassware, filters.serving_style, filters.search, filters.min_rating]);
-
-  const apiFilters: RecipeFilters = useMemo(() => JSON.parse(apiFiltersKey), [apiFiltersKey]);
+  // API filters (excluding client-side only filters)
+  const apiFilters: RecipeFilters = useMemo(() => {
+    const { favourites_only: _, ...rest } = filters;
+    return rest;
+  }, [filters]);
 
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some((v) => v);
+
+  // Fetch recipes with infinite scroll
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteRecipes(apiFilters, PAGE_SIZE, token);
+
+  // Fetch recipe count
+  const { data: recipeCount } = useRecipeCount(apiFilters);
+
+  // Flatten pages into a single array
+  const recipes = useMemo(
+    () => data?.pages.flatMap((page) => page) ?? [],
+    [data]
+  );
 
   // Filter recipes by favourites on the client side
   const displayedRecipes = useMemo(() => {
@@ -58,50 +58,15 @@ export default function HomePage() {
     return recipes.filter((recipe) => favourites.has(recipe.id));
   }, [recipes, favourites_only, favourites]);
 
-  // Load initial recipes and count
-  const loadRecipes = useCallback(async () => {
-    setLoading(true);
-    setHasMore(true);
-    skipRef.current = 0;
-    try {
-      const [data, count] = await Promise.all([
-        fetchRecipes(apiFilters, { skip: 0, limit: INITIAL_LIMIT }, token),
-        fetchRecipeCount(apiFilters),
-      ]);
-      setRecipes(data);
-      setRecipeCount(count);
-      skipRef.current = data.length;
-      setHasMore(data.length === INITIAL_LIMIT);
-    } catch (error) {
-      console.error('Failed to load recipes:', error);
-    } finally {
-      setLoading(false);
+  // Load more handler
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }, [apiFilters, token]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Load more recipes
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-
-    setLoadingMore(true);
-    try {
-      const data = await fetchRecipes(apiFilters, { skip: skipRef.current, limit: LOAD_MORE_LIMIT }, token);
-      if (data.length > 0) {
-        setRecipes((prev) => [...prev, ...data]);
-        skipRef.current += data.length;
-      }
-      setHasMore(data.length === LOAD_MORE_LIMIT);
-    } catch (error) {
-      console.error('Failed to load more recipes:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [apiFilters, loadingMore, hasMore, token]);
-
-  // Initial load and filter changes
-  useEffect(() => {
-    loadRecipes();
-  }, [loadRecipes]);
+  // Scroll sentinel ref for infinite scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -132,7 +97,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Cocktail Recipes</h1>
           <p className="text-gray-500 mt-1">
-            {loading
+            {isLoading
               ? 'Loading recipes...'
               : favourites_only
                 ? `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`
@@ -168,18 +133,27 @@ export default function HomePage() {
         </div>
 
         {/* Recipe grid */}
-        <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} onLoadMore={loadMore} />
+        <RecipeGrid
+          recipes={displayedRecipes}
+          loading={isLoading}
+          loadingMore={isFetchingNextPage}
+          onLoadMore={loadMore}
+        />
       </div>
 
       {/* Desktop layout */}
       <div className="hidden md:flex gap-8">
-        <FilterSidebar filters={filters} onFilterChange={setFilters} className="w-64 shrink-0" />
+        <FilterSidebar
+          filters={filters}
+          onFilterChange={setFilters}
+          className="w-64 shrink-0"
+        />
         <div className="flex-1">
           <div className="mb-6 flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Cocktail Recipes</h1>
               <p className="text-gray-500 mt-1">
-                {loading
+                {isLoading
                   ? 'Loading recipes...'
                   : favourites_only
                     ? `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`
@@ -201,7 +175,12 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-          <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} onLoadMore={loadMore} />
+          <RecipeGrid
+            recipes={displayedRecipes}
+            loading={isLoading}
+            loadingMore={isFetchingNextPage}
+            onLoadMore={loadMore}
+          />
         </div>
       </div>
 

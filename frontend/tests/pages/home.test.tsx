@@ -2,20 +2,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import HomePage from '@/app/page'
-import { AuthProvider } from '@/lib/auth-context'
-import { FavouritesProvider } from '@/lib/favourites-context'
+import { TestProviders, createTestQueryClient } from '../utils/test-utils'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
+import { QueryClient } from '@tanstack/react-query'
 
 const API_BASE = '*/api'
 
+let queryClient: QueryClient
+
 function renderHomePage() {
+  queryClient = createTestQueryClient()
   return render(
-    <AuthProvider>
-      <FavouritesProvider>
-        <HomePage />
-      </FavouritesProvider>
-    </AuthProvider>
+    <TestProviders queryClient={queryClient}>
+      <HomePage />
+    </TestProviders>
   )
 }
 

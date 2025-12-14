@@ -2,13 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FilterSidebar } from '@/components/recipes/FilterSidebar'
-import { FavouritesProvider } from '@/lib/favourites-context'
+import { TestProviders, createTestQueryClient } from '../utils/test-utils'
+import { QueryClient } from '@tanstack/react-query'
+
+let queryClient: QueryClient
 
 function renderFilterSidebar(props: Parameters<typeof FilterSidebar>[0]) {
+  queryClient = createTestQueryClient()
   return render(
-    <FavouritesProvider>
+    <TestProviders queryClient={queryClient}>
       <FilterSidebar {...props} />
-    </FavouritesProvider>
+    </TestProviders>
   )
 }
 

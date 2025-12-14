@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NewRecipePage from '@/app/recipes/new/page'
-import { AuthProvider } from '@/lib/auth-context'
+import { TestProviders, createTestQueryClient } from '../utils/test-utils'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 import { mockCategories } from '../mocks/handlers'
+import { QueryClient } from '@tanstack/react-query'
 
 const API_BASE = '*/api'
 
@@ -26,11 +27,14 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
+let queryClient: QueryClient
+
 function renderNewRecipePage() {
+  queryClient = createTestQueryClient()
   return render(
-    <AuthProvider>
+    <TestProviders queryClient={queryClient}>
       <NewRecipePage />
-    </AuthProvider>
+    </TestProviders>
   )
 }
 
