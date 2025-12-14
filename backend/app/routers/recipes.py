@@ -1,10 +1,11 @@
 """
 Recipe CRUD endpoints.
 """
-from typing import List, Optional
+from pathlib import Path
+from typing import Generator, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import Response, FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -275,12 +276,79 @@ def get_recipe(
     )
 
 
+def _stream_file(
+    file_path: Path, start: int = 0, end: Optional[int] = None, chunk_size: int = 64 * 1024
+) -> Generator[bytes, None, None]:
+    """Stream file contents in chunks for memory-efficient serving.
+
+    Args:
+        file_path: Path to the file to stream
+        start: Byte offset to start reading from (for range requests)
+        end: Byte offset to stop reading at (inclusive, for range requests)
+        chunk_size: Size of chunks to yield (default 64KB)
+    """
+    with open(file_path, "rb") as f:
+        f.seek(start)
+        remaining = (end - start + 1) if end is not None else None
+
+        while True:
+            read_size = min(chunk_size, remaining) if remaining is not None else chunk_size
+            chunk = f.read(read_size)
+            if not chunk:
+                break
+            yield chunk
+            if remaining is not None:
+                remaining -= len(chunk)
+                if remaining <= 0:
+                    break
+
+
+def _parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
+    """Parse HTTP Range header and return (start, end) byte positions.
+
+    Supports formats: "bytes=0-499", "bytes=500-", "bytes=-500"
+    """
+    if not range_header.startswith("bytes="):
+        raise ValueError("Invalid range header format")
+
+    range_spec = range_header[6:]  # Remove "bytes=" prefix
+
+    if range_spec.startswith("-"):
+        # Last N bytes: "bytes=-500"
+        suffix_length = int(range_spec[1:])
+        start = max(0, file_size - suffix_length)
+        end = file_size - 1
+    elif range_spec.endswith("-"):
+        # From start to end: "bytes=500-"
+        start = int(range_spec[:-1])
+        end = file_size - 1
+    else:
+        # Specific range: "bytes=0-499"
+        parts = range_spec.split("-")
+        start = int(parts[0])
+        end = min(int(parts[1]), file_size - 1)
+
+    if start > end or start >= file_size:
+        raise ValueError("Invalid range")
+
+    return start, end
+
+
 @router.get("/{recipe_id}/image")
-def get_recipe_image(recipe_id: str, db: Session = Depends(get_db)):
-    """Get the source image for a recipe."""
+def get_recipe_image(
+    recipe_id: str, request: Request, db: Session = Depends(get_db)
+):
+    """Get the source image for a recipe.
+
+    Supports HTTP Range requests for efficient streaming to mobile devices.
+    Uses chunked streaming to minimize memory usage.
+    """
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
+
+    media_type = recipe.source_image_mime or "image/jpeg"
+    cache_headers = {"Cache-Control": "public, max-age=86400"}  # Cache for 24h
 
     # Prefer filesystem storage, fall back to DB BLOB for legacy data
     if recipe.source_image_path:
@@ -288,17 +356,56 @@ def get_recipe_image(recipe_id: str, db: Session = Depends(get_db)):
         image_path = image_storage.get_image_path(recipe.source_image_path)
         if not image_path.exists():
             raise HTTPException(status_code=404, detail="Image file not found")
-        return FileResponse(
-            path=image_path,
-            media_type=recipe.source_image_mime or "image/jpeg",
-            headers={"Cache-Control": "public, max-age=86400"},  # Cache for 24h
-        )
+
+        file_size = image_path.stat().st_size
+        range_header = request.headers.get("range")
+
+        if range_header:
+            # Handle range request for partial content (mobile optimization)
+            try:
+                start, end = _parse_range_header(range_header, file_size)
+            except ValueError:
+                raise HTTPException(
+                    status_code=416,
+                    detail="Requested range not satisfiable",
+                    headers={"Content-Range": f"bytes */{file_size}"},
+                )
+
+            content_length = end - start + 1
+            headers = {
+                **cache_headers,
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(content_length),
+            }
+
+            return StreamingResponse(
+                _stream_file(image_path, start, end),
+                status_code=206,
+                media_type=media_type,
+                headers=headers,
+            )
+        else:
+            # Full file request - still stream for memory efficiency
+            headers = {
+                **cache_headers,
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(file_size),
+            }
+
+            return StreamingResponse(
+                _stream_file(image_path),
+                media_type=media_type,
+                headers=headers,
+            )
+
     elif recipe.source_image_data:
-        # Legacy: serve from database BLOB
+        # Legacy: serve from database BLOB (no streaming available)
+        # Consider migrating these to filesystem storage
         return Response(
             content=recipe.source_image_data,
-            media_type=recipe.source_image_mime or "image/jpeg",
-            headers={"Cache-Control": "public, max-age=86400"},
+            media_type=media_type,
+            headers={**cache_headers, "Accept-Ranges": "none"},
         )
     else:
         raise HTTPException(status_code=404, detail="No image available for this recipe")

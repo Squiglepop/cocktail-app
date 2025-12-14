@@ -2,6 +2,8 @@
 Tests for recipe CRUD endpoints.
 """
 import pytest
+from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 
 class TestListRecipes:
@@ -431,3 +433,201 @@ class TestDeleteRecipe:
         )
 
         assert response.status_code == 404
+
+
+class TestGetRecipeImage:
+    """Tests for GET /api/recipes/{recipe_id}/image endpoint with streaming."""
+
+    def test_get_image_not_found(self, client):
+        """Test getting image for non-existent recipe returns 404."""
+        response = client.get("/api/recipes/non-existent-id/image")
+        assert response.status_code == 404
+
+    def test_get_image_no_image(self, client, orphan_recipe):
+        """Test getting image for recipe without image returns 404."""
+        response = client.get(f"/api/recipes/{orphan_recipe.id}/image")
+        assert response.status_code == 404
+        assert "no image" in response.json()["detail"].lower()
+
+    def test_get_image_streaming_full(self, client, test_session, tmp_path):
+        """Test getting full image returns streaming response with correct headers."""
+        from app.models import Recipe
+
+        # Create a test image file
+        image_data = b"FAKE_IMAGE_DATA_" * 1000  # ~16KB test data
+        image_file = tmp_path / "test_image.jpg"
+        image_file.write_bytes(image_data)
+
+        # Create recipe with image path
+        recipe = Recipe(
+            name="Image Test Recipe",
+            source_image_path=str(image_file),
+            source_image_mime="image/jpeg",
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        # Mock the image storage to return our test file path
+        with patch("app.routers.recipes.get_image_storage") as mock_storage:
+            mock_service = MagicMock()
+            mock_service.get_image_path.return_value = image_file
+            mock_storage.return_value = mock_service
+
+            response = client.get(f"/api/recipes/{recipe.id}/image")
+
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "image/jpeg"
+            assert response.headers["accept-ranges"] == "bytes"
+            assert response.headers["content-length"] == str(len(image_data))
+            assert "cache-control" in response.headers
+            assert response.content == image_data
+
+    def test_get_image_range_request(self, client, test_session, tmp_path):
+        """Test range request returns partial content (206)."""
+        from app.models import Recipe
+
+        # Create a test image file
+        image_data = b"0123456789" * 100  # 1000 bytes
+        image_file = tmp_path / "range_test.jpg"
+        image_file.write_bytes(image_data)
+
+        # Create recipe with image path
+        recipe = Recipe(
+            name="Range Test Recipe",
+            source_image_path=str(image_file),
+            source_image_mime="image/jpeg",
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        with patch("app.routers.recipes.get_image_storage") as mock_storage:
+            mock_service = MagicMock()
+            mock_service.get_image_path.return_value = image_file
+            mock_storage.return_value = mock_service
+
+            # Request bytes 0-99 (first 100 bytes)
+            response = client.get(
+                f"/api/recipes/{recipe.id}/image",
+                headers={"Range": "bytes=0-99"},
+            )
+
+            assert response.status_code == 206
+            assert response.headers["content-range"] == "bytes 0-99/1000"
+            assert response.headers["content-length"] == "100"
+            assert len(response.content) == 100
+            assert response.content == image_data[:100]
+
+    def test_get_image_range_request_suffix(self, client, test_session, tmp_path):
+        """Test range request with suffix (last N bytes)."""
+        from app.models import Recipe
+
+        image_data = b"0123456789" * 100  # 1000 bytes
+        image_file = tmp_path / "suffix_test.jpg"
+        image_file.write_bytes(image_data)
+
+        recipe = Recipe(
+            name="Suffix Range Test",
+            source_image_path=str(image_file),
+            source_image_mime="image/jpeg",
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        with patch("app.routers.recipes.get_image_storage") as mock_storage:
+            mock_service = MagicMock()
+            mock_service.get_image_path.return_value = image_file
+            mock_storage.return_value = mock_service
+
+            # Request last 50 bytes
+            response = client.get(
+                f"/api/recipes/{recipe.id}/image",
+                headers={"Range": "bytes=-50"},
+            )
+
+            assert response.status_code == 206
+            assert response.headers["content-range"] == "bytes 950-999/1000"
+            assert len(response.content) == 50
+            assert response.content == image_data[-50:]
+
+    def test_get_image_range_request_open_end(self, client, test_session, tmp_path):
+        """Test range request with open end (from N to end)."""
+        from app.models import Recipe
+
+        image_data = b"0123456789" * 100  # 1000 bytes
+        image_file = tmp_path / "open_end_test.jpg"
+        image_file.write_bytes(image_data)
+
+        recipe = Recipe(
+            name="Open End Range Test",
+            source_image_path=str(image_file),
+            source_image_mime="image/jpeg",
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        with patch("app.routers.recipes.get_image_storage") as mock_storage:
+            mock_service = MagicMock()
+            mock_service.get_image_path.return_value = image_file
+            mock_storage.return_value = mock_service
+
+            # Request from byte 900 to end
+            response = client.get(
+                f"/api/recipes/{recipe.id}/image",
+                headers={"Range": "bytes=900-"},
+            )
+
+            assert response.status_code == 206
+            assert response.headers["content-range"] == "bytes 900-999/1000"
+            assert len(response.content) == 100
+            assert response.content == image_data[900:]
+
+    def test_get_image_invalid_range(self, client, test_session, tmp_path):
+        """Test invalid range request returns 416."""
+        from app.models import Recipe
+
+        image_data = b"0123456789" * 100  # 1000 bytes
+        image_file = tmp_path / "invalid_range_test.jpg"
+        image_file.write_bytes(image_data)
+
+        recipe = Recipe(
+            name="Invalid Range Test",
+            source_image_path=str(image_file),
+            source_image_mime="image/jpeg",
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        with patch("app.routers.recipes.get_image_storage") as mock_storage:
+            mock_service = MagicMock()
+            mock_service.get_image_path.return_value = image_file
+            mock_storage.return_value = mock_service
+
+            # Request range beyond file size
+            response = client.get(
+                f"/api/recipes/{recipe.id}/image",
+                headers={"Range": "bytes=2000-3000"},
+            )
+
+            assert response.status_code == 416
+            assert "content-range" in response.headers
+            assert response.headers["content-range"] == "bytes */1000"
+
+    def test_get_image_legacy_blob(self, client, test_session):
+        """Test legacy BLOB images still work (without streaming)."""
+        from app.models import Recipe
+
+        # Create recipe with legacy BLOB storage
+        recipe = Recipe(
+            name="Legacy BLOB Recipe",
+            source_image_data=b"LEGACY_IMAGE_DATA",
+            source_image_mime="image/png",
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        response = client.get(f"/api/recipes/{recipe.id}/image")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+        assert response.headers["accept-ranges"] == "none"  # No range support for BLOB
+        assert response.content == b"LEGACY_IMAGE_DATA"
