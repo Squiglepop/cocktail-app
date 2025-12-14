@@ -150,9 +150,12 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   // Calculate total grid height including gaps
   const totalHeight = rowCount * (rowHeight + gap);
 
+  // Ensure minimum height for the grid
+  const gridHeight = Math.max(400, Math.min(dimensions.height || 600, totalHeight + 50));
+
   return (
-    <div ref={containerRef} className="w-full">
-      {dimensions.width > 0 && (
+    <div ref={containerRef} className="w-full min-h-[400px]">
+      {dimensions.width > 0 ? (
         <>
           <Grid
             gridRef={gridRef}
@@ -166,7 +169,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
             cellProps={{ recipes, columnCount, gap }}
             onCellsRendered={handleCellsRendered}
             style={{
-              height: Math.min(dimensions.height, totalHeight + 50),
+              height: gridHeight,
               width: dimensions.width,
               overflowX: 'hidden',
             }}
@@ -177,6 +180,13 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
             </div>
           )}
         </>
+      ) : (
+        // Fallback while measuring - show regular grid
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+          {recipes.map((recipe) => (
+            <RecipeCard key={recipe.id} recipe={recipe} />
+          ))}
+        </div>
       )}
     </div>
   );

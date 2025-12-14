@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useFavourites } from '@/lib/favourites-context';
 import { Plus, Upload, GlassWater } from 'lucide-react';
 
-const INITIAL_LIMIT = 20;
+const INITIAL_LIMIT = 10;
 const LOAD_MORE_LIMIT = 20;
 
 // Extended filters type to include favourites_only (client-side filter)
