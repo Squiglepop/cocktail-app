@@ -197,7 +197,7 @@ class RecipeExtractor:
     def _extract(self, image_data: str, media_type: str) -> ExtractedRecipe:
         """Perform extraction using Claude Vision."""
         message = self.client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-haiku-4-5-20250414",
             max_tokens=4096,
             messages=[
                 {
@@ -290,7 +290,7 @@ class RecipeExtractor:
         })
 
         message = self.client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-haiku-4-5-20250414",
             max_tokens=4096,
             messages=[{"role": "user", "content": content}],
         )
@@ -368,7 +368,7 @@ class RecipeExtractor:
         })
 
         message = self.client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-haiku-4-5-20250414",
             max_tokens=4096,
             messages=[{"role": "user", "content": content}],
         )
