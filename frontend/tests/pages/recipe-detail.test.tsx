@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RecipeDetailPage from '@/app/recipes/[id]/page'
 import { AuthProvider } from '@/lib/auth-context'
+import { FavouritesProvider } from '@/lib/favourites-context'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 import { mockRecipeDetail, mockUser } from '../mocks/handlers'
@@ -31,7 +32,9 @@ vi.mock('next/navigation', () => ({
 function renderRecipeDetailPage() {
   return render(
     <AuthProvider>
-      <RecipeDetailPage />
+      <FavouritesProvider>
+        <RecipeDetailPage />
+      </FavouritesProvider>
     </AuthProvider>
   )
 }

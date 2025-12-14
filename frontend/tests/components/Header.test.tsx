@@ -44,22 +44,25 @@ describe('Header', () => {
   })
 
   describe('Navigation', () => {
-    it('renders Recipes link', async () => {
+    it('renders Playlists link when logged in', async () => {
+      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+
       renderHeader()
 
       await waitFor(() => {
-        const recipesLink = screen.getByRole('link', { name: /recipes/i })
-        expect(recipesLink).toHaveAttribute('href', '/')
+        const playlistsLink = screen.getByRole('link', { name: /playlists/i })
+        expect(playlistsLink).toHaveAttribute('href', '/playlists')
       })
     })
 
-    it('renders Upload button', async () => {
+    it('does not show Playlists link when logged out', async () => {
       renderHeader()
 
       await waitFor(() => {
-        const uploadLink = screen.getByRole('link', { name: /upload/i })
-        expect(uploadLink).toHaveAttribute('href', '/upload')
+        expect(screen.getByRole('link', { name: /login/i })).toBeInTheDocument()
       })
+
+      expect(screen.queryByRole('link', { name: /playlists/i })).not.toBeInTheDocument()
     })
   })
 

@@ -168,7 +168,7 @@ export default function HomePage() {
         </div>
 
         {/* Recipe grid */}
-        <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} />
+        <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} onLoadMore={loadMore} />
       </div>
 
       {/* Desktop layout */}
@@ -201,11 +201,11 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-          <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} />
+          <RecipeGrid recipes={displayedRecipes} loading={loading} loadingMore={loadingMore} onLoadMore={loadMore} />
         </div>
       </div>
 
-      {/* Scroll sentinel for infinite scroll - single element outside responsive layouts */}
+      {/* Scroll sentinel for infinite scroll - fallback for non-virtualized views */}
       <div ref={loadMoreRef} className="h-4" />
     </div>
   );

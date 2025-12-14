@@ -36,9 +36,9 @@ describe('Home Page', () => {
       renderHomePage()
 
       await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { name: /cocktail recipes/i })
-        ).toBeInTheDocument()
+        // Page has both mobile and desktop layouts - get all and check at least one
+        const headings = screen.getAllByRole('heading', { name: /cocktail recipes/i })
+        expect(headings.length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -46,14 +46,18 @@ describe('Home Page', () => {
       renderHomePage()
 
       await waitFor(() => {
-        expect(screen.getByText(/2 recipes found/i)).toBeInTheDocument()
+        // Page has both mobile and desktop layouts
+        const counts = screen.getAllByText(/2 recipes/i)
+        expect(counts.length).toBeGreaterThanOrEqual(1)
       })
     })
 
     it('shows loading message while fetching', () => {
       renderHomePage()
 
-      expect(screen.getByText(/loading recipes/i)).toBeInTheDocument()
+      // Page has both mobile and desktop layouts
+      const loadingMessages = screen.getAllByText(/loading recipes/i)
+      expect(loadingMessages.length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -145,6 +149,14 @@ describe('Home Page', () => {
           return HttpResponse.json([
             { id: '1', name: 'Margarita', template: 'sour', created_at: '2024-01-01' },
           ])
+        }),
+        http.get(`${API_BASE}/recipes/count`, ({ request }) => {
+          const url = new URL(request.url)
+          const search = url.searchParams.get('search')
+          if (search === 'nonexistent') {
+            return HttpResponse.json({ total: 1, filtered: 0 })
+          }
+          return HttpResponse.json({ total: 1, filtered: 1 })
         })
       )
 
@@ -159,7 +171,9 @@ describe('Home Page', () => {
       await user.type(searchInput, 'nonexistent')
 
       await waitFor(() => {
-        expect(screen.getByText(/no recipes found/i)).toBeInTheDocument()
+        // Page has both mobile and desktop layouts
+        const emptyMessages = screen.getAllByText(/no recipes found/i)
+        expect(emptyMessages.length).toBeGreaterThanOrEqual(1)
       })
     })
   })
@@ -171,13 +185,18 @@ describe('Home Page', () => {
           return HttpResponse.json([
             { id: '1', name: 'Margarita', created_at: '2024-01-01' },
           ])
+        }),
+        http.get(`${API_BASE}/recipes/count`, () => {
+          return HttpResponse.json({ total: 1, filtered: 1 })
         })
       )
 
       renderHomePage()
 
       await waitFor(() => {
-        expect(screen.getByText(/1 recipe found/i)).toBeInTheDocument()
+        // Page has both mobile and desktop layouts
+        const counts = screen.getAllByText(/1 recipe/i)
+        expect(counts.length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -185,7 +204,9 @@ describe('Home Page', () => {
       renderHomePage()
 
       await waitFor(() => {
-        expect(screen.getByText(/2 recipes found/i)).toBeInTheDocument()
+        // Page has both mobile and desktop layouts
+        const counts = screen.getAllByText(/2 recipes/i)
+        expect(counts.length).toBeGreaterThanOrEqual(1)
       })
     })
   })
@@ -198,6 +219,9 @@ describe('Home Page', () => {
       server.use(
         http.get(`${API_BASE}/recipes`, () => {
           return HttpResponse.json({ detail: 'Server error' }, { status: 500 })
+        }),
+        http.get(`${API_BASE}/recipes/count`, () => {
+          return HttpResponse.json({ detail: 'Server error' }, { status: 500 })
         })
       )
 
@@ -205,9 +229,9 @@ describe('Home Page', () => {
 
       // Should not crash - the page should still render
       await waitFor(() => {
-        expect(
-          screen.getByRole('heading', { name: /cocktail recipes/i })
-        ).toBeInTheDocument()
+        // Page has both mobile and desktop layouts
+        const headings = screen.getAllByRole('heading', { name: /cocktail recipes/i })
+        expect(headings.length).toBeGreaterThanOrEqual(1)
       })
 
       consoleSpy.mockRestore()
