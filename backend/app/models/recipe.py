@@ -101,8 +101,8 @@ class Recipe(Base):
 
     @property
     def has_image(self) -> bool:
-        """Check if recipe has image data stored."""
-        return self.source_image_data is not None
+        """Check if recipe has an image stored (filesystem or legacy BLOB)."""
+        return self.source_image_path is not None or self.source_image_data is not None
 
 
 class Ingredient(Base):

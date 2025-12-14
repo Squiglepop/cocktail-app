@@ -25,6 +25,7 @@ from app.services import (
     map_extracted_to_create,
     check_for_duplicates,
     compute_hashes_for_recipe,
+    get_image_storage,
 )
 
 
@@ -141,10 +142,11 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
         # Convert to create schema
         recipe_data = map_extracted_to_create(extracted)
 
-        # Read image data from file for storage in DB
+        # Read image data from file for hashing and storage
         with open(Path(job.image_path), "rb") as img_file:
             image_data = img_file.read()
         suffix = Path(job.image_path).suffix.lower()
+        mime_type = MIME_TYPES.get(suffix, "image/jpeg")
 
         # Prepare ingredient data for fingerprint computation
         ingredient_tuples = [
@@ -156,6 +158,10 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
         content_hash, perceptual_hash, fingerprint = compute_hashes_for_recipe(
             image_data, recipe_data.name, ingredient_tuples
         )
+
+        # Save image to filesystem
+        image_storage = get_image_storage()
+        image_path = image_storage.save_image(image_data, mime_type)
 
         # Create recipe
         recipe = Recipe(
@@ -170,8 +176,8 @@ def extract_recipe(job_id: str, db: Session = Depends(get_db)):
             garnish=recipe_data.garnish,
             notes=recipe_data.notes,
             source_type="screenshot",
-            source_image_data=image_data,
-            source_image_mime=MIME_TYPES.get(suffix, "image/jpeg"),
+            source_image_path=image_path,
+            source_image_mime=mime_type,
             image_content_hash=content_hash,
             image_perceptual_hash=perceptual_hash,
             recipe_fingerprint=fingerprint,
@@ -297,6 +303,11 @@ async def upload_and_extract(
             content, recipe_data.name, ingredient_tuples
         )
 
+        # Save image to filesystem
+        mime_type = MIME_TYPES.get(suffix, "image/jpeg")
+        image_storage = get_image_storage()
+        image_path = image_storage.save_image(content, mime_type)
+
         recipe = Recipe(
             name=recipe_data.name,
             description=recipe_data.description,
@@ -309,8 +320,8 @@ async def upload_and_extract(
             garnish=recipe_data.garnish,
             notes=recipe_data.notes,
             source_type="screenshot",
-            source_image_data=content,
-            source_image_mime=MIME_TYPES.get(suffix, "image/jpeg"),
+            source_image_path=image_path,
+            source_image_mime=mime_type,
             image_content_hash=content_hash,
             image_perceptual_hash=perceptual_hash,
             recipe_fingerprint=fingerprint,
@@ -430,6 +441,11 @@ async def upload_and_extract_multi(
             primary_content, recipe_data.name, ingredient_tuples
         )
 
+        # Save primary image to filesystem
+        primary_mime = MIME_TYPES.get(primary_suffix, "image/jpeg")
+        image_storage = get_image_storage()
+        image_path = image_storage.save_image(primary_content, primary_mime)
+
         # Create recipe
         recipe = Recipe(
             name=recipe_data.name,
@@ -443,8 +459,8 @@ async def upload_and_extract_multi(
             garnish=recipe_data.garnish,
             notes=recipe_data.notes,
             source_type="screenshot",
-            source_image_data=primary_content,
-            source_image_mime=MIME_TYPES.get(primary_suffix, "image/jpeg"),
+            source_image_path=image_path,
+            source_image_mime=primary_mime,
             image_content_hash=content_hash,
             image_perceptual_hash=perceptual_hash,
             recipe_fingerprint=fingerprint,
@@ -569,10 +585,22 @@ async def enhance_recipe_with_images(
     try:
         # Run enhancement extraction
         extractor = RecipeExtractor()
+
+        # Get original image - prefer filesystem path, fall back to DB BLOB for migration
+        original_image_path = None
+        original_image_data = None
+        if recipe.source_image_path:
+            image_storage = get_image_storage()
+            original_image_path = image_storage.get_image_path(recipe.source_image_path)
+        elif recipe.source_image_data:
+            # Legacy: image stored in DB (migration path)
+            original_image_data = recipe.source_image_data
+
         extracted = extractor.enhance_recipe(
             existing_recipe=existing_recipe_data,
             new_image_paths=new_image_paths,
-            original_image_data=recipe.source_image_data,
+            original_image_path=original_image_path,
+            original_image_data=original_image_data,
             original_image_mime=recipe.source_image_mime,
         )
 

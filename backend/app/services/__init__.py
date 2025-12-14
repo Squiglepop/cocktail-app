@@ -9,6 +9,7 @@ from .duplicate_detector import (
     DuplicateCheckResult,
     DuplicateMatch,
 )
+from .image_storage import ImageStorageService, get_image_storage
 
 __all__ = [
     "get_db",
@@ -22,4 +23,6 @@ __all__ = [
     "compute_hashes_for_recipe",
     "DuplicateCheckResult",
     "DuplicateMatch",
+    "ImageStorageService",
+    "get_image_storage",
 ]

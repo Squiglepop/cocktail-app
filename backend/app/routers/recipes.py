@@ -4,7 +4,7 @@ Recipe CRUD endpoints.
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -25,7 +25,7 @@ from app.schemas import (
     RecipeIngredientResponse,
     IngredientResponse,
 )
-from app.services import get_db
+from app.services import get_db, get_image_storage
 from app.services.auth import get_current_user, get_current_user_optional
 
 
@@ -281,16 +281,27 @@ def get_recipe_image(recipe_id: str, db: Session = Depends(get_db)):
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    if not recipe.source_image_data:
-        raise HTTPException(status_code=404, detail="No image available for this recipe")
 
-    return Response(
-        content=recipe.source_image_data,
-        media_type=recipe.source_image_mime or "image/jpeg",
-        headers={
-            "Cache-Control": "public, max-age=31536000",  # Cache for 1 year
-        }
-    )
+    # Prefer filesystem storage, fall back to DB BLOB for legacy data
+    if recipe.source_image_path:
+        image_storage = get_image_storage()
+        image_path = image_storage.get_image_path(recipe.source_image_path)
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Image file not found")
+        return FileResponse(
+            path=image_path,
+            media_type=recipe.source_image_mime or "image/jpeg",
+            headers={"Cache-Control": "public, max-age=86400"},  # Cache for 24h
+        )
+    elif recipe.source_image_data:
+        # Legacy: serve from database BLOB
+        return Response(
+            content=recipe.source_image_data,
+            media_type=recipe.source_image_mime or "image/jpeg",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    else:
+        raise HTTPException(status_code=404, detail="No image available for this recipe")
 
 
 @router.post("", response_model=RecipeResponse)
@@ -471,6 +482,11 @@ def delete_recipe(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to delete this recipe"
             )
+
+    # Delete image file from filesystem if it exists
+    if recipe.source_image_path:
+        image_storage = get_image_storage()
+        image_storage.delete_image(recipe.source_image_path)
 
     db.delete(recipe)
     db.commit()

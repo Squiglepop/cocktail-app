@@ -39,6 +39,7 @@ class Settings(BaseSettings):
 
     # File storage
     upload_dir: Path = Path("./uploads")
+    image_storage_dir: Path = Path("./data/images")
 
     # API settings
     api_prefix: str = "/api"
@@ -62,5 +63,6 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure upload directory exists
+# Ensure directories exist
 settings.upload_dir.mkdir(parents=True, exist_ok=True)
+settings.image_storage_dir.mkdir(parents=True, exist_ok=True)
