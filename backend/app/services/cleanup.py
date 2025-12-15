@@ -73,6 +73,9 @@ class OrphanedFileCleanupService:
         """
         Get all image filenames referenced by recipes in the database.
 
+        Normalizes paths to just filenames for comparison, handling legacy
+        'uploads/' prefix paths.
+
         Args:
             db: Database session.
 
@@ -83,7 +86,17 @@ class OrphanedFileCleanupService:
             Recipe.source_image_path.isnot(None)
         ).all()
 
-        return {row[0] for row in result if row[0]}
+        referenced = set()
+        for row in result:
+            path = row[0]
+            if not path:
+                continue
+            # Normalize: extract just the filename from legacy 'uploads/' paths
+            if path.startswith("uploads/"):
+                path = path.replace("uploads/", "", 1)
+            referenced.add(path)
+
+        return referenced
 
     def find_orphaned_files(self, db: Session) -> Set[str]:
         """

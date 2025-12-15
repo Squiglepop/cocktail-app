@@ -31,6 +31,7 @@ services:
     volumes:
       - ./backend:/app
       - uploads:/app/uploads
+      - image_data:/app/data/images
     depends_on:
       db:
         condition: service_healthy
@@ -55,3 +56,4 @@ services:
 volumes:
   postgres_data:
   uploads:
+  image_data:
