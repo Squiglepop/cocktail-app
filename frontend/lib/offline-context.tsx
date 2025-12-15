@@ -8,6 +8,7 @@ import { RecipeListItem, API_BASE } from './api';
 interface OfflineContextType {
   isOnline: boolean;
   cachedRecipes: RecipeListItem[];
+  cachedRecipesLoading: boolean;  // True until first IndexedDB load completes
   refreshCachedRecipes: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   // Start with true to avoid flash of offline state during SSR hydration
   const [isOnline, setIsOnline] = useState(true);
   const [cachedRecipes, setCachedRecipes] = useState<RecipeListItem[]>([]);
+  const [cachedRecipesLoading, setCachedRecipesLoading] = useState(true);
 
   // Browser online/offline events are UNRELIABLE in PWAs
   // They fire erratically and often claim "online" when we're actually offline
@@ -64,6 +66,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to load cached recipes:', error);
       setCachedRecipes([]);
+    } finally {
+      setCachedRecipesLoading(false);
     }
   }, []);
 
@@ -130,6 +134,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       value={{
         isOnline,
         cachedRecipes,
+        cachedRecipesLoading,
         refreshCachedRecipes,
       }}
     >

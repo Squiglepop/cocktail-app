@@ -21,7 +21,7 @@ interface ExtendedFilters extends RecipeFilters {
 export default function HomePage() {
   const { token } = useAuth();
   const { favourites } = useFavourites();
-  const { isOnline, cachedRecipes, refreshCachedRecipes } = useOffline();
+  const { isOnline, cachedRecipes, cachedRecipesLoading, refreshCachedRecipes } = useOffline();
   const [filters, setFilters] = useState<ExtendedFilters>({});
 
   // Extract favourites_only for client-side filtering (won't trigger API reload)
@@ -191,7 +191,7 @@ export default function HomePage() {
         {/* Recipe grid */}
         <RecipeGrid
           recipes={displayedRecipes}
-          loading={isOnline && isLoading}
+          loading={(isOnline && isLoading) || (!isOnline && cachedRecipesLoading)}
           loadingMore={isOnline && isFetchingNextPage}
           onLoadMore={loadMore}
         />
@@ -231,7 +231,7 @@ export default function HomePage() {
           </div>
           <RecipeGrid
             recipes={displayedRecipes}
-            loading={isOnline && isLoading}
+            loading={(isOnline && isLoading) || (!isOnline && cachedRecipesLoading)}
             loadingMore={isOnline && isFetchingNextPage}
             onLoadMore={loadMore}
           />
