@@ -109,6 +109,14 @@ export async function clearAllCachedRecipes(): Promise<void> {
 }
 
 /**
+ * Debug function to list all cached recipe IDs
+ */
+export async function listCachedRecipeIds(): Promise<string[]> {
+  const db = await getDB();
+  return db.getAllKeys('recipes');
+}
+
+/**
  * Convert a full Recipe to RecipeListItem for gallery display
  */
 function recipeToListItem(recipe: Recipe): RecipeListItem {

@@ -8,6 +8,7 @@ import {
   cacheRecipeImage,
   removeCachedImage,
   isRecipeCached,
+  listCachedRecipeIds,
 } from './offline-storage';
 
 // Storage interface - designed for easy swapping to different storage backends
@@ -122,7 +123,11 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
     const syncFavouritesToIndexedDB = async () => {
       const ids = Array.from(favourites);
       const token = getStoredToken();
-      console.log(`[FavSync] Starting sync for ${ids.length} favourites:`, ids);
+
+      // Debug: Show what's actually in IndexedDB vs localStorage
+      const cachedIds = await listCachedRecipeIds();
+      console.log(`[FavSync] Favourites in localStorage: ${ids.length}`, ids);
+      console.log(`[FavSync] Recipes in IndexedDB: ${cachedIds.length}`, cachedIds);
       console.log(`[FavSync] Auth token available: ${!!token}`);
 
       // First, check which ones need syncing
