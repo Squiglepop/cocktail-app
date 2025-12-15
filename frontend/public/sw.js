@@ -1,7 +1,7 @@
 // Service Worker for Cocktail Recipe Library PWA
 // Handles offline caching for pages and recipe images
 
-const CACHE_NAME = 'cocktail-recipes-v6';
+const CACHE_NAME = 'cocktail-recipes-v7';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -12,7 +12,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // Cache files individually to avoid failing if one request fails
-      const urlsToCache = ['/', '/upload', '/recipes'];
+      const urlsToCache = ['/', '/upload', '/recipes', '/offline/recipe'];
       return Promise.allSettled(
         urlsToCache.map((url) =>
           fetch(url).then((response) => {

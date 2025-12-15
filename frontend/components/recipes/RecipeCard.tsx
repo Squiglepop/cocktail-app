@@ -35,12 +35,12 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     toggleFavourite(recipe.id);
   };
 
-  // When offline, use full page navigation to ensure service worker serves app shell
-  // (Next.js client-side navigation requires JS chunks that may not be cached)
+  // When offline, navigate to the dedicated offline recipe viewer page
+  // (which is pre-cached by the service worker as a static route)
   const handleCardClick = (e: React.MouseEvent) => {
     if (!isOnline) {
       e.preventDefault();
-      window.location.href = `/recipes/${recipe.id}`;
+      window.location.href = `/offline/recipe?id=${recipe.id}`;
     }
     // When online, let the Link handle navigation normally
   };
