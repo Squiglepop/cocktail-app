@@ -103,6 +103,20 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     refreshCachedRecipes();
   }, [refreshCachedRecipes]);
 
+  // Pre-cache the offline recipe page (and its JS chunks) when online
+  // This ensures the page works when user goes offline later
+  useEffect(() => {
+    if (isOnline && typeof window !== 'undefined') {
+      // Prefetch the offline recipe page to cache its JS chunks
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = '/offline/recipe';
+      link.as = 'document';
+      document.head.appendChild(link);
+      console.log('[OfflineContext] Prefetched /offline/recipe for offline use');
+    }
+  }, [isOnline]);
+
   // Also refresh when explicitly going offline
   useEffect(() => {
     if (!isOnline) {
