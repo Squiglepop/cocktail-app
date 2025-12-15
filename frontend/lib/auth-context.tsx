@@ -23,6 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'cocktail_auth_token';
+const USER_KEY = 'cocktail_auth_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -30,7 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch current user with token
-  const fetchCurrentUser = useCallback(async (authToken: string): Promise<User | null> => {
+  // Returns: { user, shouldClearAuth }
+  // shouldClearAuth is true only for definitive auth failures (401), not network errors
+  const fetchCurrentUser = useCallback(async (authToken: string): Promise<{ user: User | null; shouldClearAuth: boolean }> => {
     try {
       const res = await fetch(`${API_BASE}/auth/me`, {
         headers: {
@@ -38,11 +41,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
       if (res.ok) {
-        return res.json();
+        const userData = await res.json();
+        return { user: userData, shouldClearAuth: false };
       }
-      return null;
+      // 401/403 = token is definitely invalid, clear it
+      if (res.status === 401 || res.status === 403) {
+        return { user: null, shouldClearAuth: true };
+      }
+      // Other errors (500, etc) - don't clear auth, might be temporary
+      return { user: null, shouldClearAuth: false };
     } catch {
-      return null;
+      // Network error (offline) - don't clear auth
+      return { user: null, shouldClearAuth: false };
     }
   }, []);
 
@@ -50,14 +60,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storedUserJson = localStorage.getItem(USER_KEY);
+
       if (storedToken) {
-        const currentUser = await fetchCurrentUser(storedToken);
-        if (currentUser) {
+        // First, restore from cache immediately (for offline support)
+        let cachedUser: User | null = null;
+        if (storedUserJson) {
+          try {
+            cachedUser = JSON.parse(storedUserJson);
+          } catch {
+            // Invalid JSON, ignore
+          }
+        }
+
+        // If online, validate token with server
+        if (navigator.onLine) {
+          const { user: freshUser, shouldClearAuth } = await fetchCurrentUser(storedToken);
+          if (freshUser) {
+            // Token valid, update cache
+            setToken(storedToken);
+            setUser(freshUser);
+            localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+          } else if (shouldClearAuth) {
+            // Token definitely invalid (401/403), clear everything
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          } else if (cachedUser) {
+            // Network/server error but we have cached user - use it
+            setToken(storedToken);
+            setUser(cachedUser);
+          }
+        } else if (cachedUser) {
+          // Offline - use cached credentials
           setToken(storedToken);
-          setUser(currentUser);
-        } else {
-          // Token invalid, clear it
-          localStorage.removeItem(TOKEN_KEY);
+          setUser(cachedUser);
         }
       }
       setIsLoading(false);
@@ -88,9 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
 
     // Fetch user info
-    const currentUser = await fetchCurrentUser(newToken);
+    const { user: currentUser } = await fetchCurrentUser(newToken);
     if (currentUser) {
       setUser(currentUser);
+      // Cache user data for offline access
+      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
     }
   }, [fetchCurrentUser]);
 
@@ -118,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);
   }, []);
