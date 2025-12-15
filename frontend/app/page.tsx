@@ -63,16 +63,22 @@ export default function HomePage() {
 
   // Determine which recipes to display
   const displayedRecipes = useMemo(() => {
-    // When offline, show only cached recipes
+    console.log(`[HomePage] Computing displayedRecipes - isOnline: ${isOnline}, cachedRecipes: ${cachedRecipes.length}, recipes: ${recipes.length}, favourites_only: ${favourites_only}`);
+
+    // When offline, show only cached recipes (which are only favourites in IndexedDB)
     if (!isOnline) {
+      console.log(`[HomePage] OFFLINE - showing ${cachedRecipes.length} cached recipes from IndexedDB`);
       return cachedRecipes;
     }
 
     // When online with favourites filter, filter from API results
     if (favourites_only) {
-      return recipes.filter((recipe) => favourites.has(recipe.id));
+      const filtered = recipes.filter((recipe) => favourites.has(recipe.id));
+      console.log(`[HomePage] ONLINE with favourites filter - showing ${filtered.length} of ${recipes.length}`);
+      return filtered;
     }
 
+    console.log(`[HomePage] ONLINE - showing ${recipes.length} recipes from API`);
     return recipes;
   }, [isOnline, cachedRecipes, recipes, favourites_only, favourites]);
 

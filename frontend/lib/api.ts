@@ -3,7 +3,7 @@
  */
 
 // Use environment variable for API URL, fallback to production URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
 
 // Get full URL for recipe images (served from database via API)
 export function getRecipeImageUrl(recipeId: string): string {
