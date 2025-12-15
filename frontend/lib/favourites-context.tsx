@@ -122,22 +122,26 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
     const syncFavouritesToIndexedDB = async () => {
       const ids = Array.from(favourites);
       const token = getStoredToken();
+      console.log(`[FavSync] Starting sync for ${ids.length} favourites:`, ids);
+      console.log(`[FavSync] Auth token available: ${!!token}`);
 
       // First, check which ones need syncing
       const needsSync: string[] = [];
       for (const id of ids) {
         try {
           const cached = await isRecipeCached(id);
+          console.log(`[FavSync] Recipe ${id} cached: ${cached}`);
           if (!cached) {
             needsSync.push(id);
           }
-        } catch {
+        } catch (err) {
+          console.log(`[FavSync] Recipe ${id} check failed:`, err);
           needsSync.push(id);
         }
       }
 
       if (needsSync.length === 0) {
-        console.log('All favourites already cached for offline');
+        console.log('[FavSync] All favourites already cached for offline');
         return;
       }
 
@@ -175,7 +179,9 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       return next;
     });
     // Cache for offline in background (don't await)
-    cacheRecipeForOffline(id, recipe);
+    cacheRecipeForOffline(id, recipe).catch((err) => {
+      console.error(`[addFavourite] Failed to cache recipe ${id}:`, err);
+    });
   }, []);
 
   const removeFavourite = useCallback((id: string) => {
@@ -191,6 +197,7 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
   const toggleFavourite = useCallback((id: string, recipe?: Recipe) => {
     // Check current state BEFORE setState
     const wasFavourite = favourites.has(id);
+    console.log(`[toggleFavourite] Recipe ${id}, wasFavourite: ${wasFavourite}, recipe provided: ${!!recipe}`);
 
     setFavourites((prev) => {
       const next = new Set(prev);
@@ -204,9 +211,13 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
 
     // Do async operations OUTSIDE setState
     if (wasFavourite) {
+      console.log(`[toggleFavourite] Removing recipe ${id} from cache`);
       uncacheRecipe(id);
     } else {
-      cacheRecipeForOffline(id, recipe);
+      console.log(`[toggleFavourite] Caching recipe ${id} for offline`);
+      cacheRecipeForOffline(id, recipe).catch((err) => {
+        console.error(`[toggleFavourite] Failed to cache recipe ${id}:`, err);
+      });
     }
   }, [favourites]);
 

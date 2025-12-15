@@ -54,11 +54,14 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     if (recipeId) {
       setOfflineLoading(true);
+      console.log(`[RecipeDetail] Trying to load recipe ${recipeId} from IndexedDB...`);
       getRecipeOffline(recipeId)
         .then((cached) => {
+          console.log(`[RecipeDetail] IndexedDB result for ${recipeId}:`, cached ? 'FOUND' : 'NOT FOUND');
           setOfflineRecipe(cached || null);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error(`[RecipeDetail] IndexedDB error for ${recipeId}:`, err);
           setOfflineRecipe(null);
         })
         .finally(() => {
