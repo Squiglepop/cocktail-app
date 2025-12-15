@@ -3,8 +3,10 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { Header } from '@/components/Header';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { AuthProvider } from '@/lib/auth-context';
 import { FavouritesProvider } from '@/lib/favourites-context';
+import { OfflineProvider } from '@/lib/offline-context';
 import { QueryProvider } from '@/lib/query-provider';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -41,18 +43,21 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <FavouritesProvider>
-              <ServiceWorkerRegistration />
-              <div className="min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-1">{children}</main>
-                <footer className="border-t border-gray-200 bg-white py-6">
-                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <p className="text-center text-gray-500 text-sm">
-                      Cocktail Recipe Library - Extract recipes from screenshots using AI
-                    </p>
-                  </div>
-                </footer>
-              </div>
+              <OfflineProvider>
+                <ServiceWorkerRegistration />
+                <div className="min-h-screen flex flex-col">
+                  <OfflineIndicator />
+                  <Header />
+                  <main className="flex-1">{children}</main>
+                  <footer className="border-t border-gray-200 bg-white py-6">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                      <p className="text-center text-gray-500 text-sm">
+                        Cocktail Recipe Library - Extract recipes from screenshots using AI
+                      </p>
+                    </div>
+                  </footer>
+                </div>
+              </OfflineProvider>
             </FavouritesProvider>
           </AuthProvider>
         </QueryProvider>

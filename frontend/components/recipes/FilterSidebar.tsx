@@ -18,9 +18,10 @@ interface FilterSidebarProps {
   onFilterChange: (filters: FilterSidebarProps['filters']) => void;
   className?: string;
   variant?: 'sidebar' | 'tile';
+  disabled?: boolean;
 }
 
-export function FilterSidebar({ filters, onFilterChange, className = '', variant = 'sidebar' }: FilterSidebarProps) {
+export function FilterSidebar({ filters, onFilterChange, className = '', variant = 'sidebar', disabled = false }: FilterSidebarProps) {
   const { data: categories, isLoading: loading } = useCategories();
   const [isExpanded, setIsExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,6 +57,15 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
 
   // Tile variant for mobile
   if (variant === 'tile') {
+    if (disabled) {
+      return (
+        <div className="card p-3 flex flex-col items-center justify-center text-center bg-gray-200 border-gray-300 opacity-50 cursor-not-allowed">
+          <SlidersHorizontal className="h-6 w-6 text-gray-500 mb-1" />
+          <span className="text-xs font-medium text-gray-600">Filters</span>
+        </div>
+      );
+    }
+
     return (
       <div className="relative" ref={dropdownRef}>
         <button
@@ -228,6 +238,16 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
   }
 
   // Sidebar variant (default)
+  if (disabled) {
+    return (
+      <div className={className}>
+        <div className="card p-4 opacity-50">
+          <h2 className="font-semibold text-gray-500">Filters disabled offline</h2>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className={className}>

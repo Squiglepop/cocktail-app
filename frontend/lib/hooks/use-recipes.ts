@@ -45,7 +45,8 @@ export function useRecipes(
 export function useInfiniteRecipes(
   filters: RecipeFilters = {},
   pageSize: number = 20,
-  token?: string | null
+  token?: string | null,
+  options?: { enabled?: boolean }
 ) {
   return useInfiniteQuery({
     queryKey: queryKeys.recipes.list({ ...filters, infinite: true, token }),
@@ -59,15 +60,20 @@ export function useInfiniteRecipes(
       return allPages.reduce((acc, page) => acc + page.length, 0);
     },
     staleTime: STALE_TIMES.recipes,
+    enabled: options?.enabled ?? true,
   });
 }
 
 // Hook for fetching recipe count
-export function useRecipeCount(filters: RecipeFilters = {}) {
+export function useRecipeCount(
+  filters: RecipeFilters = {},
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: queryKeys.recipes.count(filters),
     queryFn: () => fetchRecipeCount(filters),
     staleTime: STALE_TIMES.recipeCount,
+    enabled: options?.enabled ?? true,
   });
 }
 

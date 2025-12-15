@@ -1,9 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { fetchRecipe, Recipe } from './api';
+import {
+  saveRecipeOffline,
+  removeRecipeOffline,
+  cacheRecipeImage,
+  removeCachedImage,
+} from './offline-storage';
 
 // Storage interface - designed for easy swapping to different storage backends
-// In the future, this could be replaced with IndexedDB, a backend API, or sync service
 interface FavouritesStorage {
   load(): Promise<string[]>;
   save(ids: string[]): Promise<void>;
@@ -34,17 +40,51 @@ interface FavouritesContextType {
   favourites: Set<string>;
   isLoading: boolean;
   isFavourite: (id: string) => boolean;
-  toggleFavourite: (id: string) => void;
-  addFavourite: (id: string) => void;
+  toggleFavourite: (id: string, recipe?: Recipe) => void;
+  addFavourite: (id: string, recipe?: Recipe) => void;
   removeFavourite: (id: string) => void;
   favouriteCount: number;
 }
 
 const FavouritesContext = createContext<FavouritesContextType | undefined>(undefined);
 
-// Use the localStorage adapter by default
-// To switch storage backends in the future, replace this with a different adapter
 const storage = localStorageAdapter;
+
+/**
+ * Cache a recipe for offline access (runs in background)
+ */
+async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe): Promise<void> {
+  try {
+    // If recipe data was provided, use it; otherwise fetch it
+    let recipeData = recipe;
+    if (!recipeData) {
+      recipeData = await fetchRecipe(recipeId);
+    }
+
+    // Save recipe data to IndexedDB
+    await saveRecipeOffline(recipeData);
+
+    // Cache the image if it has one
+    if (recipeData.has_image) {
+      await cacheRecipeImage(recipeId);
+    }
+  } catch (error) {
+    // Don't break the favourite operation if caching fails
+    console.warn('Failed to cache recipe for offline:', error);
+  }
+}
+
+/**
+ * Remove a recipe from offline cache (runs in background)
+ */
+async function uncacheRecipe(recipeId: string): Promise<void> {
+  try {
+    await removeRecipeOffline(recipeId);
+    await removeCachedImage(recipeId);
+  } catch (error) {
+    console.warn('Failed to remove recipe from offline cache:', error);
+  }
+}
 
 export function FavouritesProvider({ children }: { children: ReactNode }) {
   const [favourites, setFavourites] = useState<Set<string>>(new Set());
@@ -70,12 +110,14 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
     return favourites.has(id);
   }, [favourites]);
 
-  const addFavourite = useCallback((id: string) => {
+  const addFavourite = useCallback((id: string, recipe?: Recipe) => {
     setFavourites((prev) => {
       const next = new Set(prev);
       next.add(id);
       return next;
     });
+    // Cache for offline in background (don't await)
+    cacheRecipeForOffline(id, recipe);
   }, []);
 
   const removeFavourite = useCallback((id: string) => {
@@ -84,15 +126,21 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       next.delete(id);
       return next;
     });
+    // Remove from offline cache in background (don't await)
+    uncacheRecipe(id);
   }, []);
 
-  const toggleFavourite = useCallback((id: string) => {
+  const toggleFavourite = useCallback((id: string, recipe?: Recipe) => {
     setFavourites((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
+        // Remove from offline cache in background
+        uncacheRecipe(id);
       } else {
         next.add(id);
+        // Cache for offline in background
+        cacheRecipeForOffline(id, recipe);
       }
       return next;
     });

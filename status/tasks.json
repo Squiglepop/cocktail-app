@@ -1,0 +1,18 @@
+{
+  "tasks": {
+    "OFFLINE-FAVOURITES": {
+      "status": "completed",
+      "title": "Offline Favourites Feature",
+      "brief": "../OFFLINE-FAVOURITES-BRIEF.md",
+      "report": "./offline-favourites-complete.md",
+      "created_at": "2025-12-15",
+      "started_at": "2025-12-15",
+      "completed_at": "2025-12-15",
+      "notes": "Full implementation complete. Created: offline-storage.ts (IndexedDB + Cache API), offline-context.tsx, OfflineIndicator.tsx. Modified: favourites-context.tsx (caching), sw.js (image serving), page.tsx (offline gallery), recipes/[id]/page.tsx (offline detail), FilterSidebar.tsx (disabled state), hooks (enabled option). Build successful, ready for manual testing."
+    }
+  },
+  "meta": {
+    "last_updated": "2025-12-15",
+    "statuses": ["pending", "in_progress", "completed", "blocked", "cancelled"]
+  }
+}

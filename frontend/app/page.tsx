@@ -7,8 +7,9 @@ import { FilterSidebar } from '@/components/recipes/FilterSidebar';
 import { RecipeGrid } from '@/components/recipes/RecipeGrid';
 import { useAuth } from '@/lib/auth-context';
 import { useFavourites } from '@/lib/favourites-context';
+import { useOffline } from '@/lib/offline-context';
 import { useInfiniteRecipes, useRecipeCount } from '@/lib/hooks';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, WifiOff } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
@@ -20,6 +21,7 @@ interface ExtendedFilters extends RecipeFilters {
 export default function HomePage() {
   const { token } = useAuth();
   const { favourites } = useFavourites();
+  const { isOnline, cachedRecipes, refreshCachedRecipes } = useOffline();
   const [filters, setFilters] = useState<ExtendedFilters>({});
 
   // Extract favourites_only for client-side filtering (won't trigger API reload)
@@ -34,17 +36,24 @@ export default function HomePage() {
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some((v) => v);
 
-  // Fetch recipes with infinite scroll
+  // Fetch recipes with infinite scroll (only when online)
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = useInfiniteRecipes(apiFilters, PAGE_SIZE, token);
+  } = useInfiniteRecipes(apiFilters, PAGE_SIZE, token, { enabled: isOnline });
 
-  // Fetch recipe count
-  const { data: recipeCount } = useRecipeCount(apiFilters);
+  // Fetch recipe count (only when online)
+  const { data: recipeCount } = useRecipeCount(apiFilters, { enabled: isOnline });
+
+  // Refresh cached recipes when going offline
+  useEffect(() => {
+    if (!isOnline) {
+      refreshCachedRecipes();
+    }
+  }, [isOnline, refreshCachedRecipes]);
 
   // Flatten pages into a single array
   const recipes = useMemo(
@@ -52,18 +61,27 @@ export default function HomePage() {
     [data]
   );
 
-  // Filter recipes by favourites on the client side
+  // Determine which recipes to display
   const displayedRecipes = useMemo(() => {
-    if (!favourites_only) return recipes;
-    return recipes.filter((recipe) => favourites.has(recipe.id));
-  }, [recipes, favourites_only, favourites]);
+    // When offline, show only cached recipes
+    if (!isOnline) {
+      return cachedRecipes;
+    }
 
-  // Load more handler
+    // When online with favourites filter, filter from API results
+    if (favourites_only) {
+      return recipes.filter((recipe) => favourites.has(recipe.id));
+    }
+
+    return recipes;
+  }, [isOnline, cachedRecipes, recipes, favourites_only, favourites]);
+
+  // Load more handler (only works when online)
   const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
+    if (isOnline && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [isOnline, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Scroll sentinel ref for infinite scroll
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -89,6 +107,25 @@ export default function HomePage() {
     };
   }, [loadMore]);
 
+  // Recipe count text
+  const getRecipeCountText = () => {
+    if (!isOnline) {
+      return `${cachedRecipes.length} cached favourite${cachedRecipes.length !== 1 ? 's' : ''}`;
+    }
+    if (isLoading) {
+      return 'Loading recipes...';
+    }
+    if (favourites_only) {
+      return `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`;
+    }
+    if (recipeCount) {
+      return hasActiveFilters
+        ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
+        : `${recipeCount.total} recipes`;
+    }
+    return `${recipes.length} recipes`;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Mobile layout */}
@@ -96,47 +133,53 @@ export default function HomePage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Cocktail Recipes</h1>
-          <p className="text-gray-500 mt-1">
-            {isLoading
-              ? 'Loading recipes...'
-              : favourites_only
-                ? `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`
-                : recipeCount
-                  ? hasActiveFilters
-                    ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
-                    : `${recipeCount.total} recipes`
-                  : `${recipes.length} recipes`}
-          </p>
+          <p className="text-gray-500 mt-1">{getRecipeCountText()}</p>
         </div>
 
         {/* Action tiles - 3 in a row */}
         <div className="grid grid-cols-3 gap-2">
-          <Link
-            href="/upload"
-            className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-700 border-amber-800"
-          >
-            <Upload className="h-6 w-6 text-amber-100 mb-1" />
-            <span className="text-xs font-medium text-white">Upload</span>
-          </Link>
-          <Link
-            href="/recipes/new"
-            className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-100 border-amber-300"
-          >
-            <Plus className="h-6 w-6 text-amber-800 mb-1" />
-            <span className="text-xs font-medium text-amber-900">Add</span>
-          </Link>
+          {isOnline ? (
+            <>
+              <Link
+                href="/upload"
+                className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-700 border-amber-800"
+              >
+                <Upload className="h-6 w-6 text-amber-100 mb-1" />
+                <span className="text-xs font-medium text-white">Upload</span>
+              </Link>
+              <Link
+                href="/recipes/new"
+                className="card p-3 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow bg-amber-100 border-amber-300"
+              >
+                <Plus className="h-6 w-6 text-amber-800 mb-1" />
+                <span className="text-xs font-medium text-amber-900">Add</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="card p-3 flex flex-col items-center justify-center text-center bg-gray-200 border-gray-300 opacity-50 cursor-not-allowed">
+                <WifiOff className="h-6 w-6 text-gray-500 mb-1" />
+                <span className="text-xs font-medium text-gray-600">Offline</span>
+              </div>
+              <div className="card p-3 flex flex-col items-center justify-center text-center bg-gray-200 border-gray-300 opacity-50 cursor-not-allowed">
+                <Plus className="h-6 w-6 text-gray-500 mb-1" />
+                <span className="text-xs font-medium text-gray-600">Add</span>
+              </div>
+            </>
+          )}
           <FilterSidebar
             filters={filters}
             onFilterChange={setFilters}
             variant="tile"
+            disabled={!isOnline}
           />
         </div>
 
         {/* Recipe grid */}
         <RecipeGrid
           recipes={displayedRecipes}
-          loading={isLoading}
-          loadingMore={isFetchingNextPage}
+          loading={isOnline && isLoading}
+          loadingMore={isOnline && isFetchingNextPage}
           onLoadMore={loadMore}
         />
       </div>
@@ -147,45 +190,43 @@ export default function HomePage() {
           filters={filters}
           onFilterChange={setFilters}
           className="w-64 shrink-0"
+          disabled={!isOnline}
         />
         <div className="flex-1">
           <div className="mb-6 flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Cocktail Recipes</h1>
-              <p className="text-gray-500 mt-1">
-                {isLoading
-                  ? 'Loading recipes...'
-                  : favourites_only
-                    ? `${displayedRecipes.length} favourite${displayedRecipes.length !== 1 ? 's' : ''}`
-                    : recipeCount
-                      ? hasActiveFilters
-                        ? `${recipeCount.filtered} of ${recipeCount.total} recipes`
-                        : `${recipeCount.total} recipes`
-                      : `${recipes.length} recipes`}
-              </p>
+              <p className="text-gray-500 mt-1">{getRecipeCountText()}</p>
             </div>
-            <div className="flex gap-2">
-              <Link href="/recipes/new" className="btn btn-secondary">
-                <Plus className="h-4 w-4 mr-1" />
-                Add Recipe
-              </Link>
-              <Link href="/upload" className="btn btn-primary">
-                <Upload className="h-4 w-4 mr-1" />
-                Extract from Image
-              </Link>
-            </div>
+            {isOnline ? (
+              <div className="flex gap-2">
+                <Link href="/recipes/new" className="btn btn-secondary">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Recipe
+                </Link>
+                <Link href="/upload" className="btn btn-primary">
+                  <Upload className="h-4 w-4 mr-1" />
+                  Extract from Image
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                <WifiOff className="h-4 w-4" />
+                <span>Upload disabled offline</span>
+              </div>
+            )}
           </div>
           <RecipeGrid
             recipes={displayedRecipes}
-            loading={isLoading}
-            loadingMore={isFetchingNextPage}
+            loading={isOnline && isLoading}
+            loadingMore={isOnline && isFetchingNextPage}
             onLoadMore={loadMore}
           />
         </div>
       </div>
 
       {/* Scroll sentinel for infinite scroll - fallback for non-virtualized views */}
-      <div ref={loadMoreRef} className="h-4" />
+      {isOnline && <div ref={loadMoreRef} className="h-4" />}
     </div>
   );
 }
