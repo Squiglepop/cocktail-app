@@ -8,6 +8,7 @@ import { StarRating } from './StarRating';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
 import { useFavourites } from '@/lib/favourites-context';
+import { useOffline } from '@/lib/offline-context';
 
 interface RecipeCardProps {
   recipe: RecipeListItem;
@@ -15,6 +16,7 @@ interface RecipeCardProps {
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
   const { isFavourite, toggleFavourite } = useFavourites();
+  const { isOnline } = useOffline();
   const favourited = isFavourite(recipe.id);
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -31,6 +33,16 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     e.preventDefault();
     e.stopPropagation();
     toggleFavourite(recipe.id);
+  };
+
+  // When offline, use full page navigation to ensure service worker serves app shell
+  // (Next.js client-side navigation requires JS chunks that may not be cached)
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!isOnline) {
+      e.preventDefault();
+      window.location.href = `/recipes/${recipe.id}`;
+    }
+    // When online, let the Link handle navigation normally
   };
 
   return (
@@ -62,7 +74,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
       </div>
 
-      <Link href={`/recipes/${recipe.id}`} className="block h-full">
+      <Link href={`/recipes/${recipe.id}`} className="block h-full" onClick={handleCardClick}>
         <div className="card hover:shadow-md transition-shadow cursor-pointer h-full">
           {/* Image placeholder or actual image */}
           <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center overflow-hidden relative">
