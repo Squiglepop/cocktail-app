@@ -62,40 +62,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedToken = localStorage.getItem(TOKEN_KEY);
       const storedUserJson = localStorage.getItem(USER_KEY);
 
-      if (storedToken) {
-        // First, restore from cache immediately (for offline support)
-        let cachedUser: User | null = null;
-        if (storedUserJson) {
-          try {
-            cachedUser = JSON.parse(storedUserJson);
-          } catch {
-            // Invalid JSON, ignore
-          }
-        }
+      if (!storedToken) {
+        setIsLoading(false);
+        return;
+      }
 
-        // If online, validate token with server
-        if (navigator.onLine) {
-          const { user: freshUser, shouldClearAuth } = await fetchCurrentUser(storedToken);
-          if (freshUser) {
-            // Token valid, update cache
-            setToken(storedToken);
-            setUser(freshUser);
-            localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
-          } else if (shouldClearAuth) {
-            // Token definitely invalid (401/403), clear everything
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-          } else if (cachedUser) {
-            // Network/server error but we have cached user - use it
-            setToken(storedToken);
-            setUser(cachedUser);
-          }
-        } else if (cachedUser) {
-          // Offline - use cached credentials
-          setToken(storedToken);
+      // Parse cached user if available
+      let cachedUser: User | null = null;
+      if (storedUserJson) {
+        try {
+          cachedUser = JSON.parse(storedUserJson);
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+
+      // Try to validate with server (regardless of navigator.onLine - it's unreliable)
+      const { user: freshUser, shouldClearAuth } = await fetchCurrentUser(storedToken);
+
+      if (freshUser) {
+        // Token valid, update everything
+        setToken(storedToken);
+        setUser(freshUser);
+        localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+      } else if (shouldClearAuth) {
+        // Token definitely invalid (401/403), clear everything
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      } else {
+        // Network error or server error - preserve auth from cache
+        // ALWAYS set the token (user was logged in)
+        setToken(storedToken);
+        if (cachedUser) {
           setUser(cachedUser);
         }
       }
+
       setIsLoading(false);
     };
 
