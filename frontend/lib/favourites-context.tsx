@@ -189,20 +189,26 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleFavourite = useCallback((id: string, recipe?: Recipe) => {
+    // Check current state BEFORE setState
+    const wasFavourite = favourites.has(id);
+
     setFavourites((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        // Remove from offline cache in background
-        uncacheRecipe(id);
       } else {
         next.add(id);
-        // Cache for offline in background
-        cacheRecipeForOffline(id, recipe);
       }
       return next;
     });
-  }, []);
+
+    // Do async operations OUTSIDE setState
+    if (wasFavourite) {
+      uncacheRecipe(id);
+    } else {
+      cacheRecipeForOffline(id, recipe);
+    }
+  }, [favourites]);
 
   return (
     <FavouritesContext.Provider
