@@ -52,7 +52,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const checkRealConnectivity = useCallback(async () => {
     try {
       // Construct health URL from API_BASE (remove /api suffix, add /health)
-      const healthUrl = API_BASE.replace(/\/api\/?$/, '') + '/health';
+      // Add cache-busting param to prevent ANY caching (browser, CDN, etc)
+      const healthUrl = API_BASE.replace(/\/api\/?$/, '') + '/health?_=' + Date.now();
       console.log(`[OfflineContext] Checking connectivity: ${healthUrl}`);
 
       const controller = new AbortController();

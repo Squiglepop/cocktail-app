@@ -71,10 +71,10 @@ export default function HomePage() {
       return cachedRecipes;
     }
 
-    // FALLBACK: If API returned nothing (failed) but we have cached recipes, show cached
-    // This handles the case where isOnline is wrong (health check lying) but API actually failed
-    if (!isLoading && recipes.length === 0 && cachedRecipes.length > 0) {
-      console.log(`[HomePage] API failed/empty but have cached - showing ${cachedRecipes.length} cached recipes`);
+    // PRIORITY: If we have cached recipes and API has nothing (loading OR failed), show cached IMMEDIATELY
+    // This prevents the empty screen flash while waiting for API
+    if (recipes.length === 0 && cachedRecipes.length > 0) {
+      console.log(`[HomePage] No API data yet, showing ${cachedRecipes.length} cached recipes`);
       return cachedRecipes;
     }
 
