@@ -19,34 +19,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [cachedRecipes, setCachedRecipes] = useState<RecipeListItem[]>([]);
 
-  // Initialize online state and set up listeners
-  // Note: navigator.onLine is unreliable in PWAs - service worker may serve cached
-  // responses even when wifi is off, making browser think it's still "online"
-  useEffect(() => {
-    // Set initial state from navigator
-    if (typeof navigator !== 'undefined') {
-      console.log(`[OfflineContext] Initial navigator.onLine: ${navigator.onLine}`);
-      setIsOnline(navigator.onLine);
-    }
-
-    const handleOnline = () => {
-      console.log('[OfflineContext] Browser online event fired');
-      setIsOnline(true);
-    };
-
-    const handleOffline = () => {
-      console.log('[OfflineContext] Browser offline event fired');
-      setIsOnline(false);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  // Browser online/offline events are UNRELIABLE in PWAs
+  // They fire erratically and often claim "online" when we're actually offline
+  // We ONLY use them to trigger an immediate health check, NOT to set state directly
+  // The health check is the single source of truth for isOnline state
 
   // Actually TEST connectivity by making a real request (navigator.onLine lies)
   // This is the ONLY reliable way to detect offline in PWAs where service workers
@@ -96,7 +72,21 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     checkRealConnectivity();
     const interval = setInterval(checkRealConnectivity, 5000);
 
-    return () => clearInterval(interval);
+    // Also check when browser fires online/offline events
+    // (use them as triggers for immediate check, not as truth)
+    const handleNetworkChange = () => {
+      console.log('[OfflineContext] Browser network event - triggering immediate health check');
+      checkRealConnectivity();
+    };
+
+    window.addEventListener('online', handleNetworkChange);
+    window.addEventListener('offline', handleNetworkChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleNetworkChange);
+      window.removeEventListener('offline', handleNetworkChange);
+    };
   }, [checkRealConnectivity]);
 
   // Load cached recipes on mount AND when going offline
