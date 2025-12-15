@@ -96,7 +96,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [checkRealConnectivity]);
 
-  // Load cached recipes when going offline (or on mount if offline)
+  // Load cached recipes on mount AND when going offline
+  // Loading on mount ensures cachedRecipes is populated for fallback even if isOnline is wrong
+  useEffect(() => {
+    refreshCachedRecipes();
+  }, [refreshCachedRecipes]);
+
+  // Also refresh when explicitly going offline
   useEffect(() => {
     if (!isOnline) {
       refreshCachedRecipes();

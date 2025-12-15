@@ -63,11 +63,18 @@ export default function HomePage() {
 
   // Determine which recipes to display
   const displayedRecipes = useMemo(() => {
-    console.log(`[HomePage] Computing displayedRecipes - isOnline: ${isOnline}, cachedRecipes: ${cachedRecipes.length}, recipes: ${recipes.length}, favourites_only: ${favourites_only}`);
+    console.log(`[HomePage] Computing displayedRecipes - isOnline: ${isOnline}, cachedRecipes: ${cachedRecipes.length}, recipes: ${recipes.length}, favourites_only: ${favourites_only}, isLoading: ${isLoading}`);
 
-    // When offline, show only cached recipes (which are only favourites in IndexedDB)
+    // When explicitly offline, show cached recipes
     if (!isOnline) {
       console.log(`[HomePage] OFFLINE - showing ${cachedRecipes.length} cached recipes from IndexedDB`);
+      return cachedRecipes;
+    }
+
+    // FALLBACK: If API returned nothing (failed) but we have cached recipes, show cached
+    // This handles the case where isOnline is wrong (health check lying) but API actually failed
+    if (!isLoading && recipes.length === 0 && cachedRecipes.length > 0) {
+      console.log(`[HomePage] API failed/empty but have cached - showing ${cachedRecipes.length} cached recipes`);
       return cachedRecipes;
     }
 
@@ -80,7 +87,7 @@ export default function HomePage() {
 
     console.log(`[HomePage] ONLINE - showing ${recipes.length} recipes from API`);
     return recipes;
-  }, [isOnline, cachedRecipes, recipes, favourites_only, favourites]);
+  }, [isOnline, cachedRecipes, recipes, favourites_only, favourites, isLoading]);
 
   // Load more handler (only works when online)
   const loadMore = useCallback(() => {
