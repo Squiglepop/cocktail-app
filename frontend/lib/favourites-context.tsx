@@ -52,14 +52,24 @@ const FavouritesContext = createContext<FavouritesContextType | undefined>(undef
 const storage = localStorageAdapter;
 
 /**
+ * Get auth token from localStorage (for background operations)
+ */
+function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('cocktail_auth_token');
+}
+
+/**
  * Cache a recipe for offline access (runs in background)
  */
-async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe): Promise<void> {
+async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe, token?: string | null): Promise<void> {
   try {
     // If recipe data was provided, use it; otherwise fetch it
     let recipeData = recipe;
     if (!recipeData) {
-      recipeData = await fetchRecipe(recipeId);
+      // Use provided token or get from localStorage
+      const authToken = token ?? getStoredToken();
+      recipeData = await fetchRecipe(recipeId, authToken);
     }
 
     // Save recipe data to IndexedDB
@@ -69,9 +79,12 @@ async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe): Promise
     if (recipeData.has_image) {
       await cacheRecipeImage(recipeId);
     }
+
+    console.log(`✓ Cached recipe ${recipeId} for offline`);
   } catch (error) {
     // Don't break the favourite operation if caching fails
-    console.warn('Failed to cache recipe for offline:', error);
+    console.warn(`✗ Failed to cache recipe ${recipeId}:`, error);
+    throw error; // Re-throw so caller knows it failed
   }
 }
 
@@ -108,19 +121,37 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
 
     const syncFavouritesToIndexedDB = async () => {
       const ids = Array.from(favourites);
+      const token = getStoredToken();
 
-      // Check each favourite and cache if not already cached
+      // First, check which ones need syncing
+      const needsSync: string[] = [];
       for (const id of ids) {
         try {
           const cached = await isRecipeCached(id);
           if (!cached) {
-            console.log(`Syncing favourite ${id} to IndexedDB...`);
-            await cacheRecipeForOffline(id);
+            needsSync.push(id);
           }
-        } catch (error) {
-          console.warn(`Failed to sync favourite ${id}:`, error);
+        } catch {
+          needsSync.push(id);
         }
       }
+
+      if (needsSync.length === 0) {
+        console.log('All favourites already cached for offline');
+        return;
+      }
+
+      console.log(`Syncing ${needsSync.length} favourites to IndexedDB...`);
+
+      // Sync all in parallel for speed
+      const results = await Promise.allSettled(
+        needsSync.map(id => cacheRecipeForOffline(id, undefined, token))
+      );
+
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      console.log(`Sync complete: ${succeeded} succeeded, ${failed} failed`);
     };
 
     // Run sync in background
