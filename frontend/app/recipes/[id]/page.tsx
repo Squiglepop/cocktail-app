@@ -44,15 +44,15 @@ export default function RecipeDetailPage() {
 
   const recipeId = params.id as string;
 
-  // Fetch recipe using React Query (only when online)
-  const { data: onlineRecipe, isLoading: onlineLoading, refetch } = useRecipe(
-    isOnline ? recipeId : null,
+  // Always try to fetch from API (will fail gracefully if offline)
+  const { data: onlineRecipe, isLoading: onlineLoading, isError: onlineError, refetch } = useRecipe(
+    recipeId,
     token
   );
 
-  // Load from IndexedDB when offline
+  // Always load from IndexedDB as fallback (don't rely on isOnline - it's unreliable)
   useEffect(() => {
-    if (!isOnline && recipeId) {
+    if (recipeId) {
       setOfflineLoading(true);
       getRecipeOffline(recipeId)
         .then((cached) => {
@@ -65,11 +65,11 @@ export default function RecipeDetailPage() {
           setOfflineLoading(false);
         });
     }
-  }, [isOnline, recipeId]);
+  }, [recipeId]);
 
-  // Use online recipe when available, fall back to offline cache
-  const recipe = isOnline ? onlineRecipe : offlineRecipe;
-  const loading = isOnline ? onlineLoading : offlineLoading;
+  // Use online recipe if fetch succeeded, otherwise fall back to IndexedDB cache
+  const recipe = (!onlineError && onlineRecipe) ? onlineRecipe : offlineRecipe;
+  const loading = onlineLoading && !offlineRecipe; // Show loading only if we don't have cached data
 
   // Delete mutation
   const deleteRecipeMutation = useDeleteRecipe();
