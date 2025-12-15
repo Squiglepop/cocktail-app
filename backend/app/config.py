@@ -30,6 +30,16 @@ def _get_secret_key() -> str:
     return secrets.token_urlsafe(32)
 
 
+def _get_image_storage_dir() -> Path:
+    """Get image storage directory, preferring Railway volume mount if available."""
+    # Railway sets this when a volume is attached
+    railway_mount = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
+    if railway_mount:
+        return Path(railway_mount)
+    # Fall back to local path for development
+    return Path("./data/images")
+
+
 class Settings(BaseSettings):
     # Database - defaults to SQLite for easy local testing
     database_url: str = "sqlite:///./cocktails.db"
@@ -39,7 +49,7 @@ class Settings(BaseSettings):
 
     # File storage
     upload_dir: Path = Path("./uploads")
-    image_storage_dir: Path = Path("./data/images")
+    image_storage_dir: Path = _get_image_storage_dir()
 
     # API settings
     api_prefix: str = "/api"
