@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { getCachedRecipeListItems } from './offline-storage';
 import { RecipeListItem, API_BASE } from './api';
 
@@ -13,6 +14,7 @@ interface OfflineContextType {
 const OfflineContext = createContext<OfflineContextType | undefined>(undefined);
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   // Start with true to avoid flash of offline state during SSR hydration
   const [isOnline, setIsOnline] = useState(true);
   const [cachedRecipes, setCachedRecipes] = useState<RecipeListItem[]>([]);
@@ -105,17 +107,26 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
   // Pre-cache the offline recipe page (and its JS chunks) when online
   // This ensures the page works when user goes offline later
+  // We use both Next.js prefetch AND a hidden iframe to ensure full caching
   useEffect(() => {
     if (isOnline && typeof window !== 'undefined') {
-      // Prefetch the offline recipe page to cache its JS chunks
-      const link = document.createElement('link');
-      link.rel = 'prefetch';
-      link.href = '/offline/recipe';
-      link.as = 'document';
-      document.head.appendChild(link);
-      console.log('[OfflineContext] Prefetched /offline/recipe for offline use');
+      // 1. Use Next.js router prefetch for client-side routing cache
+      router.prefetch('/offline/recipe');
+      console.log('[OfflineContext] Prefetched /offline/recipe via Next.js router');
+
+      // 2. Also load the page in a hidden iframe to ensure SW caches ALL resources
+      // This is a belt-and-suspenders approach since prefetch alone may not cache JS chunks
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = '/offline/recipe?warmup=true';
+      iframe.onload = () => {
+        console.log('[OfflineContext] Offline recipe page fully loaded in hidden iframe (cached by SW)');
+        // Remove iframe after it loads to free resources
+        setTimeout(() => iframe.remove(), 1000);
+      };
+      document.body.appendChild(iframe);
     }
-  }, [isOnline]);
+  }, [isOnline, router]);
 
   // Also refresh when explicitly going offline
   useEffect(() => {
