@@ -1,7 +1,7 @@
 // Service Worker for Cocktail Recipe Library PWA
 // Handles offline caching for pages and recipe images
 
-const CACHE_NAME = 'cocktail-recipes-v5';
+const CACHE_NAME = 'cocktail-recipes-v6';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -80,8 +80,25 @@ self.addEventListener('fetch', (event) => {
         });
         return response;
       })
-      .catch(() => {
-        return caches.match(event.request);
+      .catch(async () => {
+        // Try to get from cache
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        // For navigation requests (HTML pages), serve the app shell
+        // This allows Next.js client-side routing to work offline
+        if (event.request.mode === 'navigate' ||
+            (event.request.headers.get('accept') || '').includes('text/html')) {
+          const appShell = await caches.match('/');
+          if (appShell) {
+            return appShell;
+          }
+        }
+
+        // Nothing in cache
+        return new Response('Offline', { status: 503 });
       })
   );
 });
