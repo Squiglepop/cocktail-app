@@ -7,6 +7,7 @@ import {
   removeRecipeOffline,
   cacheRecipeImage,
   removeCachedImage,
+  isRecipeCached,
 } from './offline-storage';
 
 // Storage interface - designed for easy swapping to different storage backends
@@ -99,6 +100,32 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
     };
     loadFavourites();
   }, []);
+
+  // Sync existing favourites to IndexedDB (for favourites added before offline feature)
+  // Runs once after favourites are loaded
+  useEffect(() => {
+    if (isLoading || favourites.size === 0) return;
+
+    const syncFavouritesToIndexedDB = async () => {
+      const ids = Array.from(favourites);
+
+      // Check each favourite and cache if not already cached
+      for (const id of ids) {
+        try {
+          const cached = await isRecipeCached(id);
+          if (!cached) {
+            console.log(`Syncing favourite ${id} to IndexedDB...`);
+            await cacheRecipeForOffline(id);
+          }
+        } catch (error) {
+          console.warn(`Failed to sync favourite ${id}:`, error);
+        }
+      }
+    };
+
+    // Run sync in background
+    syncFavouritesToIndexedDB();
+  }, [isLoading, favourites.size]); // Only re-run when loading completes or count changes
 
   // Save favourites whenever they change (skip initial load)
   useEffect(() => {
