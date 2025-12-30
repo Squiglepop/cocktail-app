@@ -4,12 +4,15 @@ import { RecipeGrid } from '@/components/recipes/RecipeGrid'
 import { RecipeListItem } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
+import { OfflineProvider } from '@/lib/offline-context'
 
 function renderRecipeGrid(props: Parameters<typeof RecipeGrid>[0]) {
   return render(
     <AuthProvider>
       <FavouritesProvider>
-        <RecipeGrid {...props} />
+        <OfflineProvider>
+          <RecipeGrid {...props} />
+        </OfflineProvider>
       </FavouritesProvider>
     </AuthProvider>
   )
@@ -25,6 +28,7 @@ const mockRecipes: RecipeListItem[] = [
     serving_style: 'up',
     has_image: false,
     user_id: '1',
+    visibility: 'public',
     created_at: '2024-01-01T00:00:00Z',
   },
   {
@@ -35,7 +39,8 @@ const mockRecipes: RecipeListItem[] = [
     glassware: 'rocks',
     serving_style: 'rocks',
     has_image: false,
-    user_id: null,
+    user_id: undefined,
+    visibility: 'public',
     created_at: '2024-01-02T00:00:00Z',
   },
   {
@@ -47,6 +52,7 @@ const mockRecipes: RecipeListItem[] = [
     serving_style: 'up',
     has_image: false,
     user_id: '1',
+    visibility: 'public',
     created_at: '2024-01-03T00:00:00Z',
   },
 ]

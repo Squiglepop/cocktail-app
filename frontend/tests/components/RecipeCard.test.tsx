@@ -4,12 +4,15 @@ import { RecipeCard } from '@/components/recipes/RecipeCard'
 import { RecipeListItem } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
+import { OfflineProvider } from '@/lib/offline-context'
 
 function renderRecipeCard(recipe: RecipeListItem) {
   return render(
     <AuthProvider>
       <FavouritesProvider>
-        <RecipeCard recipe={recipe} />
+        <OfflineProvider>
+          <RecipeCard recipe={recipe} />
+        </OfflineProvider>
       </FavouritesProvider>
     </AuthProvider>
   )
@@ -24,6 +27,7 @@ const mockRecipe: RecipeListItem = {
   serving_style: 'up',
   has_image: false,
   user_id: '1',
+  visibility: 'public',
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -38,6 +42,7 @@ const mockMinimalRecipe: RecipeListItem = {
   id: '3',
   name: 'Simple Cocktail',
   has_image: false,
+  visibility: 'public',
   created_at: '2024-01-01T00:00:00Z',
 }
 

@@ -4,8 +4,10 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 
 describe('ServiceWorkerRegistration', () => {
   let originalServiceWorker: ServiceWorkerContainer | undefined
-  let consoleSpy: ReturnType<typeof vi.spyOn>
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleSpy: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleErrorSpy: any
 
   beforeEach(() => {
     originalServiceWorker = navigator.serviceWorker
