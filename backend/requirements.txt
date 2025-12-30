@@ -30,7 +30,7 @@ python-dotenv>=1.0.0
 
 # Security hardening
 bleach>=6.0.0
-python-magic>=0.4.27
+filetype>=1.2.0  # Pure Python magic-byte detection (no system deps unlike python-magic)
 slowapi>=0.1.9
 
 # Testing

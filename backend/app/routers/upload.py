@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-import magic
+import filetype
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -91,8 +91,9 @@ def validate_image_content(file_content: bytes, filename: str) -> None:
             detail="File too small to be a valid image"
         )
 
-    # Check magic bytes (actual file content)
-    mime = magic.from_buffer(file_content, mime=True)
+    # Check magic bytes (actual file content) using filetype (pure Python, no system deps)
+    kind = filetype.guess(file_content)
+    mime = kind.mime if kind else None
 
     if mime not in ALLOWED_MIME_TYPES:
         logger.warning(f"Invalid file upload attempt: {filename} has mime type {mime}")
