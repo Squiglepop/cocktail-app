@@ -1,7 +1,7 @@
 // Service Worker for Cocktail Recipe Library PWA
 // Handles offline caching for pages and recipe images
 
-const CACHE_NAME = 'cocktail-recipes-v8';
+const CACHE_NAME = 'cocktail-recipes-v9';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -81,43 +81,44 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(async () => {
-        // Try to get from cache
+        // Try to get from cache (exact match)
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) {
           return cachedResponse;
         }
 
-        // Check if this is a request for the offline recipe page (including RSC prefetches)
-        // Next.js RSC requests include query params like ?_rsc=... or /_next/... paths
-        const isOfflineRecipePage = url.pathname === '/offline/recipe' ||
-                                    url.pathname.startsWith('/offline/recipe');
+        // Check if this is a NAVIGATION request (not RSC/prefetch)
+        const isNavigation = event.request.mode === 'navigate' ||
+                             (event.request.headers.get('accept') || '').includes('text/html');
 
-        // Also handle Next.js RSC/data requests for the offline recipe route
+        // RSC requests have ?_rsc= param or specific headers - DON'T serve HTML for these
         const isRscRequest = url.searchParams.has('_rsc') ||
-                             url.pathname.includes('/_next/');
-        const requestUrl = event.request.url;
-        const isOfflineRecipeRsc = isRscRequest && requestUrl.includes('offline') && requestUrl.includes('recipe');
+                             event.request.headers.get('RSC') === '1' ||
+                             event.request.headers.get('Next-Router-Prefetch') === '1';
 
-        if (isOfflineRecipePage || isOfflineRecipeRsc) {
-          // Serve the cached offline recipe page - it's a client component that loads from IndexedDB
+        // For NAVIGATION to /offline/recipe (full page load), serve the cached page
+        // This happens when user clicks a recipe card while offline and we use window.location.assign()
+        if (isNavigation && !isRscRequest && url.pathname.startsWith('/offline/recipe')) {
           const offlinePage = await caches.match('/offline/recipe');
           if (offlinePage) {
-            console.log('[SW] Serving cached /offline/recipe page for:', event.request.url);
+            console.log('[SW] Serving cached /offline/recipe for navigation:', event.request.url);
             return offlinePage;
           }
         }
 
-        // For navigation requests (HTML pages), serve the app shell
-        // This allows Next.js client-side routing to work offline
-        if (event.request.mode === 'navigate' ||
-            (event.request.headers.get('accept') || '').includes('text/html')) {
+        // For other navigation requests, serve the home page as fallback
+        // This allows the app to at least load when offline
+        if (isNavigation && !isRscRequest) {
           const appShell = await caches.match('/');
           if (appShell) {
+            console.log('[SW] Serving home page fallback for:', event.request.url);
             return appShell;
           }
         }
 
-        // Nothing in cache
+        // RSC requests and other non-navigation requests - let them fail
+        // This is intentional: Next.js handles RSC failures gracefully
+        console.log('[SW] Offline - no cache for:', event.request.url);
         return new Response('Offline', { status: 503 });
       })
   );
