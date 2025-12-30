@@ -10,6 +10,7 @@ import {
   isRecipeCached,
   listCachedRecipeIds,
 } from './offline-storage';
+import { favouritesDebug as debug } from './debug';
 
 // Storage interface - designed for easy swapping to different storage backends
 interface FavouritesStorage {
@@ -33,7 +34,7 @@ const localStorageAdapter: FavouritesStorage = {
     try {
       localStorage.setItem('cocktail_favourites', JSON.stringify(ids));
     } catch (error) {
-      console.error('Failed to save favourites:', error);
+      debug.error('Failed to save favourites:', error);
     }
   },
 };
@@ -71,21 +72,21 @@ async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe, token?: 
     if (!recipeData) {
       // Use provided token or get from localStorage
       const authToken = token ?? getStoredToken();
-      console.log(`[cacheRecipeForOffline] Fetching recipe ${recipeId} from API...`);
+      debug.log(`Fetching recipe ${recipeId} from API...`);
       recipeData = await fetchRecipe(recipeId, authToken);
     }
 
     // Save recipe data to IndexedDB
     await saveRecipeOffline(recipeData);
-    console.log(`[cacheRecipeForOffline] Saved recipe ${recipeId} to IndexedDB`);
+    debug.log(`Saved recipe ${recipeId} to IndexedDB`);
 
     // Cache the image if it has one
     if (recipeData.has_image) {
       await cacheRecipeImage(recipeId);
-      console.log(`[cacheRecipeForOffline] Cached image for ${recipeId}`);
+      debug.log(`Cached image for ${recipeId}`);
     }
 
-    console.log(`✓ Cached recipe ${recipeId} for offline`);
+    debug.log(`Cached recipe ${recipeId} for offline`);
 
     // Notify offline-context to refresh its cached recipes list
     if (typeof window !== 'undefined') {
@@ -93,7 +94,7 @@ async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe, token?: 
     }
   } catch (error) {
     // Don't break the favourite operation if caching fails
-    console.error(`✗ Failed to cache recipe ${recipeId}:`, error);
+    debug.error(`Failed to cache recipe ${recipeId}:`, error);
     throw error; // Re-throw so caller knows it failed
   }
 }
@@ -106,14 +107,14 @@ async function uncacheRecipe(recipeId: string): Promise<void> {
   try {
     await removeRecipeOffline(recipeId);
     await removeCachedImage(recipeId);
-    console.log(`✓ Removed recipe ${recipeId} from offline cache`);
+    debug.log(`Removed recipe ${recipeId} from offline cache`);
 
     // Notify offline-context to refresh its cached recipes list
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('recipe-uncached', { detail: { recipeId } }));
     }
   } catch (error) {
-    console.warn('Failed to remove recipe from offline cache:', error);
+    debug.warn('Failed to remove recipe from offline cache:', error);
   }
 }
 
@@ -142,31 +143,31 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
 
       // Debug: Show what's actually in IndexedDB vs localStorage
       const cachedIds = await listCachedRecipeIds();
-      console.log(`[FavSync] Favourites in localStorage: ${ids.length}`, ids);
-      console.log(`[FavSync] Recipes in IndexedDB: ${cachedIds.length}`, cachedIds);
-      console.log(`[FavSync] Auth token available: ${!!token}`);
+      debug.log(`Favourites in localStorage: ${ids.length}`, ids);
+      debug.log(`Recipes in IndexedDB: ${cachedIds.length}`, cachedIds);
+      debug.log(`Auth token available: ${!!token}`);
 
       // First, check which ones need syncing
       const needsSync: string[] = [];
       for (const id of ids) {
         try {
           const cached = await isRecipeCached(id);
-          console.log(`[FavSync] Recipe ${id} cached: ${cached}`);
+          debug.log(`Recipe ${id} cached: ${cached}`);
           if (!cached) {
             needsSync.push(id);
           }
         } catch (err) {
-          console.log(`[FavSync] Recipe ${id} check failed:`, err);
+          debug.log(`Recipe ${id} check failed:`, err);
           needsSync.push(id);
         }
       }
 
       if (needsSync.length === 0) {
-        console.log('[FavSync] All favourites already cached for offline');
+        debug.log('All favourites already cached for offline');
         return;
       }
 
-      console.log(`Syncing ${needsSync.length} favourites to IndexedDB...`);
+      debug.log(`Syncing ${needsSync.length} favourites to IndexedDB...`);
 
       // Sync all in parallel for speed
       const results = await Promise.allSettled(
@@ -176,7 +177,7 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       const succeeded = results.filter(r => r.status === 'fulfilled').length;
       const failed = results.filter(r => r.status === 'rejected').length;
 
-      console.log(`Sync complete: ${succeeded} succeeded, ${failed} failed`);
+      debug.log(`Sync complete: ${succeeded} succeeded, ${failed} failed`);
     };
 
     // Run sync in background
@@ -201,7 +202,7 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
     });
     // Cache for offline in background (don't await)
     cacheRecipeForOffline(id, recipe).catch((err) => {
-      console.error(`[addFavourite] Failed to cache recipe ${id}:`, err);
+      debug.error(`Failed to cache recipe ${id}:`, err);
     });
   }, []);
 
@@ -216,13 +217,13 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleFavourite = useCallback((id: string, recipe?: Recipe) => {
-    // Check current state BEFORE setState
-    const wasFavourite = favourites.has(id);
-    console.log(`[toggleFavourite] Recipe ${id}, wasFavourite: ${wasFavourite}, recipe provided: ${!!recipe}`);
+    // Track state inside setState callback to avoid dependency on favourites
+    let wasFavourite = false;
 
     setFavourites((prev) => {
+      wasFavourite = prev.has(id);
       const next = new Set(prev);
-      if (next.has(id)) {
+      if (wasFavourite) {
         next.delete(id);
       } else {
         next.add(id);
@@ -230,17 +231,19 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    // Do async operations OUTSIDE setState
-    if (wasFavourite) {
-      console.log(`[toggleFavourite] Removing recipe ${id} from cache`);
-      uncacheRecipe(id);
-    } else {
-      console.log(`[toggleFavourite] Caching recipe ${id} for offline`);
-      cacheRecipeForOffline(id, recipe).catch((err) => {
-        console.error(`[toggleFavourite] Failed to cache recipe ${id}:`, err);
-      });
-    }
-  }, [favourites]);
+    // Defer async operations to after state update using queueMicrotask
+    queueMicrotask(() => {
+      if (wasFavourite) {
+        debug.log(`Removing recipe ${id} from cache`);
+        uncacheRecipe(id);
+      } else {
+        debug.log(`Caching recipe ${id} for offline`);
+        cacheRecipeForOffline(id, recipe).catch((err) => {
+          debug.error(`Failed to cache recipe ${id}:`, err);
+        });
+      }
+    });
+  }, []); // Empty deps - no re-creation on state changes!
 
   return (
     <FavouritesContext.Provider

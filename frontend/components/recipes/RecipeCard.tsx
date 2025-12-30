@@ -9,6 +9,7 @@ import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
 import { useFavourites } from '@/lib/favourites-context';
 import { useOffline } from '@/lib/offline-context';
+import { debug } from '@/lib/debug';
 
 interface RecipeCardProps {
   recipe: RecipeListItem;
@@ -41,7 +42,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   const handleCardClick = (e: React.MouseEvent) => {
     if (!isOnline) {
       e.preventDefault();
-      console.log(`[RecipeCard] Offline navigation to /offline/recipe?id=${recipe.id}`);
+      debug.log(`Offline navigation to /offline/recipe?id=${recipe.id}`);
       window.location.assign(`/offline/recipe?id=${recipe.id}`);
     }
     // When online, let the Link handle navigation normally

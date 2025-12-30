@@ -1,6 +1,11 @@
 // Service Worker for Cocktail Recipe Library PWA
 // Handles offline caching for pages and recipe images
 
+// Debug mode - set to false for production
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log('[SW]', ...args);
+const warn = (...args) => DEBUG && console.warn('[SW]', ...args);
+
 const CACHE_NAME = 'cocktail-recipes-v9';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
@@ -101,7 +106,7 @@ self.addEventListener('fetch', (event) => {
         if (isNavigation && !isRscRequest && url.pathname.startsWith('/offline/recipe')) {
           const offlinePage = await caches.match('/offline/recipe');
           if (offlinePage) {
-            console.log('[SW] Serving cached /offline/recipe for navigation:', event.request.url);
+            log('Serving cached /offline/recipe for navigation:', event.request.url);
             return offlinePage;
           }
         }
@@ -111,14 +116,14 @@ self.addEventListener('fetch', (event) => {
         if (isNavigation && !isRscRequest) {
           const appShell = await caches.match('/');
           if (appShell) {
-            console.log('[SW] Serving home page fallback for:', event.request.url);
+            log('Serving home page fallback for:', event.request.url);
             return appShell;
           }
         }
 
         // RSC requests and other non-navigation requests - let them fail
         // This is intentional: Next.js handles RSC failures gracefully
-        console.log('[SW] Offline - no cache for:', event.request.url);
+        log('Offline - no cache for:', event.request.url);
         return new Response('Offline', { status: 503 });
       })
   );
@@ -183,16 +188,7 @@ self.addEventListener('message', (event) => {
     case 'GET_SHARED_IMAGE':
       handleGetSharedImage(event);
       break;
-
-    case 'CACHE_RECIPE_IMAGE':
-      // Client requesting to cache an image
-      handleCacheRecipeImage(event.data.url);
-      break;
-
-    case 'REMOVE_CACHED_IMAGE':
-      // Client requesting to remove a cached image
-      handleRemoveCachedImage(event.data.url);
-      break;
+    // Note: Image caching is handled directly via Cache API in offline-storage.ts
   }
 });
 
@@ -208,28 +204,5 @@ function handleGetSharedImage(event) {
     client.postMessage({
       type: 'NO_SHARED_IMAGE'
     });
-  }
-}
-
-async function handleCacheRecipeImage(url) {
-  if (!url) return;
-  try {
-    const response = await fetch(url);
-    if (response.ok) {
-      const cache = await caches.open(IMAGE_CACHE_NAME);
-      await cache.put(url, response);
-    }
-  } catch (error) {
-    console.warn('Failed to cache recipe image:', error);
-  }
-}
-
-async function handleRemoveCachedImage(url) {
-  if (!url) return;
-  try {
-    const cache = await caches.open(IMAGE_CACHE_NAME);
-    await cache.delete(url);
-  } catch (error) {
-    console.warn('Failed to remove cached image:', error);
   }
 }

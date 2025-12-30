@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useRouter } from 'next/navigation';
 import { getCachedRecipeListItems } from './offline-storage';
 import { RecipeListItem, API_BASE } from './api';
+import { offlineDebug as debug } from './debug';
 
 interface OfflineContextType {
   isOnline: boolean;
@@ -34,7 +35,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       // Construct health URL from API_BASE (remove /api suffix, add /health)
       // Add cache-busting param to prevent ANY caching (browser, CDN, etc)
       const healthUrl = API_BASE.replace(/\/api\/?$/, '') + '/health?_=' + Date.now();
-      console.log(`[OfflineContext] Checking connectivity: ${healthUrl}`);
+      debug.log(`Checking connectivity: ${healthUrl}`);
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
@@ -48,11 +49,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) throw new Error('Health check failed');
 
-      console.log('[OfflineContext] Health check passed - ONLINE');
+      debug.log('Health check passed - ONLINE');
       setIsOnline(true);
     } catch (error) {
       // Network request failed = actually offline
-      console.log('[OfflineContext] Health check failed - OFFLINE', error);
+      debug.log('Health check failed - OFFLINE', error);
       setIsOnline(false);
     }
   }, []);
@@ -61,10 +62,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const refreshCachedRecipes = useCallback(async () => {
     try {
       const recipes = await getCachedRecipeListItems();
-      console.log(`[OfflineContext] Loaded ${recipes.length} recipes from IndexedDB:`, recipes.map(r => r.name));
+      debug.log(`Loaded ${recipes.length} recipes from IndexedDB:`, recipes.map(r => r.name));
       setCachedRecipes(recipes);
     } catch (error) {
-      console.error('Failed to load cached recipes:', error);
+      debug.error('Failed to load cached recipes:', error);
       setCachedRecipes([]);
     } finally {
       setCachedRecipesLoading(false);
@@ -72,14 +73,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Check immediately and periodically
+    // Check immediately and periodically (15s is less battery-draining than 5s)
     checkRealConnectivity();
-    const interval = setInterval(checkRealConnectivity, 5000);
+    const interval = setInterval(checkRealConnectivity, 15000);
 
     // Also check when browser fires online/offline events
     // (use them as triggers for immediate check, not as truth)
     const handleNetworkChange = () => {
-      console.log('[OfflineContext] Browser network event - triggering immediate health check');
+      debug.log('Browser network event - triggering immediate health check');
       checkRealConnectivity();
     };
 
@@ -98,13 +99,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleRecipeCached = (event: Event) => {
       const customEvent = event as CustomEvent<{ recipeId: string }>;
-      console.log(`[OfflineContext] Recipe cached: ${customEvent.detail.recipeId} - refreshing list`);
+      debug.log(`Recipe cached: ${customEvent.detail.recipeId} - refreshing list`);
       refreshCachedRecipes();
     };
 
     const handleRecipeUncached = (event: Event) => {
       const customEvent = event as CustomEvent<{ recipeId: string }>;
-      console.log(`[OfflineContext] Recipe uncached: ${customEvent.detail.recipeId} - refreshing list`);
+      debug.log(`Recipe uncached: ${customEvent.detail.recipeId} - refreshing list`);
       refreshCachedRecipes();
     };
 
@@ -129,7 +130,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     if (isOnline && typeof window !== 'undefined') {
       // 1. Use Next.js router prefetch for client-side routing cache
       router.prefetch('/offline/recipe');
-      console.log('[OfflineContext] Prefetched /offline/recipe via Next.js router');
+      debug.log('Prefetched /offline/recipe via Next.js router');
 
       // 2. Also load the page in a hidden iframe to ensure SW caches ALL resources
       // This is a belt-and-suspenders approach since prefetch alone may not cache JS chunks
@@ -137,7 +138,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       iframe.style.display = 'none';
       iframe.src = '/offline/recipe?warmup=true';
       iframe.onload = () => {
-        console.log('[OfflineContext] Offline recipe page fully loaded in hidden iframe (cached by SW)');
+        debug.log('Offline recipe page fully loaded in hidden iframe (cached by SW)');
         // Remove iframe after it loads to free resources
         setTimeout(() => iframe.remove(), 1000);
       };

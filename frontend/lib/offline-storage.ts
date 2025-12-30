@@ -5,6 +5,7 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Recipe, RecipeListItem, getRecipeImageUrl } from './api';
+import { cacheDebug as debug } from './debug';
 
 // Database schema
 interface CocktailOfflineDB extends DBSchema {
@@ -22,11 +23,32 @@ const DB_VERSION = 1;
 let dbPromise: Promise<IDBPDatabase<CocktailOfflineDB>> | null = null;
 
 /**
+ * Check if IndexedDB is available (handles private browsing modes)
+ */
+function isIndexedDBAvailable(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!('indexedDB' in window)) return false;
+
+  // Some browsers (Firefox private mode) have indexedDB but it throws
+  try {
+    const testRequest = window.indexedDB.open('__idb_test__');
+    testRequest.onerror = () => {};
+    testRequest.onsuccess = () => {
+      testRequest.result.close();
+      window.indexedDB.deleteDatabase('__idb_test__');
+    };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Get or create the database connection
  */
 function getDB(): Promise<IDBPDatabase<CocktailOfflineDB>> {
-  if (typeof window === 'undefined') {
-    return Promise.reject(new Error('IndexedDB not available on server'));
+  if (!isIndexedDBAvailable()) {
+    return Promise.reject(new Error('IndexedDB not available'));
   }
 
   if (!dbPromise) {
@@ -157,9 +179,10 @@ export async function cacheRecipeImage(recipeId: string): Promise<void> {
     const response = await fetch(imageUrl);
     if (response.ok) {
       await cache.put(imageUrl, response);
+      debug.log(`Cached image for recipe ${recipeId}`);
     }
   } catch (error) {
-    console.warn('Failed to cache recipe image:', error);
+    debug.warn(`Failed to cache recipe image ${recipeId}:`, error);
   }
 }
 
@@ -176,8 +199,9 @@ export async function removeCachedImage(recipeId: string): Promise<void> {
   try {
     const cache = await caches.open(IMAGE_CACHE_NAME);
     await cache.delete(imageUrl);
+    debug.log(`Removed cached image for recipe ${recipeId}`);
   } catch (error) {
-    console.warn('Failed to remove cached image:', error);
+    debug.warn(`Failed to remove cached image ${recipeId}:`, error);
   }
 }
 

@@ -12,6 +12,7 @@ import {
 } from '@/lib/api';
 import { getRecipeOffline, listCachedRecipeIds } from '@/lib/offline-storage';
 import { useFavourites } from '@/lib/favourites-context';
+import { offlineDebug as debug } from '@/lib/debug';
 import {
   ArrowLeft,
   GlassWater,
@@ -69,12 +70,12 @@ function OfflineRecipeContent() {
       try {
         // Debug: List all cached recipes
         const allCachedIds = await listCachedRecipeIds();
-        console.log(`[OfflineRecipe] All cached recipe IDs in IndexedDB:`, allCachedIds);
-        console.log(`[OfflineRecipe] Looking for recipe ID: "${recipeId}"`);
-        console.log(`[OfflineRecipe] ID is in cache: ${allCachedIds.includes(recipeId)}`);
+        debug.log(`All cached recipe IDs in IndexedDB:`, allCachedIds);
+        debug.log(`Looking for recipe ID: "${recipeId}"`);
+        debug.log(`ID is in cache: ${allCachedIds.includes(recipeId)}`);
 
         const cached = await getRecipeOffline(recipeId);
-        console.log(`[OfflineRecipe] getRecipeOffline result:`, cached ? `FOUND - "${cached.name}"` : 'NOT FOUND');
+        debug.log(`getRecipeOffline result:`, cached ? `FOUND - "${cached.name}"` : 'NOT FOUND');
 
         if (cached) {
           setRecipe(cached);
@@ -82,7 +83,7 @@ function OfflineRecipeContent() {
           setError(`Recipe "${recipeId}" not found in offline cache. Cached IDs: ${allCachedIds.join(', ') || 'none'}`);
         }
       } catch (err) {
-        console.error(`[OfflineRecipe] Error:`, err);
+        debug.error(`Error:`, err);
         setError('Failed to load recipe from offline cache');
       } finally {
         setLoading(false);
