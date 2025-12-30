@@ -62,6 +62,7 @@ function getStoredToken(): string | null {
 
 /**
  * Cache a recipe for offline access (runs in background)
+ * Dispatches 'recipe-cached' event on success so offline-context can refresh
  */
 async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe, token?: string | null): Promise<void> {
   try {
@@ -70,32 +71,47 @@ async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe, token?: 
     if (!recipeData) {
       // Use provided token or get from localStorage
       const authToken = token ?? getStoredToken();
+      console.log(`[cacheRecipeForOffline] Fetching recipe ${recipeId} from API...`);
       recipeData = await fetchRecipe(recipeId, authToken);
     }
 
     // Save recipe data to IndexedDB
     await saveRecipeOffline(recipeData);
+    console.log(`[cacheRecipeForOffline] Saved recipe ${recipeId} to IndexedDB`);
 
     // Cache the image if it has one
     if (recipeData.has_image) {
       await cacheRecipeImage(recipeId);
+      console.log(`[cacheRecipeForOffline] Cached image for ${recipeId}`);
     }
 
     console.log(`✓ Cached recipe ${recipeId} for offline`);
+
+    // Notify offline-context to refresh its cached recipes list
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('recipe-cached', { detail: { recipeId } }));
+    }
   } catch (error) {
     // Don't break the favourite operation if caching fails
-    console.warn(`✗ Failed to cache recipe ${recipeId}:`, error);
+    console.error(`✗ Failed to cache recipe ${recipeId}:`, error);
     throw error; // Re-throw so caller knows it failed
   }
 }
 
 /**
  * Remove a recipe from offline cache (runs in background)
+ * Dispatches 'recipe-uncached' event so offline-context can refresh
  */
 async function uncacheRecipe(recipeId: string): Promise<void> {
   try {
     await removeRecipeOffline(recipeId);
     await removeCachedImage(recipeId);
+    console.log(`✓ Removed recipe ${recipeId} from offline cache`);
+
+    // Notify offline-context to refresh its cached recipes list
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('recipe-uncached', { detail: { recipeId } }));
+    }
   } catch (error) {
     console.warn('Failed to remove recipe from offline cache:', error);
   }

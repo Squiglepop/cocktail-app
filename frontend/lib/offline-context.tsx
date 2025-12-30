@@ -93,6 +93,29 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     };
   }, [checkRealConnectivity]);
 
+  // Listen for recipe-cached/uncached events from favourites-context
+  // This ensures cachedRecipes stays in sync when recipes are cached/removed
+  useEffect(() => {
+    const handleRecipeCached = (event: Event) => {
+      const customEvent = event as CustomEvent<{ recipeId: string }>;
+      console.log(`[OfflineContext] Recipe cached: ${customEvent.detail.recipeId} - refreshing list`);
+      refreshCachedRecipes();
+    };
+
+    const handleRecipeUncached = (event: Event) => {
+      const customEvent = event as CustomEvent<{ recipeId: string }>;
+      console.log(`[OfflineContext] Recipe uncached: ${customEvent.detail.recipeId} - refreshing list`);
+      refreshCachedRecipes();
+    };
+
+    window.addEventListener('recipe-cached', handleRecipeCached);
+    window.addEventListener('recipe-uncached', handleRecipeUncached);
+    return () => {
+      window.removeEventListener('recipe-cached', handleRecipeCached);
+      window.removeEventListener('recipe-uncached', handleRecipeUncached);
+    };
+  }, [refreshCachedRecipes]);
+
   // Load cached recipes on mount AND when going offline
   // Loading on mount ensures cachedRecipes is populated for fallback even if isOnline is wrong
   useEffect(() => {
