@@ -142,27 +142,34 @@ class RecipeListResponse(BaseModel):
 
 
 class ExtractedIngredient(BaseModel):
-    """Ingredient as extracted from image."""
-    name: str
-    amount: Optional[float] = None
-    unit: Optional[str] = None
-    notes: Optional[str] = None
-    type: Optional[str] = None  # Will be mapped to IngredientType
+    """Ingredient as extracted from image.
+
+    Field lengths are constrained to prevent abuse via oversized AI outputs.
+    """
+    name: str = Field(..., min_length=1, max_length=200)
+    amount: Optional[float] = Field(None, ge=0, le=10000)
+    unit: Optional[str] = Field(None, max_length=50)
+    notes: Optional[str] = Field(None, max_length=500)
+    type: Optional[str] = Field(None, max_length=50)  # Will be mapped to IngredientType
 
 
 class ExtractedRecipe(BaseModel):
-    """Recipe as extracted from image by AI."""
-    name: str
-    description: Optional[str] = None
-    ingredients: List[ExtractedIngredient] = Field(default_factory=list)
-    instructions: Optional[str] = None
-    template: Optional[str] = None  # Will be mapped to CocktailTemplate
-    main_spirit: Optional[str] = None  # Will be mapped to SpiritCategory
-    glassware: Optional[str] = None  # Will be mapped to Glassware
-    serving_style: Optional[str] = None  # Will be mapped to ServingStyle
-    method: Optional[str] = None  # Will be mapped to Method
-    garnish: Optional[str] = None
-    notes: Optional[str] = None
+    """Recipe as extracted from image by AI.
+
+    Field lengths are constrained to prevent abuse via oversized AI outputs
+    or prompt injection attacks that generate excessive content.
+    """
+    name: str = Field(..., min_length=1, max_length=300)
+    description: Optional[str] = Field(None, max_length=2000)
+    ingredients: List[ExtractedIngredient] = Field(default_factory=list, max_length=50)
+    instructions: Optional[str] = Field(None, max_length=10000)
+    template: Optional[str] = Field(None, max_length=100)  # Will be mapped to CocktailTemplate
+    main_spirit: Optional[str] = Field(None, max_length=100)  # Will be mapped to SpiritCategory
+    glassware: Optional[str] = Field(None, max_length=100)  # Will be mapped to Glassware
+    serving_style: Optional[str] = Field(None, max_length=100)  # Will be mapped to ServingStyle
+    method: Optional[str] = Field(None, max_length=100)  # Will be mapped to Method
+    garnish: Optional[str] = Field(None, max_length=500)
+    notes: Optional[str] = Field(None, max_length=5000)
 
 
 class ExtractionJobResponse(BaseModel):

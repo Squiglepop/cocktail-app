@@ -2,12 +2,16 @@
 Image upload and extraction endpoints.
 """
 import json
+import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+import magic
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -29,11 +33,25 @@ from app.services import (
     ImageHashes,
 )
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
+# Rate limiter for upload endpoints
+limiter = Limiter(key_func=get_remote_address)
+
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+# Allowed MIME types based on magic bytes (actual file content)
+ALLOWED_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+}
 
 MIME_TYPES = {
     ".jpg": "image/jpeg",
@@ -42,6 +60,62 @@ MIME_TYPES = {
     ".gif": "image/gif",
     ".webp": "image/webp",
 }
+
+# Maximum file size: 20MB
+MAX_FILE_SIZE = 20 * 1024 * 1024
+
+
+def validate_image_content(file_content: bytes, filename: str) -> None:
+    """Validate uploaded file is actually an image using magic bytes.
+
+    This prevents attacks where a malicious file is uploaded with an
+    image extension but contains non-image content.
+
+    Args:
+        file_content: Raw file bytes
+        filename: Original filename for logging
+
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Check file size
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB"
+        )
+
+    if len(file_content) < 100:
+        raise HTTPException(
+            status_code=400,
+            detail="File too small to be a valid image"
+        )
+
+    # Check magic bytes (actual file content)
+    mime = magic.from_buffer(file_content, mime=True)
+
+    if mime not in ALLOWED_MIME_TYPES:
+        logger.warning(f"Invalid file upload attempt: {filename} has mime type {mime}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type: {mime}. Allowed: JPEG, PNG, GIF, WebP, HEIC"
+        )
+
+    # Check for extension/content mismatch (log warning but allow)
+    ext = filename.lower().split(".")[-1] if "." in filename else ""
+    extension_mime_map = {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "gif": "image/gif",
+        "webp": "image/webp",
+        "heic": "image/heic",
+        "heif": "image/heif",
+    }
+
+    expected_mime = extension_mime_map.get(ext)
+    if expected_mime and expected_mime != mime:
+        logger.warning(f"Extension/content mismatch: {filename} has extension {ext} but content is {mime}")
 
 
 def _convert_duplicate_result(result) -> Optional[DuplicateCheckResponse]:
@@ -64,7 +138,9 @@ def _convert_duplicate_result(result) -> Optional[DuplicateCheckResponse]:
 
 
 @router.post("", response_model=UploadWithDuplicateCheckResponse)
+@limiter.limit("20/minute")
 async def upload_image(
+    request: Request,
     file: UploadFile = File(...),
     check_duplicates: bool = Query(True, description="Check for duplicate images before creating job"),
     db: Session = Depends(get_db),
@@ -88,8 +164,11 @@ async def upload_image(
     filename = f"{file_id}{suffix}"
     file_path = settings.upload_dir / filename
 
-    # Save file
+    # Read and validate file content
     content = await file.read()
+    validate_image_content(content, file.filename or "unknown")
+
+    # Save file
     with open(file_path, "wb") as f:
         f.write(content)
 
@@ -114,7 +193,8 @@ async def upload_image(
 
 
 @router.post("/{job_id}/extract", response_model=RecipeResponse)
-def extract_recipe(job_id: str, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def extract_recipe(request: Request, job_id: str, db: Session = Depends(get_db)):
     """Execute extraction for a pending job."""
     job = db.query(ExtractionJob).filter(ExtractionJob.id == job_id).first()
     if not job:
@@ -256,7 +336,9 @@ def get_job_status(job_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/extract-immediate", response_model=RecipeResponse)
+@limiter.limit("10/minute")
 async def upload_and_extract(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
@@ -274,8 +356,11 @@ async def upload_and_extract(
     filename = f"{file_id}{suffix}"
     file_path = settings.upload_dir / filename
 
-    # Save file
+    # Read and validate file content
     content = await file.read()
+    validate_image_content(content, file.filename or "unknown")
+
+    # Save file
     with open(file_path, "wb") as f:
         f.write(content)
 
@@ -394,7 +479,9 @@ async def upload_and_extract(
 
 
 @router.post("/extract-multi", response_model=RecipeResponse)
+@limiter.limit("10/minute")
 async def upload_and_extract_multi(
+    request: Request,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ):
@@ -425,8 +512,11 @@ async def upload_and_extract_multi(
         filename = f"{file_id}{suffix}"
         file_path = settings.upload_dir / filename
 
-        # Stream file content directly to disk to minimize memory usage
+        # Read and validate file content
         content = await file.read()
+        validate_image_content(content, file.filename or "unknown")
+
+        # Save to disk
         with open(file_path, "wb") as f:
             f.write(content)
 
@@ -541,7 +631,9 @@ async def upload_and_extract_multi(
 
 
 @router.post("/enhance/{recipe_id}", response_model=RecipeResponse)
+@limiter.limit("10/minute")
 async def enhance_recipe_with_images(
+    request: Request,
     recipe_id: str,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
@@ -577,7 +669,11 @@ async def enhance_recipe_with_images(
         filename = f"{file_id}{suffix}"
         file_path = settings.upload_dir / filename
 
+        # Read and validate file content
         content = await file.read()
+        validate_image_content(content, file.filename or "unknown")
+
+        # Save to disk
         with open(file_path, "wb") as f:
             f.write(content)
 

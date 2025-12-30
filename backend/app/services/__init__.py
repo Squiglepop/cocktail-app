@@ -13,6 +13,7 @@ from .duplicate_detector import (
 )
 from .image_storage import ImageStorageService, get_image_storage
 from .cleanup import OrphanedFileCleanupService, CleanupStats, get_cleanup_service
+from .security import sanitize_text, sanitize_recipe_name, sanitize_ingredient_name
 
 __all__ = [
     "get_db",
@@ -33,4 +34,7 @@ __all__ = [
     "OrphanedFileCleanupService",
     "CleanupStats",
     "get_cleanup_service",
+    "sanitize_text",
+    "sanitize_recipe_name",
+    "sanitize_ingredient_name",
 ]
