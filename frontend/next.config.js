@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 
+// Backend URL for API rewrites - proxies /api/* requests to the backend
+// In dev: defaults to localhost:8000
+// In prod: set BACKEND_URL env var in Railway
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+
 // Include localhost in CSP only during development
 // In production, we only need the railway.app domains
 const isDev = process.env.NODE_ENV !== 'production';
@@ -71,6 +76,21 @@ const nextConfig = {
         // Apply security headers to all routes
         source: '/:path*',
         headers: securityHeaders,
+      },
+    ];
+  },
+  // Proxy API requests to backend - this is the CORRECT way to handle API routing
+  // Frontend uses relative /api/* URLs, Next.js proxies them to BACKEND_URL
+  // No need for NEXT_PUBLIC_API_URL build-time variable!
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${BACKEND_URL}/api/:path*`,
+      },
+      {
+        source: '/health',
+        destination: `${BACKEND_URL}/health`,
       },
     ];
   },

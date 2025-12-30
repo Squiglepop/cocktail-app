@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCachedRecipeListItems } from './offline-storage';
-import { RecipeListItem, API_BASE } from './api';
+import { RecipeListItem } from './api';
 import { offlineDebug as debug } from './debug';
 
 interface OfflineContextType {
@@ -32,11 +32,9 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   // serve cached content even when wifi is off
   const checkRealConnectivity = useCallback(async () => {
     try {
-      // Construct health URL from API_BASE origin (handles any URL structure)
-      // Uses URL API to extract origin (scheme + host + port), avoiding fragile regex
+      // Use relative /health URL - Next.js rewrites proxy it to the backend
       // Add cache-busting param to prevent ANY caching (browser, CDN, etc)
-      const apiUrl = new URL(API_BASE);
-      const healthUrl = `${apiUrl.origin}/health?_=${Date.now()}`;
+      const healthUrl = `/health?_=${Date.now()}`;
       debug.log(`Checking connectivity: ${healthUrl}`);
 
       const controller = new AbortController();

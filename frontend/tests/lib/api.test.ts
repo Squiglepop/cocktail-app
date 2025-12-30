@@ -17,10 +17,10 @@ import {
 const API_BASE_PATTERN = '*/api'
 
 describe('API_BASE Configuration', () => {
-  it('defaults to localhost:8000/api when NEXT_PUBLIC_API_URL is not set', () => {
-    // When NEXT_PUBLIC_API_URL is not set, API_BASE should default to localhost
-    // This ensures safe development behavior - never accidentally hitting production
-    const expectedDefault = 'http://localhost:8000/api'
+  it('defaults to /api when NEXT_PUBLIC_API_URL is not set', () => {
+    // When NEXT_PUBLIC_API_URL is not set, API_BASE should default to relative /api
+    // Next.js rewrites proxy /api/* to the backend via BACKEND_URL env var
+    const expectedDefault = '/api'
     const envValue = process.env.NEXT_PUBLIC_API_URL
 
     if (!envValue) {
@@ -31,9 +31,10 @@ describe('API_BASE Configuration', () => {
     }
   })
 
-  it('API_BASE is a valid URL', () => {
-    // Verify the URL is parseable - this catches malformed URLs
-    expect(() => new URL(API_BASE)).not.toThrow()
+  it('API_BASE is a string path', () => {
+    // API_BASE should be a string (relative path by default, or full URL if overridden)
+    expect(typeof API_BASE).toBe('string')
+    expect(API_BASE.length).toBeGreaterThan(0)
   })
 })
 
