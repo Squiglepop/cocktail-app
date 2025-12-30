@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
 import { GlassWater, Wine, Share2, Heart } from 'lucide-react';
@@ -16,7 +15,6 @@ interface RecipeCardProps {
 }
 
 export function RecipeCard({ recipe }: RecipeCardProps) {
-  const router = useRouter();
   const { isFavourite, toggleFavourite } = useFavourites();
   const { isOnline } = useOffline();
   const favourited = isFavourite(recipe.id);
@@ -37,12 +35,14 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     toggleFavourite(recipe.id);
   };
 
-  // When offline, use client-side navigation to the offline recipe viewer
-  // (avoids full page reload that would fail without network)
+  // When offline, navigate to the offline recipe viewer
+  // Uses window.location for clean page navigation that service worker can intercept
+  // (router.push triggers RSC prefetch which fails offline)
   const handleCardClick = (e: React.MouseEvent) => {
     if (!isOnline) {
       e.preventDefault();
-      router.push(`/offline/recipe?id=${recipe.id}`);
+      console.log(`[RecipeCard] Offline navigation to /offline/recipe?id=${recipe.id}`);
+      window.location.assign(`/offline/recipe?id=${recipe.id}`);
     }
     // When online, let the Link handle navigation normally
   };

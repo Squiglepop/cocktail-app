@@ -1,7 +1,7 @@
 // Service Worker for Cocktail Recipe Library PWA
 // Handles offline caching for pages and recipe images
 
-const CACHE_NAME = 'cocktail-recipes-v7';
+const CACHE_NAME = 'cocktail-recipes-v8';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -85,6 +85,26 @@ self.addEventListener('fetch', (event) => {
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) {
           return cachedResponse;
+        }
+
+        // Check if this is a request for the offline recipe page (including RSC prefetches)
+        // Next.js RSC requests include query params like ?_rsc=... or /_next/... paths
+        const isOfflineRecipePage = url.pathname === '/offline/recipe' ||
+                                    url.pathname.startsWith('/offline/recipe');
+
+        // Also handle Next.js RSC/data requests for the offline recipe route
+        const isRscRequest = url.searchParams.has('_rsc') ||
+                             url.pathname.includes('/_next/');
+        const requestUrl = event.request.url;
+        const isOfflineRecipeRsc = isRscRequest && requestUrl.includes('offline') && requestUrl.includes('recipe');
+
+        if (isOfflineRecipePage || isOfflineRecipeRsc) {
+          // Serve the cached offline recipe page - it's a client component that loads from IndexedDB
+          const offlinePage = await caches.match('/offline/recipe');
+          if (offlinePage) {
+            console.log('[SW] Serving cached /offline/recipe page for:', event.request.url);
+            return offlinePage;
+          }
         }
 
         // For navigation requests (HTML pages), serve the app shell
