@@ -246,7 +246,7 @@ class TestRecipeExtractorParseData:
         assert result.ingredients[0].unit is None
 
     def test_parse_defaults_name(self):
-        """Test parsing defaults to 'Unknown Cocktail' if no name."""
+        """Test parsing defaults to 'Untitled Recipe' if no name."""
         extractor = RecipeExtractor.__new__(RecipeExtractor)
         extractor.client = MagicMock()
 
@@ -254,7 +254,7 @@ class TestRecipeExtractorParseData:
 
         result = extractor._parse_extracted_data(data)
 
-        assert result.name == "Unknown Cocktail"
+        assert result.name == "Untitled Recipe"
 
 
 class TestRecipeExtractorExtract:

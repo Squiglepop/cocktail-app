@@ -45,8 +45,15 @@ describe('RecipeDetailPage', () => {
     mockParamsId = '1'
     mockPush.mockClear()
     mockBack.mockClear()
-    vi.mocked(localStorage.getItem).mockReturnValue(null)
-    vi.mocked(localStorage.setItem).mockClear()
+    // Default: no stored session (refresh returns 401)
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json(
+          { detail: 'No refresh token provided' },
+          { status: 401 }
+        )
+      })
+    )
   })
 
   describe('Loading States', () => {
@@ -168,7 +175,14 @@ describe('RecipeDetailPage', () => {
   describe('Authorization', () => {
     it('shows Edit/Delete buttons when user owns recipe', async () => {
       // Set up authenticated user who owns the recipe
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        })
+      )
 
       renderRecipeDetailPage()
 
@@ -199,9 +213,13 @@ describe('RecipeDetailPage', () => {
     })
 
     it('hides Edit/Delete when different user owns recipe', async () => {
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
-
       server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        }),
         http.get(`${API_BASE}/recipes/:id`, () => {
           return HttpResponse.json({
             ...mockRecipeDetail,
@@ -223,7 +241,15 @@ describe('RecipeDetailPage', () => {
 
   describe('Delete Functionality', () => {
     beforeEach(() => {
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+      // Set up authenticated user
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        })
+      )
     })
 
     it('shows confirmation dialog before delete', async () => {
@@ -297,7 +323,15 @@ describe('RecipeDetailPage', () => {
     })
 
     it('edit link goes to edit page', async () => {
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+      // Set up authenticated user
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        })
+      )
 
       renderRecipeDetailPage()
 

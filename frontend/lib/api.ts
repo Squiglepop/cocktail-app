@@ -2,8 +2,8 @@
  * API client for cocktail backend.
  */
 
-// Use environment variable for API URL, fallback to production URL
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
+// Use environment variable for API URL, fallback to localhost for development
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 // Get full URL for recipe images (served from database via API)
 export function getRecipeImageUrl(recipeId: string): string {
@@ -184,7 +184,10 @@ export interface RecipeCount {
 }
 
 // Fetch recipe count (total and filtered)
-export async function fetchRecipeCount(filters: RecipeFilters = {}): Promise<RecipeCount> {
+export async function fetchRecipeCount(
+  filters: RecipeFilters = {},
+  token?: string | null
+): Promise<RecipeCount> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (value) params.append(key, value);
@@ -194,7 +197,12 @@ export async function fetchRecipeCount(filters: RecipeFilters = {}): Promise<Rec
     ? `${API_BASE}/recipes/count?${params.toString()}`
     : `${API_BASE}/recipes/count`;
 
-  const res = await fetch(url);
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error('Failed to fetch recipe count');
   return res.json();
 }

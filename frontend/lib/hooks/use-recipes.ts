@@ -67,11 +67,12 @@ export function useInfiniteRecipes(
 // Hook for fetching recipe count
 export function useRecipeCount(
   filters: RecipeFilters = {},
+  token?: string | null,
   options?: { enabled?: boolean }
 ) {
   return useQuery({
-    queryKey: queryKeys.recipes.count(filters),
-    queryFn: () => fetchRecipeCount(filters),
+    queryKey: queryKeys.recipes.count({ ...filters, token }),
+    queryFn: () => fetchRecipeCount(filters, token),
     staleTime: STALE_TIMES.recipeCount,
     enabled: options?.enabled ?? true,
   });

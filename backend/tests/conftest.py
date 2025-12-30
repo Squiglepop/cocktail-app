@@ -1,25 +1,28 @@
 """
 Pytest fixtures for backend tests.
 """
+# Standard library
 import os
 import sys
 from datetime import timedelta
-from typing import Generator
+from typing import Generator, Tuple
 from unittest.mock import MagicMock, patch
 
+# Third-party
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
-# Add the backend directory to the path
+# Add the backend directory to the path (must be before local imports)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Local
 from app.main import app
 from app.models import Base, User, Recipe, Ingredient, RecipeIngredient, ExtractionJob
-from app.services.database import get_db
 from app.services.auth import hash_password, create_access_token
+from app.services.database import get_db
 
 
 # Test database URL - using SQLite in-memory
@@ -53,7 +56,7 @@ def test_session(test_engine) -> Generator[Session, None, None]:
 
 @pytest.fixture(scope="function")
 def client(test_session) -> Generator[TestClient, None, None]:
-    """Create a test client with database override."""
+    """Create a test client with database override and disabled rate limiting."""
     def override_get_db():
         try:
             yield test_session
@@ -61,8 +64,17 @@ def client(test_session) -> Generator[TestClient, None, None]:
             pass
 
     app.dependency_overrides[get_db] = override_get_db
+
+    # Disable rate limiting for tests - must disable the router's limiter directly
+    from app.routers.auth import limiter as auth_limiter
+    auth_limiter.enabled = False
+
     with TestClient(app) as test_client:
         yield test_client
+
+    # Re-enable rate limiting after test
+    auth_limiter.enabled = True
+
     app.dependency_overrides.clear()
 
 
@@ -314,17 +326,59 @@ def mock_extractor():
         yield mock_instance
 
 
-def _create_test_png() -> bytes:
-    """Create a valid test PNG image using PIL."""
+def _create_test_image(format: str = "PNG", size: Tuple[int, int] = (200, 200)) -> bytes:
+    """Create a valid test image using PIL.
+
+    Args:
+        format: Image format - one of "PNG", "JPEG", "GIF", or "WEBP"
+        size: Tuple of (width, height) in pixels. Default (200, 200).
+
+    Returns:
+        Raw image data in the specified format as bytes.
+
+    Note:
+        Image must be at least MIN_FILE_SIZE (100) bytes to pass upload validation.
+        Using 200x200 pixels for comfortable safety margin above the minimum.
+    """
     from io import BytesIO
     from PIL import Image
-    img = Image.new("RGB", (10, 10), color=(255, 0, 0))
+
+    # GIF doesn't support RGB mode well, use palette mode
+    mode = "P" if format == "GIF" else "RGB"
+    img = Image.new(mode, size, color=255 if mode == "P" else (255, 0, 0))
     buffer = BytesIO()
-    img.save(buffer, format="PNG")
+    img.save(buffer, format=format)
     return buffer.getvalue()
 
 
+def _create_test_png() -> bytes:
+    """Create a valid test PNG image using PIL.
+
+    Returns:
+        bytes: Raw PNG image data
+    """
+    return _create_test_image("PNG")
+
+
 @pytest.fixture
-def test_image_file():
-    """Create a valid test image file data."""
+def test_image_file() -> bytes:
+    """Create a valid test PNG image file data."""
     return _create_test_png()
+
+
+@pytest.fixture
+def test_image_jpg() -> bytes:
+    """Create a valid test JPEG image file data."""
+    return _create_test_image("JPEG")
+
+
+@pytest.fixture
+def test_image_gif() -> bytes:
+    """Create a valid test GIF image file data."""
+    return _create_test_image("GIF")
+
+
+@pytest.fixture
+def test_image_webp() -> bytes:
+    """Create a valid test WebP image file data."""
+    return _create_test_image("WEBP")

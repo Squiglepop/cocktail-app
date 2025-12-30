@@ -26,7 +26,7 @@ from app.schemas import (
     RecipeIngredientResponse,
     IngredientResponse,
 )
-from app.services import get_db, get_image_storage
+from app.services import get_db, get_image_storage, add_ingredients_to_recipe, replace_recipe_ingredients
 from app.services.auth import get_current_user, get_current_user_optional
 
 
@@ -336,15 +336,24 @@ def _parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
 
 @router.get("/{recipe_id}/image")
 def get_recipe_image(
-    recipe_id: str, request: Request, db: Session = Depends(get_db)
+    recipe_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """Get the source image for a recipe.
 
     Supports HTTP Range requests for efficient streaming to mobile devices.
     Uses chunked streaming to minimize memory usage.
+    Respects visibility settings - private recipe images require authentication.
     """
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Check visibility - same logic as get_recipe
+    is_owner = current_user and recipe.user_id == current_user.id
+    if recipe.visibility != Visibility.PUBLIC.value and not is_owner:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
     media_type = recipe.source_image_mime or "image/jpeg"
@@ -439,36 +448,7 @@ def create_recipe(
     db.flush()  # Get the recipe ID
 
     # Add ingredients
-    for idx, ing_data in enumerate(recipe_data.ingredients):
-        # Get or create ingredient
-        ingredient = None
-        if ing_data.ingredient_id:
-            ingredient = db.query(Ingredient).filter(Ingredient.id == ing_data.ingredient_id).first()
-        elif ing_data.ingredient_name:
-            ingredient = (
-                db.query(Ingredient)
-                .filter(Ingredient.name.ilike(ing_data.ingredient_name))
-                .first()
-            )
-            if not ingredient:
-                ingredient = Ingredient(
-                    name=ing_data.ingredient_name,
-                    type=ing_data.ingredient_type or "other",
-                )
-                db.add(ingredient)
-                db.flush()
-
-        if ingredient:
-            recipe_ingredient = RecipeIngredient(
-                recipe_id=recipe.id,
-                ingredient_id=ingredient.id,
-                amount=ing_data.amount,
-                unit=ing_data.unit,
-                notes=ing_data.notes,
-                optional=ing_data.optional,
-                order=idx,
-            )
-            db.add(recipe_ingredient)
+    add_ingredients_to_recipe(db, recipe, recipe_data.ingredients)
 
     db.commit()
     db.refresh(recipe)
@@ -517,39 +497,7 @@ def update_recipe(
 
     # Update ingredients if provided
     if recipe_data.ingredients is not None:
-        # Remove existing ingredients
-        db.query(RecipeIngredient).filter(RecipeIngredient.recipe_id == recipe_id).delete()
-
-        # Add new ingredients
-        for idx, ing_data in enumerate(recipe_data.ingredients):
-            ingredient = None
-            if ing_data.ingredient_id:
-                ingredient = db.query(Ingredient).filter(Ingredient.id == ing_data.ingredient_id).first()
-            elif ing_data.ingredient_name:
-                ingredient = (
-                    db.query(Ingredient)
-                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
-                    .first()
-                )
-                if not ingredient:
-                    ingredient = Ingredient(
-                        name=ing_data.ingredient_name,
-                        type=ing_data.ingredient_type or "other",
-                    )
-                    db.add(ingredient)
-                    db.flush()
-
-            if ingredient:
-                recipe_ingredient = RecipeIngredient(
-                    recipe_id=recipe.id,
-                    ingredient_id=ingredient.id,
-                    amount=ing_data.amount,
-                    unit=ing_data.unit,
-                    notes=ing_data.notes,
-                    optional=ing_data.optional,
-                    order=idx,
-                )
-                db.add(recipe_ingredient)
+        replace_recipe_ingredients(db, recipe, recipe_data.ingredients)
 
     db.commit()
     db.refresh(recipe)

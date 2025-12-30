@@ -9,6 +9,8 @@ from app.services.auth import (
     verify_password,
     create_access_token,
     decode_access_token,
+    create_refresh_token,
+    decode_refresh_token,
     get_user_by_id,
     get_user_by_email,
     authenticate_user,
@@ -186,3 +188,89 @@ class TestAuthenticateUser:
         user = authenticate_user(test_session, "test@example.com", "")
 
         assert user is None
+
+
+class TestRefreshToken:
+    """Tests for refresh token creation and decoding (Story 0.2)."""
+
+    def test_create_refresh_token_returns_tuple(self):
+        """Test that create_refresh_token returns (token, jti, expires_at)."""
+        user_id = "test-user-id-123"
+        result = create_refresh_token(data={"sub": user_id})
+
+        # Should return tuple of 3 elements
+        assert isinstance(result, tuple)
+        assert len(result) == 3
+
+        token, jti, expires_at = result
+        assert isinstance(token, str)
+        assert len(token) > 0
+        assert isinstance(jti, str)
+        assert len(jti) == 36  # UUID format
+        assert expires_at is not None
+
+    def test_create_refresh_token_jti_is_unique(self):
+        """Test that each refresh token gets a unique jti."""
+        user_id = "test-user-id-123"
+        token1, jti1, _ = create_refresh_token(data={"sub": user_id})
+        token2, jti2, _ = create_refresh_token(data={"sub": user_id})
+
+        # JTIs should be different even for same user
+        assert jti1 != jti2
+        assert token1 != token2
+
+    def test_create_refresh_token_custom_expiry(self):
+        """Test that custom expiry delta works."""
+        user_id = "test-user-id-123"
+        custom_delta = timedelta(days=30)
+        token, jti, expires_at = create_refresh_token(
+            data={"sub": user_id},
+            expires_delta=custom_delta
+        )
+
+        assert token is not None
+        assert jti is not None
+        assert expires_at is not None
+
+    def test_decode_refresh_token_returns_dict(self):
+        """Test that decode_refresh_token returns dict with user_id and jti."""
+        user_id = "test-user-id-123"
+        token, expected_jti, _ = create_refresh_token(data={"sub": user_id})
+
+        result = decode_refresh_token(token)
+
+        assert isinstance(result, dict)
+        assert "user_id" in result
+        assert "jti" in result
+        assert result["user_id"] == user_id
+        assert result["jti"] == expected_jti
+
+    def test_decode_refresh_token_invalid(self):
+        """Test that invalid refresh token returns None."""
+        invalid_token = "not.a.valid.token"
+
+        result = decode_refresh_token(invalid_token)
+
+        assert result is None
+
+    def test_decode_refresh_token_expired(self):
+        """Test that expired refresh token returns None."""
+        user_id = "test-user-id-123"
+        token, jti, _ = create_refresh_token(
+            data={"sub": user_id},
+            expires_delta=timedelta(seconds=-10)  # Already expired
+        )
+
+        result = decode_refresh_token(token)
+
+        assert result is None
+
+    def test_decode_refresh_token_access_token_fails(self):
+        """Test that access tokens are rejected by decode_refresh_token."""
+        user_id = "test-user-id-123"
+        access_token = create_access_token(data={"sub": user_id})
+
+        result = decode_refresh_token(access_token)
+
+        # Should return None because type is "access" not "refresh"
+        assert result is None

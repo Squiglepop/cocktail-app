@@ -61,7 +61,14 @@ class Settings(BaseSettings):
 
     # Authentication settings
     secret_key: str = _get_secret_key()
-    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+    access_token_expire_minutes: int = 30  # 30 minutes (short-lived for security)
+    refresh_token_expire_days: int = 7  # 7 days (httpOnly cookie)
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Use secure cookies only in production (HTTPS)."""
+        import os
+        return bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("PRODUCTION"))
 
     # Image preprocessing for Claude Vision API
     # Downsampling reduces token costs by ~60-70% for mobile screenshots

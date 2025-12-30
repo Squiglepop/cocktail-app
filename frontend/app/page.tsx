@@ -46,7 +46,7 @@ export default function HomePage() {
   } = useInfiniteRecipes(apiFilters, PAGE_SIZE, token, { enabled: isOnline });
 
   // Fetch recipe count (only when online)
-  const { data: recipeCount } = useRecipeCount(apiFilters, { enabled: isOnline });
+  const { data: recipeCount } = useRecipeCount(apiFilters, token, { enabled: isOnline });
 
   // Refresh cached recipes when going offline
   useEffect(() => {

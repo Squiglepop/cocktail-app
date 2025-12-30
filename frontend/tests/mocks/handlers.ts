@@ -210,6 +210,18 @@ export const handlers = [
     })
   }),
 
+  http.post(`${API_BASE}/auth/refresh`, () => {
+    // Return new access token (simulates cookie-based refresh)
+    return HttpResponse.json({
+      access_token: 'mock-jwt-token-refreshed',
+      token_type: 'bearer',
+    })
+  }),
+
+  http.post(`${API_BASE}/auth/logout`, () => {
+    return HttpResponse.json({ message: 'Successfully logged out' })
+  }),
+
   // Recipe endpoints
   http.get(`${API_BASE}/recipes`, ({ request }) => {
     const url = new URL(request.url)
@@ -447,5 +459,12 @@ export const handlers = [
       { detail: 'Job not found' },
       { status: 404 }
     )
+  }),
+
+  // Health check endpoint (for offline detection)
+  // The OfflineProvider constructs URL as: API_BASE.replace(/\/api\/?$/, '') + '/health'
+  // Which becomes something like http://localhost:8000/health
+  http.get(/.*\/health.*/, () => {
+    return HttpResponse.json({ status: 'healthy' })
   }),
 ]

@@ -19,9 +19,15 @@ function renderHeader() {
 
 describe('Header', () => {
   beforeEach(() => {
-    vi.mocked(localStorage.getItem).mockReturnValue(null)
-    vi.mocked(localStorage.setItem).mockClear()
-    vi.mocked(localStorage.removeItem).mockClear()
+    // Default: no stored session (refresh returns 401)
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json(
+          { detail: 'No refresh token provided' },
+          { status: 401 }
+        )
+      })
+    )
   })
 
   describe('Branding', () => {
@@ -45,7 +51,15 @@ describe('Header', () => {
 
   describe('Navigation', () => {
     it('renders Playlists link when logged in', async () => {
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+      // Mock valid refresh token (logged in state)
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        })
+      )
 
       renderHeader()
 
@@ -104,7 +118,15 @@ describe('Header', () => {
 
   describe('Auth UI - Logged In', () => {
     beforeEach(() => {
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+      // Mock valid refresh token (logged in state)
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        })
+      )
     })
 
     it('shows user display name when logged in', async () => {
@@ -176,8 +198,6 @@ describe('Header', () => {
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /login/i })).toBeInTheDocument()
       })
-
-      expect(localStorage.removeItem).toHaveBeenCalledWith('cocktail_auth_token')
     })
   })
 

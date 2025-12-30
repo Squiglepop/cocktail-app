@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RecipeCard } from '@/components/recipes/RecipeCard'
 import { RecipeListItem } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
 import { OfflineProvider } from '@/lib/offline-context'
+import { server } from '../mocks/server'
+import { http, HttpResponse } from 'msw'
+
+const API_BASE = '*/api'
 
 function renderRecipeCard(recipe: RecipeListItem) {
   return render(
@@ -47,6 +51,18 @@ const mockMinimalRecipe: RecipeListItem = {
 }
 
 describe('RecipeCard', () => {
+  beforeEach(() => {
+    // Default: no stored session (refresh returns 401)
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json(
+          { detail: 'No refresh token provided' },
+          { status: 401 }
+        )
+      })
+    )
+  })
+
   describe('Recipe Name', () => {
     it('renders recipe name', () => {
       renderRecipeCard(mockRecipe)
@@ -70,8 +86,9 @@ describe('RecipeCard', () => {
       renderRecipeCard(mockRecipeWithImage)
 
       const image = screen.getByRole('img')
-      // Image URL is now constructed from recipe ID
-      expect(image.getAttribute('src')).toContain('/recipes/2/image')
+      // Image URL is wrapped by Next.js Image component with URL encoding
+      // Check for URL-encoded version of /recipes/2/image
+      expect(image.getAttribute('src')).toContain('recipes%2F2%2Fimage')
       expect(image).toHaveAttribute('alt', 'Old Fashioned')
     })
   })

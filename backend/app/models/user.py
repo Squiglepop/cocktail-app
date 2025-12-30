@@ -45,9 +45,13 @@ class User(Base):
     shared_collections: Mapped[List["CollectionShare"]] = relationship(
         "CollectionShare", back_populates="shared_with_user", cascade="all, delete-orphan"
     )
+    refresh_tokens: Mapped[List["RefreshToken"]] = relationship(
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"
+    )
 
 
 # Import Recipe here to avoid circular import - the relationship is defined via string reference
 from .recipe import Recipe
 from .collection import Collection, CollectionShare
 from .user_rating import UserRating
+from .refresh_token import RefreshToken

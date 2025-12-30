@@ -1,11 +1,12 @@
 import '@testing-library/jest-dom'
+import 'fake-indexeddb/auto'  // Polyfill IndexedDB for jsdom environment
 import { cleanup } from '@testing-library/react'
 import { afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { server } from './mocks/server'
 
 // Establish API mocking before all tests
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' })
+  server.listen({ onUnhandledRequest: 'warn' })
 })
 
 // Reset any request handlers that are declared as a part of tests
@@ -77,3 +78,31 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
+
+// Mock URL.createObjectURL and URL.revokeObjectURL
+// Used by UploadDropzone for file previews
+Object.defineProperty(URL, 'createObjectURL', {
+  writable: true,
+  value: vi.fn((blob: Blob) => `blob:mock-url-${Math.random()}`),
+})
+
+Object.defineProperty(URL, 'revokeObjectURL', {
+  writable: true,
+  value: vi.fn(),
+})
+
+// Mock the offline context to always be online in tests
+// The real health check can fail in jsdom environment
+vi.mock('@/lib/offline-context', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/offline-context')>('@/lib/offline-context')
+  return {
+    ...actual,
+    useOffline: () => ({
+      isOnline: true,
+      cachedRecipes: [],
+      cachedRecipesLoading: false,
+      refreshCachedRecipes: vi.fn(),
+    }),
+  }
+})
+

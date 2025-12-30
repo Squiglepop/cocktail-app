@@ -31,6 +31,8 @@ from app.services import (
     compute_hashes_for_recipe,
     get_image_storage,
     ImageHashes,
+    add_ingredients_to_recipe,
+    replace_recipe_ingredients,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,8 +63,9 @@ MIME_TYPES = {
     ".webp": "image/webp",
 }
 
-# Maximum file size: 20MB
-MAX_FILE_SIZE = 20 * 1024 * 1024
+# File size limits
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB maximum
+MIN_FILE_SIZE = 100  # Minimum bytes for valid image (prevents empty/suspiciously small files)
 
 
 def validate_image_content(file_content: bytes, filename: str) -> None:
@@ -85,10 +88,10 @@ def validate_image_content(file_content: bytes, filename: str) -> None:
             detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB"
         )
 
-    if len(file_content) < 100:
+    if len(file_content) < MIN_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail="File too small to be a valid image"
+            detail=f"File too small to be a valid image (minimum {MIN_FILE_SIZE} bytes)"
         )
 
     # Check magic bytes (actual file content) using filetype (pure Python, no system deps)
@@ -274,34 +277,7 @@ def extract_recipe(request: Request, job_id: str, db: Session = Depends(get_db))
         db.flush()
 
         # Add ingredients
-        for idx, ing_data in enumerate(recipe_data.ingredients):
-            # Get or create ingredient
-            ingredient = None
-            if ing_data.ingredient_name:
-                ingredient = (
-                    db.query(Ingredient)
-                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
-                    .first()
-                )
-                if not ingredient:
-                    ingredient = Ingredient(
-                        name=ing_data.ingredient_name,
-                        type=ing_data.ingredient_type or "other",
-                    )
-                    db.add(ingredient)
-                    db.flush()
-
-            if ingredient:
-                recipe_ingredient = RecipeIngredient(
-                    recipe_id=recipe.id,
-                    ingredient_id=ingredient.id,
-                    amount=ing_data.amount,
-                    unit=ing_data.unit,
-                    notes=ing_data.notes,
-                    optional=ing_data.optional,
-                    order=idx,
-                )
-                db.add(recipe_ingredient)
+        add_ingredients_to_recipe(db, recipe, recipe_data.ingredients)
 
         # Update job
         job.status = "completed"
@@ -427,33 +403,7 @@ async def upload_and_extract(
         db.flush()
 
         # Add ingredients
-        for idx, ing_data in enumerate(recipe_data.ingredients):
-            ingredient = None
-            if ing_data.ingredient_name:
-                ingredient = (
-                    db.query(Ingredient)
-                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
-                    .first()
-                )
-                if not ingredient:
-                    ingredient = Ingredient(
-                        name=ing_data.ingredient_name,
-                        type=ing_data.ingredient_type or "other",
-                    )
-                    db.add(ingredient)
-                    db.flush()
-
-            if ingredient:
-                recipe_ingredient = RecipeIngredient(
-                    recipe_id=recipe.id,
-                    ingredient_id=ingredient.id,
-                    amount=ing_data.amount,
-                    unit=ing_data.unit,
-                    notes=ing_data.notes,
-                    optional=ing_data.optional,
-                    order=idx,
-                )
-                db.add(recipe_ingredient)
+        add_ingredients_to_recipe(db, recipe, recipe_data.ingredients)
 
         # Update job
         job.status = "completed"
@@ -586,33 +536,7 @@ async def upload_and_extract_multi(
         db.flush()
 
         # Add ingredients
-        for idx, ing_data in enumerate(recipe_data.ingredients):
-            ingredient = None
-            if ing_data.ingredient_name:
-                ingredient = (
-                    db.query(Ingredient)
-                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
-                    .first()
-                )
-                if not ingredient:
-                    ingredient = Ingredient(
-                        name=ing_data.ingredient_name,
-                        type=ing_data.ingredient_type or "other",
-                    )
-                    db.add(ingredient)
-                    db.flush()
-
-            if ingredient:
-                recipe_ingredient = RecipeIngredient(
-                    recipe_id=recipe.id,
-                    ingredient_id=ingredient.id,
-                    amount=ing_data.amount,
-                    unit=ing_data.unit,
-                    notes=ing_data.notes,
-                    optional=ing_data.optional,
-                    order=idx,
-                )
-                db.add(recipe_ingredient)
+        add_ingredients_to_recipe(db, recipe, recipe_data.ingredients)
 
         db.commit()
 
@@ -743,36 +667,7 @@ async def enhance_recipe_with_images(
         recipe.notes = recipe_data.notes
 
         # Clear existing ingredients and add new ones
-        db.query(RecipeIngredient).filter(RecipeIngredient.recipe_id == recipe.id).delete()
-        db.flush()
-
-        for idx, ing_data in enumerate(recipe_data.ingredients):
-            ingredient = None
-            if ing_data.ingredient_name:
-                ingredient = (
-                    db.query(Ingredient)
-                    .filter(Ingredient.name.ilike(ing_data.ingredient_name))
-                    .first()
-                )
-                if not ingredient:
-                    ingredient = Ingredient(
-                        name=ing_data.ingredient_name,
-                        type=ing_data.ingredient_type or "other",
-                    )
-                    db.add(ingredient)
-                    db.flush()
-
-            if ingredient:
-                recipe_ingredient = RecipeIngredient(
-                    recipe_id=recipe.id,
-                    ingredient_id=ingredient.id,
-                    amount=ing_data.amount,
-                    unit=ing_data.unit,
-                    notes=ing_data.notes,
-                    optional=ing_data.optional,
-                    order=idx,
-                )
-                db.add(recipe_ingredient)
+        replace_recipe_ingredients(db, recipe, recipe_data.ingredients)
 
         db.commit()
 

@@ -1,8 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://back-end-production-1219.up.railway.app/api';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { API_BASE } from './api';
 
 export interface User {
   id: string;
@@ -17,92 +16,104 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'cocktail_auth_token';
-const USER_KEY = 'cocktail_auth_user';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Access token stored in memory only (NOT localStorage) for XSS protection
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Prevent multiple refresh attempts simultaneously
+  const isRefreshing = useRef(false);
+  const refreshPromise = useRef<Promise<string | null> | null>(null);
+
   // Fetch current user with token
-  // Returns: { user, shouldClearAuth }
-  // shouldClearAuth is true only for definitive auth failures (401), not network errors
-  const fetchCurrentUser = useCallback(async (authToken: string): Promise<{ user: User | null; shouldClearAuth: boolean }> => {
+  const fetchCurrentUser = useCallback(async (authToken: string): Promise<User | null> => {
     try {
       const res = await fetch(`${API_BASE}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
+        // No credentials: 'include' needed - this endpoint uses Bearer token, not cookies
       });
       if (res.ok) {
-        const userData = await res.json();
-        return { user: userData, shouldClearAuth: false };
+        return await res.json();
       }
-      // 401/403 = token is definitely invalid, clear it
-      if (res.status === 401 || res.status === 403) {
-        return { user: null, shouldClearAuth: true };
-      }
-      // Other errors (500, etc) - don't clear auth, might be temporary
-      return { user: null, shouldClearAuth: false };
+      return null;
     } catch {
-      // Network error (offline) - don't clear auth
-      return { user: null, shouldClearAuth: false };
+      return null;
     }
   }, []);
 
-  // Initialize auth state from localStorage
+  // Refresh access token using httpOnly cookie
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    // If already refreshing, return the existing promise
+    if (isRefreshing.current && refreshPromise.current) {
+      return refreshPromise.current;
+    }
+
+    isRefreshing.current = true;
+    refreshPromise.current = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include', // Send httpOnly cookie
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const newToken = data.access_token;
+          setToken(newToken);
+          return newToken;
+        }
+
+        // Refresh failed (401) - user needs to log in again
+        setToken(null);
+        setUser(null);
+        return null;
+      } catch (error) {
+        // Network error - return null to indicate refresh failed
+        // Caller should handle gracefully (e.g., retry or prompt re-login)
+        console.error('Token refresh failed:', error);
+        return null;
+      } finally {
+        isRefreshing.current = false;
+        refreshPromise.current = null;
+      }
+    })();
+
+    return refreshPromise.current;
+  }, []); // No dependencies - refresh token comes from httpOnly cookie, not state
+
+  // Initialize auth state via silent refresh on page load
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
-      const storedUserJson = localStorage.getItem(USER_KEY);
+      try {
+        // Attempt silent refresh - if httpOnly cookie exists, we'll get a new token
+        const newToken = await refreshToken();
 
-      if (!storedToken) {
+        if (newToken) {
+          // Token refreshed successfully, fetch user info
+          const currentUser = await fetchCurrentUser(newToken);
+          if (currentUser) {
+            setUser(currentUser);
+          }
+        }
+      } catch (error) {
+        // Silent refresh failed - user is not authenticated
+        console.error('Silent auth refresh failed:', error);
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      // Parse cached user if available
-      let cachedUser: User | null = null;
-      if (storedUserJson) {
-        try {
-          cachedUser = JSON.parse(storedUserJson);
-        } catch {
-          // Invalid JSON, ignore
-        }
-      }
-
-      // Try to validate with server (regardless of navigator.onLine - it's unreliable)
-      const { user: freshUser, shouldClearAuth } = await fetchCurrentUser(storedToken);
-
-      if (freshUser) {
-        // Token valid, update everything
-        setToken(storedToken);
-        setUser(freshUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
-      } else if (shouldClearAuth) {
-        // Token definitely invalid (401/403), clear everything
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-      } else {
-        // Network error or server error - preserve auth from cache
-        // ALWAYS set the token (user was logged in)
-        setToken(storedToken);
-        if (cachedUser) {
-          setUser(cachedUser);
-        }
-      }
-
-      setIsLoading(false);
     };
 
     initAuth();
-  }, [fetchCurrentUser]);
+  }, []); // Empty deps - only run once on mount
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -110,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // Receive httpOnly cookie
       body: JSON.stringify({ email, password }),
     });
 
@@ -121,16 +133,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     const newToken = data.access_token;
 
-    // Store token
-    localStorage.setItem(TOKEN_KEY, newToken);
+    // Store access token in memory only
     setToken(newToken);
 
     // Fetch user info
-    const { user: currentUser } = await fetchCurrentUser(newToken);
+    const currentUser = await fetchCurrentUser(newToken);
     if (currentUser) {
       setUser(currentUser);
-      // Cache user data for offline access
-      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
     }
   }, [fetchCurrentUser]);
 
@@ -140,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({
         email,
         password,
@@ -156,15 +166,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(email, password);
   }, [login]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  const logout = useCallback(async () => {
+    try {
+      // Call backend to clear httpOnly cookie
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Logout failed on server, but still clear local state
+    }
+
+    // Clear local state regardless of server response
     setToken(null);
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );

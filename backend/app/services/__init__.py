@@ -14,6 +14,11 @@ from .duplicate_detector import (
 from .image_storage import ImageStorageService, get_image_storage
 from .cleanup import OrphanedFileCleanupService, CleanupStats, get_cleanup_service
 from .security import sanitize_text, sanitize_recipe_name, sanitize_ingredient_name
+from .recipe_service import (
+    get_or_create_ingredient,
+    add_ingredients_to_recipe,
+    replace_recipe_ingredients,
+)
 
 __all__ = [
     "get_db",
@@ -37,4 +42,7 @@ __all__ = [
     "sanitize_text",
     "sanitize_recipe_name",
     "sanitize_ingredient_name",
+    "get_or_create_ingredient",
+    "add_ingredients_to_recipe",
+    "replace_recipe_ingredients",
 ]

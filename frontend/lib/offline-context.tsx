@@ -32,9 +32,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   // serve cached content even when wifi is off
   const checkRealConnectivity = useCallback(async () => {
     try {
-      // Construct health URL from API_BASE (remove /api suffix, add /health)
+      // Construct health URL from API_BASE origin (handles any URL structure)
+      // Uses URL API to extract origin (scheme + host + port), avoiding fragile regex
       // Add cache-busting param to prevent ANY caching (browser, CDN, etc)
-      const healthUrl = API_BASE.replace(/\/api\/?$/, '') + '/health?_=' + Date.now();
+      const apiUrl = new URL(API_BASE);
+      const healthUrl = `${apiUrl.origin}/health?_=${Date.now()}`;
       debug.log(`Checking connectivity: ${healthUrl}`);
 
       const controller = new AbortController();

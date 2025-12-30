@@ -45,8 +45,15 @@ describe('EditRecipePage', () => {
     mockParamsId = '1'
     mockPush.mockClear()
     mockBack.mockClear()
-    vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
-    vi.mocked(localStorage.setItem).mockClear()
+    // Set up authenticated user by default
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json({
+          access_token: 'mock-jwt-token',
+          token_type: 'bearer',
+        })
+      })
+    )
   })
 
   describe('Loading and Authorization', () => {

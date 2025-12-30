@@ -1,6 +1,7 @@
 """
 Authentication service for JWT token handling and password management.
 """
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -11,7 +12,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..models import User
+from ..models import User, RefreshToken
 from ..schemas import TokenData
 from .database import get_db
 
@@ -43,9 +44,47 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> tuple[str, str, datetime]:
+    """
+    Create a JWT refresh token with longer expiry.
+    Returns: (token, jti, expires_at) tuple
+    """
+    jti = str(uuid.uuid4())
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
+    return encoded_jwt, jti, expire
+
+
+def decode_refresh_token(token: str) -> Optional[dict]:
+    """
+    Decode and validate a JWT refresh token.
+    Returns: dict with {'user_id': str, 'jti': str} or None if invalid
+    """
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+        # Verify this is a refresh token
+        if payload.get("type") != "refresh":
+            return None
+        user_id: str = payload.get("sub")
+        jti: str = payload.get("jti")
+        if user_id is None:
+            return None
+        return {
+            "user_id": user_id,
+            "jti": jti
+        }
+    except JWTError:
+        return None
 
 
 def decode_access_token(token: str) -> Optional[TokenData]:
@@ -133,3 +172,81 @@ async def get_current_user_optional(
         return None
 
     return user
+
+
+# Refresh token management functions (Story 0.2)
+
+def store_refresh_token(
+    db: Session,
+    user_id: str,
+    jti: str,
+    expires_at: datetime,
+    family_id: Optional[str] = None
+) -> RefreshToken:
+    """
+    Store a new refresh token in the database.
+    If family_id not provided, generates a new one for token family tracking.
+    """
+    token = RefreshToken(
+        jti=jti,
+        user_id=user_id,
+        expires_at=expires_at,
+        family_id=family_id or str(uuid.uuid4())
+    )
+    db.add(token)
+    db.commit()
+    db.refresh(token)
+    return token
+
+
+def is_refresh_token_valid(db: Session, jti: str) -> bool:
+    """
+    Check if refresh token exists and is not revoked.
+    Returns False if token is revoked, expired, or doesn't exist.
+    """
+    token = db.query(RefreshToken).filter(
+        RefreshToken.jti == jti,
+        RefreshToken.revoked == False,
+        RefreshToken.expires_at > datetime.utcnow()
+    ).first()
+    return token is not None
+
+
+def revoke_refresh_token(db: Session, jti: str) -> bool:
+    """
+    Revoke a specific refresh token.
+    Returns True if token was found and revoked, False otherwise.
+    """
+    token = db.query(RefreshToken).filter(RefreshToken.jti == jti).first()
+    if token:
+        token.revoked = True
+        token.revoked_at = datetime.utcnow()
+        db.commit()
+        return True
+    return False
+
+
+def revoke_all_user_tokens(db: Session, user_id: str) -> int:
+    """
+    Revoke all refresh tokens for a user.
+    Returns count of tokens revoked.
+    """
+    result = db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.revoked == False
+    ).update({"revoked": True, "revoked_at": datetime.utcnow()})
+    db.commit()
+    return result
+
+
+def revoke_token_family(db: Session, family_id: str) -> int:
+    """
+    Revoke entire token family (for stolen token detection).
+    Returns count of tokens revoked.
+    """
+    result = db.query(RefreshToken).filter(
+        RefreshToken.family_id == family_id,
+        RefreshToken.revoked == False
+    ).update({"revoked": True, "revoked_at": datetime.utcnow()})
+    db.commit()
+    return result

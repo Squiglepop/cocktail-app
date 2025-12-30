@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, act } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthProvider, useAuth, getAuthHeaders } from '@/lib/auth-context'
 import { server } from '../mocks/server'
@@ -57,9 +57,15 @@ function TestComponentWithoutProvider() {
 
 describe('AuthContext', () => {
   beforeEach(() => {
-    vi.mocked(localStorage.getItem).mockReturnValue(null)
-    vi.mocked(localStorage.setItem).mockClear()
-    vi.mocked(localStorage.removeItem).mockClear()
+    // Default: no stored session (refresh returns 401)
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json(
+          { detail: 'No refresh token provided' },
+          { status: 401 }
+        )
+      })
+    )
   })
 
   describe('Initial State', () => {
@@ -108,17 +114,11 @@ describe('AuthContext', () => {
       // Click login button
       await user.click(screen.getByTestId('login-btn'))
 
-      // Check user is now logged in
+      // Check user is now logged in with token in memory
       await waitFor(() => {
         expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com')
         expect(screen.getByTestId('token')).toHaveTextContent('mock-jwt-token')
       })
-
-      // Check localStorage was updated
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'cocktail_auth_token',
-        'mock-jwt-token'
-      )
     })
 
     it('throws error on failed login', async () => {
@@ -286,7 +286,7 @@ describe('AuthContext', () => {
   })
 
   describe('Logout', () => {
-    it('clears user, token, and localStorage on logout', async () => {
+    it('clears user and token on logout', async () => {
       const user = userEvent.setup()
 
       render(
@@ -312,15 +312,20 @@ describe('AuthContext', () => {
       await waitFor(() => {
         expect(screen.getByTestId('logged-out')).toBeInTheDocument()
       })
-
-      expect(localStorage.removeItem).toHaveBeenCalledWith('cocktail_auth_token')
     })
   })
 
   describe('Session Restore', () => {
-    it('restores session from localStorage on mount', async () => {
-      // Mock stored token
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+    it('restores session via refresh token on mount', async () => {
+      // Mock a valid refresh token (simulates httpOnly cookie present)
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        })
+      )
 
       render(
         <AuthProvider>
@@ -333,13 +338,14 @@ describe('AuthContext', () => {
       })
     })
 
-    it('clears invalid token from localStorage', async () => {
-      // Mock stored but invalid token
-      vi.mocked(localStorage.getItem).mockReturnValue('invalid-token')
-
+    it('shows logged out when refresh token is invalid', async () => {
+      // Refresh returns 401 - no valid session
       server.use(
-        http.get(`${API_BASE}/auth/me`, () => {
-          return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json(
+            { detail: 'Invalid or expired refresh token' },
+            { status: 401 }
+          )
         })
       )
 
@@ -352,8 +358,6 @@ describe('AuthContext', () => {
       await waitFor(() => {
         expect(screen.getByTestId('logged-out')).toBeInTheDocument()
       })
-
-      expect(localStorage.removeItem).toHaveBeenCalledWith('cocktail_auth_token')
     })
   })
 

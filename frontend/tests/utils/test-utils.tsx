@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/lib/auth-context';
+import { OfflineProvider } from '@/lib/offline-context';
 import { FavouritesProvider } from '@/lib/favourites-context';
 import { ReactNode } from 'react';
 
@@ -11,6 +12,9 @@ export function createTestQueryClient() {
         retry: false,
         gcTime: 0,
         staleTime: 0,
+      },
+      mutations: {
+        retry: false,
       },
     },
   });
@@ -27,10 +31,31 @@ export function TestProviders({ children, queryClient }: TestProviderProps) {
   return (
     <QueryClientProvider client={client}>
       <AuthProvider>
-        <FavouritesProvider>
-          {children}
-        </FavouritesProvider>
+        <OfflineProvider>
+          <FavouritesProvider>
+            {children}
+          </FavouritesProvider>
+        </OfflineProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
+}
+
+// Wrapper factory for @testing-library/react render function
+export function createTestWrapper(queryClient?: QueryClient) {
+  const client = queryClient || createTestQueryClient();
+
+  return function TestWrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <OfflineProvider>
+            <FavouritesProvider>
+              {children}
+            </FavouritesProvider>
+          </OfflineProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  };
 }

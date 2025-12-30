@@ -33,9 +33,16 @@ function renderLoginPage() {
 
 describe('Login Page', () => {
   beforeEach(() => {
-    vi.mocked(localStorage.getItem).mockReturnValue(null)
-    vi.mocked(localStorage.setItem).mockClear()
     mockPush.mockClear()
+    // Default: no stored session (refresh returns 401)
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json(
+          { detail: 'No refresh token provided' },
+          { status: 401 }
+        )
+      })
+    )
   })
 
   describe('Form Rendering', () => {
@@ -99,7 +106,7 @@ describe('Login Page', () => {
       })
     })
 
-    it('stores token in localStorage on success', async () => {
+    it('redirects to home on successful login', async () => {
       const user = userEvent.setup()
       renderLoginPage()
 
@@ -111,11 +118,10 @@ describe('Login Page', () => {
       await user.type(screen.getByLabelText(/password/i), 'testpassword123')
       await user.click(screen.getByRole('button', { name: /login/i }))
 
+      // Token is stored in memory (httpOnly cookie for refresh on server)
+      // Verify redirect happens after successful login
       await waitFor(() => {
-        expect(localStorage.setItem).toHaveBeenCalledWith(
-          'cocktail_auth_token',
-          'mock-jwt-token'
-        )
+        expect(mockPush).toHaveBeenCalledWith('/')
       })
     })
 

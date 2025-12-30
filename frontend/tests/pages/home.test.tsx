@@ -29,7 +29,15 @@ const getSelectByLabel = (labelText: RegExp) => {
 
 describe('Home Page', () => {
   beforeEach(() => {
-    vi.mocked(localStorage.getItem).mockReturnValue(null)
+    // Default: no stored session (refresh returns 401)
+    server.use(
+      http.post(`${API_BASE}/auth/refresh`, () => {
+        return HttpResponse.json(
+          { detail: 'No refresh token provided' },
+          { status: 401 }
+        )
+      })
+    )
   })
 
   describe('Title and Header', () => {
