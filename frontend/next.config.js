@@ -5,6 +5,9 @@
 // In prod: set BACKEND_URL env var in Railway
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
+// Log at build time so we can verify the value in Railway build logs
+console.log(`[next.config.js] BACKEND_URL at build time: ${BACKEND_URL}`);
+
 // Include localhost in CSP only during development
 // In production, we only need the railway.app domains
 const isDev = process.env.NODE_ENV !== 'production';
