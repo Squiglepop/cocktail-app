@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 import {
+  API_BASE,
   fetchCategories,
   fetchRecipes,
   fetchRecipe,
@@ -13,7 +14,28 @@ import {
   formatUnit,
 } from '@/lib/api'
 
-const API_BASE = '*/api'
+const API_BASE_PATTERN = '*/api'
+
+describe('API_BASE Configuration', () => {
+  it('defaults to localhost:8000/api when NEXT_PUBLIC_API_URL is not set', () => {
+    // When NEXT_PUBLIC_API_URL is not set, API_BASE should default to localhost
+    // This ensures safe development behavior - never accidentally hitting production
+    const expectedDefault = 'http://localhost:8000/api'
+    const envValue = process.env.NEXT_PUBLIC_API_URL
+
+    if (!envValue) {
+      expect(API_BASE).toBe(expectedDefault)
+    } else {
+      // If env var is set, API_BASE should equal the env value
+      expect(API_BASE).toBe(envValue)
+    }
+  })
+
+  it('API_BASE is a valid URL', () => {
+    // Verify the URL is parseable - this catches malformed URLs
+    expect(() => new URL(API_BASE)).not.toThrow()
+  })
+})
 
 describe('API Client', () => {
   describe('fetchCategories', () => {
@@ -30,7 +52,7 @@ describe('API Client', () => {
 
     it('throws error on failure', async () => {
       server.use(
-        http.get(`${API_BASE}/categories`, () => {
+        http.get(`${API_BASE_PATTERN}/categories`, () => {
           return HttpResponse.json({ detail: 'Server error' }, { status: 500 })
         })
       )
@@ -76,7 +98,7 @@ describe('API Client', () => {
 
     it('throws error on failure', async () => {
       server.use(
-        http.get(`${API_BASE}/recipes`, () => {
+        http.get(`${API_BASE_PATTERN}/recipes`, () => {
           return HttpResponse.json({ detail: 'Server error' }, { status: 500 })
         })
       )
@@ -141,7 +163,7 @@ describe('API Client', () => {
 
     it('throws error on failure', async () => {
       server.use(
-        http.post(`${API_BASE}/recipes`, () => {
+        http.post(`${API_BASE_PATTERN}/recipes`, () => {
           return HttpResponse.json({ detail: 'Validation error' }, { status: 422 })
         })
       )
@@ -204,7 +226,7 @@ describe('API Client', () => {
 
     it('throws error on failure', async () => {
       server.use(
-        http.post(`${API_BASE}/upload/extract-immediate`, () => {
+        http.post(`${API_BASE_PATTERN}/upload/extract-immediate`, () => {
           return HttpResponse.json({ detail: 'Extraction failed' }, { status: 500 })
         })
       )

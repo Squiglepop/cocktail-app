@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 
+// Include localhost in CSP only during development
+// In production, we only need the railway.app domains
+const isDev = process.env.NODE_ENV !== 'production';
+const localhostCsp = isDev ? ' http://localhost:8000' : '';
+
 // Security headers for all routes
 const securityHeaders = [
   {
@@ -10,7 +15,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'", // Tailwind uses inline styles
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
-      "connect-src 'self' https://*.railway.app https://*.up.railway.app http://localhost:8000",
+      `connect-src 'self' https://*.railway.app https://*.up.railway.app${localhostCsp}`,
       "frame-ancestors 'self'", // Allow self for hidden iframe warmup
       "base-uri 'self'",
       "form-action 'self'",

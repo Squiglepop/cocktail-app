@@ -2,8 +2,28 @@
  * API client for cocktail backend.
  */
 
-// Use environment variable for API URL, fallback to localhost for development
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Default to localhost for safe development - never accidentally hit production
+// when NEXT_PUBLIC_API_URL is not set. See story 0-5 for rationale.
+const DEFAULT_API_URL = 'http://localhost:8000/api';
+
+// Validate API URL is well-formed to catch configuration errors early
+function validateApiUrl(url: string): string {
+  try {
+    new URL(url);
+    return url;
+  } catch {
+    console.error(
+      `Invalid NEXT_PUBLIC_API_URL: "${url}". ` +
+      `Must be a valid URL (e.g., "http://localhost:8000/api"). ` +
+      `Falling back to default: ${DEFAULT_API_URL}`
+    );
+    return DEFAULT_API_URL;
+  }
+}
+
+export const API_BASE = validateApiUrl(
+  process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
+);
 
 // Get full URL for recipe images (served from database via API)
 export function getRecipeImageUrl(recipeId: string): string {

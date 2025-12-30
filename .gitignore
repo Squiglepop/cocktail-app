@@ -18,7 +18,7 @@ __pycache__/
 uploads/
 
 # Image storage (filesystem images)
-data/images/
+backend/data/images/
 
 # Build outputs
 .next/

@@ -1,5 +1,20 @@
 'use client';
 
+/**
+ * Authentication context using secure token storage pattern:
+ *
+ * Security Model:
+ * - Access tokens: Stored in memory only (never localStorage/sessionStorage)
+ * - Refresh tokens: httpOnly cookies (invisible to JavaScript, XSS-safe)
+ * - credentials: 'include' sends cookies for auth endpoints
+ *
+ * CSRF Protection:
+ * - Backend uses SameSite=Lax cookies by default (browser enforced)
+ * - State-changing endpoints are POST/DELETE only (not GET)
+ * - Same-origin requests only (no cross-origin cookie sharing)
+ * - Consider adding CSRF tokens if supporting cross-origin scenarios
+ */
+
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { API_BASE } from './api';
 
