@@ -54,8 +54,7 @@ describe('RegisterPage', () => {
     })
 
     it('shows loading state while auth context initializes', async () => {
-      // When auth is loading, it shows "Loading..."
-      vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+      // Auth context attempts silent refresh on mount, showing loading state
 
       const { container } = render(
         <AuthProvider>

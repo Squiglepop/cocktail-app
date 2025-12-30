@@ -42,7 +42,8 @@ describe('NewRecipePage', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockBack.mockClear()
-    vi.mocked(localStorage.getItem).mockReturnValue('mock-jwt-token')
+    // Note: localStorage mock only needed for non-auth features (favourites, etc.)
+    vi.mocked(localStorage.getItem).mockReturnValue(null)
     vi.mocked(localStorage.setItem).mockClear()
   })
 

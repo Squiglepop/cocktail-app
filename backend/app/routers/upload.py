@@ -4,7 +4,7 @@ Image upload and extraction endpoints.
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -282,7 +282,7 @@ def extract_recipe(request: Request, job_id: str, db: Session = Depends(get_db))
         # Update job
         job.status = "completed"
         job.recipe_id = recipe.id
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc)
 
         db.commit()
 
@@ -408,7 +408,7 @@ async def upload_and_extract(
         # Update job
         job.status = "completed"
         job.recipe_id = recipe.id
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc)
 
         db.commit()
 

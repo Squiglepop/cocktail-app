@@ -106,10 +106,14 @@ describe('Login Page', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       })
+      await flushPromises()
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'testpassword123')
-      await user.click(screen.getByRole('button', { name: /login/i }))
+
+      await act(async () => {
+        await user.click(screen.getByRole('button', { name: /login/i }))
+      })
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/')
@@ -123,10 +127,14 @@ describe('Login Page', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       })
+      await flushPromises()
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'testpassword123')
-      await user.click(screen.getByRole('button', { name: /login/i }))
+
+      await act(async () => {
+        await user.click(screen.getByRole('button', { name: /login/i }))
+      })
 
       // Token is stored in memory (httpOnly cookie for refresh on server)
       // Verify redirect happens after successful login
@@ -152,10 +160,14 @@ describe('Login Page', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       })
+      await flushPromises()
 
       await user.type(screen.getByLabelText(/email/i), 'wrong@example.com')
       await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
-      await user.click(screen.getByRole('button', { name: /login/i }))
+
+      await act(async () => {
+        await user.click(screen.getByRole('button', { name: /login/i }))
+      })
 
       await waitFor(() => {
         expect(screen.getByText(/incorrect email or password/i)).toBeInTheDocument()
@@ -181,6 +193,7 @@ describe('Login Page', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       })
+      await flushPromises()
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'testpassword123')
@@ -210,6 +223,7 @@ describe('Login Page', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       })
+      await flushPromises()
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com')
       await user.type(screen.getByLabelText(/password/i), 'testpassword123')
