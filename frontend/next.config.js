@@ -3,7 +3,8 @@
 // Backend URL for API rewrites - proxies /api/* requests to the backend
 // In dev: defaults to localhost:8000
 // In prod: set BACKEND_URL env var in Railway
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+// TEMPORARY HARDCODE FOR DEBUGGING - remove after confirming it works
+const BACKEND_URL = process.env.BACKEND_URL || 'https://back-end-production-1219.up.railway.app';
 
 // Log at build time so we can verify the value in Railway build logs
 console.log(`[next.config.js] BACKEND_URL at build time: ${BACKEND_URL}`);
