@@ -736,6 +736,7 @@ export function formatUnit(unit?: string, amount?: number): string {
     peel: 'peel',
     sprig: amount === 1 ? 'sprig' : 'sprigs',
     leaf: amount === 1 ? 'leaf' : 'leaves',
+    grams: amount === 1 ? 'gram' : 'grams',
   };
 
   return unitMap[unit] || unit;

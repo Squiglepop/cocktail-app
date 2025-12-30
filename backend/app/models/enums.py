@@ -191,6 +191,7 @@ class Unit(str, Enum):
     PEEL = "peel"
     SPRIG = "sprig"
     LEAF = "leaf"
+    GRAMS = "grams"
 
 
 # Human-readable display names
