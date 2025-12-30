@@ -54,26 +54,19 @@ const FavouritesContext = createContext<FavouritesContextType | undefined>(undef
 const storage = localStorageAdapter;
 
 /**
- * Get auth token from localStorage (for background operations)
- */
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('cocktail_auth_token');
-}
-
-/**
  * Cache a recipe for offline access (runs in background)
  * Dispatches 'recipe-cached' event on success so offline-context can refresh
+ *
+ * Note: Token is optional. For public recipes, no auth needed.
+ * For private recipes, caller must provide token from auth context.
  */
 async function cacheRecipeForOffline(recipeId: string, recipe?: Recipe, token?: string | null): Promise<void> {
   try {
     // If recipe data was provided, use it; otherwise fetch it
     let recipeData = recipe;
     if (!recipeData) {
-      // Use provided token or get from localStorage
-      const authToken = token ?? getStoredToken();
       debug.log(`Fetching recipe ${recipeId} from API...`);
-      recipeData = await fetchRecipe(recipeId, authToken);
+      recipeData = await fetchRecipe(recipeId, token ?? null);
     }
 
     // Save recipe data to IndexedDB
@@ -139,13 +132,11 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
 
     const syncFavouritesToIndexedDB = async () => {
       const ids = Array.from(favourites);
-      const token = getStoredToken();
 
       // Debug: Show what's actually in IndexedDB vs localStorage
       const cachedIds = await listCachedRecipeIds();
       debug.log(`Favourites in localStorage: ${ids.length}`, ids);
       debug.log(`Recipes in IndexedDB: ${cachedIds.length}`, cachedIds);
-      debug.log(`Auth token available: ${!!token}`);
 
       // First, check which ones need syncing
       const needsSync: string[] = [];
@@ -169,9 +160,9 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
 
       debug.log(`Syncing ${needsSync.length} favourites to IndexedDB...`);
 
-      // Sync all in parallel for speed
+      // Sync all in parallel for speed (no auth token - works for public recipes only)
       const results = await Promise.allSettled(
-        needsSync.map(id => cacheRecipeForOffline(id, undefined, token))
+        needsSync.map(id => cacheRecipeForOffline(id))
       );
 
       const succeeded = results.filter(r => r.status === 'fulfilled').length;

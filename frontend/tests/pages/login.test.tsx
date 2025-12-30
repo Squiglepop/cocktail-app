@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import { AuthProvider } from '@/lib/auth-context'
@@ -7,6 +7,11 @@ import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
 const API_BASE = '*/api'
+
+// Flush all pending promises to avoid act() warnings from async useEffect
+const flushPromises = () => act(async () => {
+  await new Promise(resolve => setTimeout(resolve, 0))
+})
 
 // Mock useRouter
 const mockPush = vi.fn()
@@ -43,6 +48,11 @@ describe('Login Page', () => {
         )
       })
     )
+  })
+
+  afterEach(async () => {
+    await flushPromises()
+    cleanup()
   })
 
   describe('Form Rendering', () => {

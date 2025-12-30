@@ -2,7 +2,7 @@
 Authentication service for JWT token handling and password management.
 """
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -41,9 +41,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
     return encoded_jwt
@@ -57,9 +57,9 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     jti = str(uuid.uuid4())
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
     return encoded_jwt, jti, expire
@@ -207,7 +207,7 @@ def is_refresh_token_valid(db: Session, jti: str) -> bool:
     token = db.query(RefreshToken).filter(
         RefreshToken.jti == jti,
         RefreshToken.revoked == False,
-        RefreshToken.expires_at > datetime.utcnow()
+        RefreshToken.expires_at > datetime.now(timezone.utc)
     ).first()
     return token is not None
 
@@ -220,7 +220,7 @@ def revoke_refresh_token(db: Session, jti: str) -> bool:
     token = db.query(RefreshToken).filter(RefreshToken.jti == jti).first()
     if token:
         token.revoked = True
-        token.revoked_at = datetime.utcnow()
+        token.revoked_at = datetime.now(timezone.utc)
         db.commit()
         return True
     return False
@@ -234,7 +234,7 @@ def revoke_all_user_tokens(db: Session, user_id: str) -> int:
     result = db.query(RefreshToken).filter(
         RefreshToken.user_id == user_id,
         RefreshToken.revoked == False
-    ).update({"revoked": True, "revoked_at": datetime.utcnow()})
+    ).update({"revoked": True, "revoked_at": datetime.now(timezone.utc)})
     db.commit()
     return result
 
@@ -247,6 +247,6 @@ def revoke_token_family(db: Session, family_id: str) -> int:
     result = db.query(RefreshToken).filter(
         RefreshToken.family_id == family_id,
         RefreshToken.revoked == False
-    ).update({"revoked": True, "revoked_at": datetime.utcnow()})
+    ).update({"revoked": True, "revoked_at": datetime.now(timezone.utc)})
     db.commit()
     return result

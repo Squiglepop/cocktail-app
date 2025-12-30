@@ -1,11 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthProvider, useAuth, getAuthHeaders } from '@/lib/auth-context'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
 const API_BASE = '*/api'
+
+// Flush all pending promises to avoid act() warnings from async useEffect
+const flushPromises = () => act(async () => {
+  await new Promise(resolve => setTimeout(resolve, 0))
+})
 
 // Test component that uses useAuth
 function TestComponent() {
@@ -68,6 +73,12 @@ describe('AuthContext', () => {
     )
   })
 
+  afterEach(async () => {
+    // Flush pending promises before cleanup to avoid act() warnings
+    await flushPromises()
+    cleanup()
+  })
+
   describe('Initial State', () => {
     it('shows loading initially or resolves to logged-out', async () => {
       render(
@@ -106,13 +117,16 @@ describe('AuthContext', () => {
         </AuthProvider>
       )
 
-      // Wait for initial load
+      // Wait for initial auth check to complete
       await waitFor(() => {
         expect(screen.getByTestId('login-btn')).toBeInTheDocument()
       })
+      await flushPromises()
 
-      // Click login button
-      await user.click(screen.getByTestId('login-btn'))
+      // Click login button and wait for all async updates
+      await act(async () => {
+        await user.click(screen.getByTestId('login-btn'))
+      })
 
       // Check user is now logged in with token in memory
       await waitFor(() => {
@@ -189,6 +203,7 @@ describe('AuthContext', () => {
       await waitFor(() => {
         expect(screen.getByTestId('register-btn')).toBeInTheDocument()
       })
+      await flushPromises()
 
       // Mock successful registration followed by login
       server.use(
@@ -223,7 +238,9 @@ describe('AuthContext', () => {
         })
       )
 
-      await user.click(screen.getByTestId('register-btn'))
+      await act(async () => {
+        await user.click(screen.getByTestId('register-btn'))
+      })
 
       await waitFor(() => {
         expect(screen.getByTestId('user-email')).toHaveTextContent('new@example.com')
@@ -299,15 +316,20 @@ describe('AuthContext', () => {
       await waitFor(() => {
         expect(screen.getByTestId('login-btn')).toBeInTheDocument()
       })
+      await flushPromises()
 
-      await user.click(screen.getByTestId('login-btn'))
+      await act(async () => {
+        await user.click(screen.getByTestId('login-btn'))
+      })
 
       await waitFor(() => {
         expect(screen.getByTestId('user-email')).toBeInTheDocument()
       })
 
       // Now logout
-      await user.click(screen.getByText('Logout'))
+      await act(async () => {
+        await user.click(screen.getByText('Logout'))
+      })
 
       await waitFor(() => {
         expect(screen.getByTestId('logged-out')).toBeInTheDocument()
