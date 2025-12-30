@@ -108,10 +108,10 @@ describe('Login Page', () => {
       })
       await flushPromises()
 
-      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'testpassword123')
-
+      // Batch all user interactions in act to avoid interleaved state updates
       await act(async () => {
+        await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+        await user.type(screen.getByLabelText(/password/i), 'testpassword123')
         await user.click(screen.getByRole('button', { name: /login/i }))
       })
 
@@ -129,10 +129,9 @@ describe('Login Page', () => {
       })
       await flushPromises()
 
-      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'testpassword123')
-
       await act(async () => {
+        await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+        await user.type(screen.getByLabelText(/password/i), 'testpassword123')
         await user.click(screen.getByRole('button', { name: /login/i }))
       })
 
@@ -162,10 +161,9 @@ describe('Login Page', () => {
       })
       await flushPromises()
 
-      await user.type(screen.getByLabelText(/email/i), 'wrong@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
-
       await act(async () => {
+        await user.type(screen.getByLabelText(/email/i), 'wrong@example.com')
+        await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
         await user.click(screen.getByRole('button', { name: /login/i }))
       })
 
@@ -195,9 +193,11 @@ describe('Login Page', () => {
       })
       await flushPromises()
 
-      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'testpassword123')
-      await user.click(screen.getByRole('button', { name: /login/i }))
+      await act(async () => {
+        await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+        await user.type(screen.getByLabelText(/password/i), 'testpassword123')
+        await user.click(screen.getByRole('button', { name: /login/i }))
+      })
 
       // Check for loading state
       await waitFor(() => {
@@ -225,9 +225,11 @@ describe('Login Page', () => {
       })
       await flushPromises()
 
-      await user.type(screen.getByLabelText(/email/i), 'test@example.com')
-      await user.type(screen.getByLabelText(/password/i), 'testpassword123')
-      await user.click(screen.getByRole('button', { name: /login/i }))
+      await act(async () => {
+        await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+        await user.type(screen.getByLabelText(/password/i), 'testpassword123')
+        await user.click(screen.getByRole('button', { name: /login/i }))
+      })
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /logging in/i })).toBeDisabled()
