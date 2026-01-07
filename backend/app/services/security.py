@@ -1,6 +1,7 @@
 """
 Security utilities for input sanitization and validation.
 """
+import html
 import re
 from typing import Optional
 
@@ -26,6 +27,9 @@ def sanitize_text(text: Optional[str]) -> Optional[str]:
 
     # Strip ALL HTML tags - we don't want any markup from AI extraction
     cleaned = bleach.clean(text, tags=[], attributes={}, strip=True)
+
+    # Unescape HTML entities (bleach encodes & to &amp;, etc.)
+    cleaned = html.unescape(cleaned)
 
     # Strip control characters except newlines and tabs
     cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', cleaned)
