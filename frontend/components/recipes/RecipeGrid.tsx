@@ -16,10 +16,7 @@ interface RecipeGridProps {
 // Constants for grid layout
 const GAP = 16; // gap-4 = 16px
 const GAP_LG = 24; // gap-6 = 24px
-// Card height = 3:4 aspect image + ~50px info strip
-// Mobile: ~150px wide → 200px image + 50px = 250px, but account for actual column width
-const ROW_HEIGHT = 340; // Taller for 3:4 aspect ratio cards
-const ROW_HEIGHT_LG = 420; // Desktop cards are wider, so taller too
+const INFO_STRIP_HEIGHT = 56; // Bottom info strip with badges + uploader
 const OVERSCAN_COUNT = 2;
 
 // Cell props type for react-window v2
@@ -74,7 +71,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // Update dimensions on resize
+  // Update dimensions on resize AND when returning from navigation (Android back button fix)
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -86,13 +83,23 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
 
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    // Re-measure when page becomes visible again (Android back navigation)
+    document.addEventListener('visibilitychange', updateDimensions);
+    window.addEventListener('focus', updateDimensions);
+    // Also re-measure on popstate (back/forward navigation)
+    window.addEventListener('popstate', updateDimensions);
+
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+      document.removeEventListener('visibilitychange', updateDimensions);
+      window.removeEventListener('focus', updateDimensions);
+      window.removeEventListener('popstate', updateDimensions);
+    };
   }, []);
 
   // Calculate grid parameters based on screen size
   const columnCount = isDesktop ? 3 : 2;
   const gap = isDesktop ? GAP_LG : GAP;
-  const rowHeight = isDesktop ? ROW_HEIGHT_LG : ROW_HEIGHT;
   const rowCount = Math.ceil(recipes.length / columnCount);
   // Account for mobile scrollbar overlay (16px on mobile)
   const scrollbarPadding = isDesktop ? 0 : 16;
@@ -103,6 +110,9 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const columnWidth = gridWidth > 0
     ? (gridWidth / columnCount) - gap
     : 200;
+  // Calculate row height dynamically: 3:4 aspect image + info strip
+  // This ensures cards fit exactly without whitespace
+  const rowHeight = Math.ceil((columnWidth * 4 / 3) + INFO_STRIP_HEIGHT);
 
   // Handle scroll to trigger load more
   const handleCellsRendered = useCallback((
