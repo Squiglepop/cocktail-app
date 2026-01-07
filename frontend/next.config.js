@@ -1,15 +1,7 @@
 /** @type {import('next').NextConfig} */
 
-// Backend URL for API rewrites - proxies /api/* requests to the backend
-// In dev: defaults to localhost:8000
-// In prod: Falls back to Railway backend URL (env var not reliably passed at build time)
-const DEFAULT_BACKEND = process.env.NODE_ENV === 'production'
-  ? 'https://back-end-production-1219.up.railway.app'
-  : 'http://localhost:8000';
-const BACKEND_URL = process.env.BACKEND_URL || DEFAULT_BACKEND;
-
-// Log at build time so we can verify the value in Railway build logs
-console.log(`[next.config.js] BACKEND_URL at build time: ${BACKEND_URL}`);
+// API routing is now handled by runtime API routes in app/api/[...path]/route.ts
+// BACKEND_URL is read at request time, not build time - Railway env vars work properly!
 
 // Include localhost in CSP only during development
 // In production, we only need the railway.app domains
@@ -85,21 +77,9 @@ const nextConfig = {
       },
     ];
   },
-  // Proxy API requests to backend - this is the CORRECT way to handle API routing
-  // Frontend uses relative /api/* URLs, Next.js proxies them to BACKEND_URL
-  // No need for NEXT_PUBLIC_API_URL build-time variable!
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${BACKEND_URL}/api/:path*`,
-      },
-      {
-        source: '/health',
-        destination: `${BACKEND_URL}/health`,
-      },
-    ];
-  },
+  // NOTE: API routing is handled by app/api/[...path]/route.ts (runtime proxy)
+  // Health endpoint is handled by app/health/route.ts
+  // No rewrites needed - BACKEND_URL is read at runtime, not build time!
 };
 
 module.exports = nextConfig;
