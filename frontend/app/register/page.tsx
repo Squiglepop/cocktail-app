@@ -36,7 +36,7 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, displayName || undefined);
-      router.push('/');
+      router.replace('/'); // replace instead of push to avoid back-button returning to register
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

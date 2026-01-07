@@ -21,7 +21,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/');
+      router.replace('/'); // replace instead of push to avoid back-button returning to login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
