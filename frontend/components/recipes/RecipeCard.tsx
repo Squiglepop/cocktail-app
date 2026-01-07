@@ -79,7 +79,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       <Link href={`/recipes/${recipe.id}`} className="block h-full" onClick={handleCardClick}>
         <div className="card hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col overflow-hidden">
           {/* Hero image section with title overlay */}
-          <div className="aspect-[3/4] relative flex-shrink-0">
+          <div className="aspect-[3/4] relative flex-shrink-0 isolate transform-gpu">
             {/* Background: image or buff fallback */}
             {recipe.has_image ? (
               <Image
@@ -96,8 +96,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               </div>
             )}
 
-            {/* Top gradient overlay for title */}
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+            {/* Top gradient overlay for title - use black/0 instead of transparent to avoid color interpolation issues */}
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 via-black/30 to-black/0" />
 
             {/* Title positioned at top */}
             <div className="absolute inset-x-0 top-0 p-3 pt-10">
