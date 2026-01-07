@@ -6,7 +6,7 @@ const DEBUG = false;
 const log = (...args) => DEBUG && console.log('[SW]', ...args);
 const warn = (...args) => DEBUG && console.warn('[SW]', ...args);
 
-const CACHE_NAME = 'cocktail-recipes-v12';
+const CACHE_NAME = 'cocktail-recipes-v13';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -88,6 +88,12 @@ self.addEventListener('fetch', (event) => {
                        event.request.headers.get('Next-Router-State-Tree');
   if (isRscRequest) {
     return; // Let browser handle RSC requests directly
+  }
+
+  // Skip Next.js static assets - they have content hashes and are cached by browser
+  // SW caching these causes stale versions to persist across deployments
+  if (url.pathname.startsWith('/_next/')) {
+    return;
   }
 
   // Handle regular page/asset requests - network first, cache fallback
