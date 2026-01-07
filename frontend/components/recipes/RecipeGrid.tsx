@@ -92,8 +92,11 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const gap = isDesktop ? GAP_LG : GAP;
   const rowHeight = isDesktop ? ROW_HEIGHT_LG : ROW_HEIGHT;
   const rowCount = Math.ceil(recipes.length / columnCount);
-  const columnWidth = dimensions.width > 0
-    ? (dimensions.width - gap * (columnCount - 1)) / columnCount
+  // Account for mobile scrollbar overlay (16px padding on right)
+  const scrollbarPadding = isDesktop ? 0 : 16;
+  const gridWidth = dimensions.width - scrollbarPadding;
+  const columnWidth = gridWidth > 0
+    ? (gridWidth - gap * (columnCount - 1)) / columnCount
     : 200;
 
   // Handle scroll to trigger load more
@@ -170,7 +173,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
             onCellsRendered={handleCellsRendered}
             style={{
               height: gridHeight,
-              width: dimensions.width,
+              width: gridWidth,
               overflowX: 'hidden',
             }}
           />
