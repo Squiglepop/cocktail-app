@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
-import { GlassWater, Wine, Share2, Heart, User } from 'lucide-react';
+import { GlassWater, Share2, Heart, User } from 'lucide-react';
+import { GlasswareIcon } from '@/components/icons/GlasswareIcon';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
 import { useFavourites } from '@/lib/favourites-context';
@@ -138,7 +139,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               )}
               {recipe.glassware && (
                 <span className="ml-auto" title={formatEnumValue(recipe.glassware)}>
-                  <Wine className="h-3.5 w-3.5 text-gray-400" />
+                  <GlasswareIcon glassware={recipe.glassware} className="h-3.5 w-3.5 text-gray-400" />
                 </span>
               )}
             </div>

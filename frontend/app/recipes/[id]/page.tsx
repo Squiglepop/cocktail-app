@@ -21,7 +21,6 @@ import { AddToPlaylistButton } from '@/components/playlists/AddToPlaylistButton'
 import {
   ArrowLeft,
   GlassWater,
-  Wine,
   Clock,
   Trash2,
   Pencil,
@@ -31,6 +30,7 @@ import {
   WifiOff,
   User,
 } from 'lucide-react';
+import { GlasswareIcon } from '@/components/icons/GlasswareIcon';
 import { shareRecipe } from '@/lib/share';
 
 export default function RecipeDetailPage() {
@@ -279,7 +279,7 @@ export default function RecipeDetailPage() {
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
           {recipe.glassware && (
             <div className="flex items-center gap-1">
-              <Wine className="h-4 w-4" />
+              <GlasswareIcon glassware={recipe.glassware} className="h-4 w-4" />
               {formatEnumValue(recipe.glassware)}
             </div>
           )}
