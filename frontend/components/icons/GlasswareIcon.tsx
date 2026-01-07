@@ -102,10 +102,8 @@ const RocksIcon = (props: SVGProps<SVGSVGElement>) => (
     <path d="M5 5 L6 19 Q6 21 12 21 Q18 21 18 19 L19 5 Z" />
     {/* Liquid level */}
     <path d="M6 8 L18 8" strokeOpacity="0.5" />
-    {/* Ice cubes */}
-    <rect x="7" y="10" width="3" height="3" rx="0.5" strokeWidth="1" />
-    <rect x="11" y="12" width="3" height="3" rx="0.5" strokeWidth="1" />
-    <rect x="14" y="9" width="3" height="3" rx="0.5" strokeWidth="1" />
+    {/* Single large ice cube */}
+    <rect x="8" y="9" width="8" height="7" rx="1" strokeWidth="1" />
   </SvgWrapper>
 );
 

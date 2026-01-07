@@ -124,31 +124,35 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             </div>
           </div>
 
-          {/* Compact info strip at bottom */}
+          {/* Info strip at bottom - badges stacked left, glassware right */}
           <div className="p-2 bg-white flex-shrink-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {recipe.template && (
-                <span className="badge badge-amber text-xs px-1.5 py-0.5">
-                  {formatEnumValue(recipe.template)}
-                </span>
-              )}
-              {recipe.main_spirit && (
-                <span className="badge badge-gray text-xs px-1.5 py-0.5">
-                  {formatEnumValue(recipe.main_spirit)}
-                </span>
-              )}
+            <div className="flex justify-between items-start gap-2">
+              {/* Left: badges stacked + uploader */}
+              <div className="flex flex-col gap-1 min-w-0">
+                {recipe.template && (
+                  <span className="badge badge-amber text-xs px-1.5 py-0.5 w-fit">
+                    {formatEnumValue(recipe.template)}
+                  </span>
+                )}
+                {recipe.main_spirit && (
+                  <span className="badge badge-gray text-xs px-1.5 py-0.5 w-fit">
+                    {formatEnumValue(recipe.main_spirit)}
+                  </span>
+                )}
+                {recipe.uploader_name && (
+                  <div className="flex items-center gap-1 text-xs text-gray-400">
+                    <User className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{recipe.uploader_name}</span>
+                  </div>
+                )}
+              </div>
+              {/* Right: large glassware icon */}
               {recipe.glassware && (
-                <span className="ml-auto" title={formatEnumValue(recipe.glassware)}>
-                  <GlasswareIcon glassware={recipe.glassware} className="h-7 w-7 text-gray-400" />
-                </span>
+                <div className="flex-shrink-0" title={formatEnumValue(recipe.glassware)}>
+                  <GlasswareIcon glassware={recipe.glassware} className="h-14 w-14 text-gray-400" />
+                </div>
               )}
             </div>
-            {recipe.uploader_name && (
-              <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                <User className="h-3 w-3" />
-                <span className="truncate">{recipe.uploader_name}</span>
-              </div>
-            )}
           </div>
         </div>
       </Link>

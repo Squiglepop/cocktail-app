@@ -21,7 +21,6 @@ import { AddToPlaylistButton } from '@/components/playlists/AddToPlaylistButton'
 import {
   ArrowLeft,
   GlassWater,
-  Clock,
   Trash2,
   Pencil,
   ImagePlus,
@@ -284,8 +283,7 @@ export default function RecipeDetailPage() {
             </div>
           )}
           {recipe.serving_style && (
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
+            <div className="flex items-center">
               Served {formatEnumValue(recipe.serving_style)}
             </div>
           )}
