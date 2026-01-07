@@ -134,15 +134,20 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
       // 2. Also load the page in a hidden iframe to ensure SW caches ALL resources
       // This is a belt-and-suspenders approach since prefetch alone may not cache JS chunks
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = '/offline/recipe?warmup=true';
-      iframe.onload = () => {
-        debug.log('Offline recipe page fully loaded in hidden iframe (cached by SW)');
-        // Remove iframe after it loads to free resources
-        setTimeout(() => iframe.remove(), 1000);
-      };
-      document.body.appendChild(iframe);
+      // IMPORTANT: Delay this to avoid competing with initial page load (causes Android crashes)
+      const warmupTimer = setTimeout(() => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = '/offline/recipe?warmup=true';
+        iframe.onload = () => {
+          debug.log('Offline recipe page fully loaded in hidden iframe (cached by SW)');
+          // Remove iframe after it loads to free resources
+          setTimeout(() => iframe.remove(), 1000);
+        };
+        document.body.appendChild(iframe);
+      }, 5000); // Wait 5s after page load to avoid resource competition
+
+      return () => clearTimeout(warmupTimer);
     }
   }, [isOnline, router]);
 
