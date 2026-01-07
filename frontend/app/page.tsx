@@ -143,12 +143,6 @@ export default function HomePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Mobile layout */}
       <div className="md:hidden space-y-4">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cocktail Recipes</h1>
-          <p className="text-gray-500 mt-1">{getRecipeCountText()}</p>
-        </div>
-
         {/* Action tiles - 3 in a row */}
         <div className="grid grid-cols-3 gap-2">
           {isOnline ? (
@@ -188,6 +182,9 @@ export default function HomePage() {
           />
         </div>
 
+        {/* Recipe count */}
+        <p className="text-sm text-gray-500">{getRecipeCountText()}</p>
+
         {/* Recipe grid */}
         <RecipeGrid
           recipes={displayedRecipes}
@@ -206,13 +203,9 @@ export default function HomePage() {
           disabled={!isOnline}
         />
         <div className="flex-1">
-          <div className="mb-6 flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Cocktail Recipes</h1>
-              <p className="text-gray-500 mt-1">{getRecipeCountText()}</p>
-            </div>
+          <div className="mb-4">
             {isOnline ? (
-              <div className="flex gap-2">
+              <div className="flex gap-2 justify-end">
                 <Link href="/recipes/new" className="btn btn-secondary">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Recipe
@@ -223,11 +216,12 @@ export default function HomePage() {
                 </Link>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <div className="flex items-center gap-2 text-gray-500 text-sm justify-end">
                 <WifiOff className="h-4 w-4" />
                 <span>Upload disabled offline</span>
               </div>
             )}
+            <p className="text-sm text-gray-500 mt-2">{getRecipeCountText()}</p>
           </div>
           <RecipeGrid
             recipes={displayedRecipes}
