@@ -6,7 +6,7 @@ const DEBUG = false;
 const log = (...args) => DEBUG && console.log('[SW]', ...args);
 const warn = (...args) => DEBUG && console.warn('[SW]', ...args);
 
-const CACHE_NAME = 'cocktail-recipes-v11';
+const CACHE_NAME = 'cocktail-recipes-v12';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -72,6 +72,22 @@ self.addEventListener('fetch', (event) => {
   // Skip other API calls - let them fail naturally (React will handle offline state)
   if (url.pathname.startsWith('/api/')) {
     return;
+  }
+
+  // Skip health check - it's used for connectivity detection and must not be cached
+  if (url.pathname === '/health') {
+    return;
+  }
+
+  // Skip RSC (React Server Component) and prefetch requests entirely
+  // These are client-side navigation requests that don't need SW caching
+  // Caching them adds memory pressure and can cause Android crashes
+  const isRscRequest = url.searchParams.has('_rsc') ||
+                       event.request.headers.get('RSC') === '1' ||
+                       event.request.headers.get('Next-Router-Prefetch') === '1' ||
+                       event.request.headers.get('Next-Router-State-Tree');
+  if (isRscRequest) {
+    return; // Let browser handle RSC requests directly
   }
 
   // Handle regular page/asset requests - network first, cache fallback
