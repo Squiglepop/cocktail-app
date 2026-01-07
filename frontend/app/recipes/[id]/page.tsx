@@ -29,6 +29,7 @@ import {
   Share2,
   Heart,
   WifiOff,
+  User,
 } from 'lucide-react';
 import { shareRecipe } from '@/lib/share';
 
@@ -415,10 +416,18 @@ export default function RecipeDetailPage() {
           </div>
         )}
 
-        {/* Date added */}
-        <div className="text-sm text-gray-500 text-center">
-          Added {new Date(recipe.created_at).toLocaleDateString()}
-          {recipe.source_type && ` via ${recipe.source_type}`}
+        {/* Date added and uploader info */}
+        <div className="text-sm text-gray-500 text-center space-y-1">
+          <div>
+            Added {new Date(recipe.created_at).toLocaleDateString()}
+            {recipe.source_type && ` via ${recipe.source_type}`}
+          </div>
+          {recipe.uploader_name && (
+            <div className="flex items-center justify-center gap-1">
+              <User className="h-3 w-3" />
+              <span>Uploaded by {recipe.uploader_name}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

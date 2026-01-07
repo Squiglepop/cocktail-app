@@ -110,6 +110,7 @@ class RecipeResponse(RecipeBase):
     source_url: Optional[str] = None
     source_type: Optional[str] = None
     user_id: Optional[str] = None
+    uploader_name: Optional[str] = None  # Display name of uploader (or email prefix if no display_name)
     visibility: str = Visibility.PUBLIC.value
     my_rating: Optional[int] = None  # Current user's rating for this recipe
     has_image: bool = False
@@ -130,6 +131,7 @@ class RecipeListResponse(BaseModel):
     serving_style: Optional[str] = None
     has_image: bool = False
     user_id: Optional[str] = None
+    uploader_name: Optional[str] = None  # Display name of uploader (or email prefix if no display_name)
     visibility: str = Visibility.PUBLIC.value
     my_rating: Optional[int] = None  # Current user's rating for this recipe
     created_at: datetime

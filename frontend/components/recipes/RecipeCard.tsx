@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
-import { GlassWater, Wine, Share2, Heart } from 'lucide-react';
+import { GlassWater, Wine, Share2, Heart, User } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
@@ -128,6 +128,13 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
                 <span>{formatEnumValue(recipe.serving_style)}</span>
               )}
             </div>
+
+            {recipe.uploader_name && (
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <User className="h-3 w-3" />
+                <span>{recipe.uploader_name}</span>
+              </div>
+            )}
           </div>
         </div>
       </Link>

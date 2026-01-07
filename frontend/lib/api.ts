@@ -48,6 +48,7 @@ export interface Recipe {
   source_url?: string;
   source_type?: string;
   user_id?: string;
+  uploader_name?: string;  // Display name of uploader (or email prefix fallback)
   visibility: string;
   my_rating?: number;
   has_image: boolean;
@@ -65,6 +66,7 @@ export interface RecipeListItem {
   serving_style?: string;
   has_image: boolean;
   user_id?: string;
+  uploader_name?: string;  // Display name of uploader (or email prefix fallback)
   visibility: string;
   my_rating?: number;
   created_at: string;

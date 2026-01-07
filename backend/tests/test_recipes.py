@@ -631,3 +631,71 @@ class TestGetRecipeImage:
         assert response.headers["content-type"] == "image/png"
         assert response.headers["accept-ranges"] == "none"  # No range support for BLOB
         assert response.content == b"LEGACY_IMAGE_DATA"
+
+
+class TestUploaderName:
+    """Tests for uploader_name field on recipes."""
+
+    def test_uploader_name_with_display_name(self, client, sample_recipe, sample_user):
+        """Test uploader_name shows display_name when available."""
+        # sample_user has display_name='Test User' from conftest
+        response = client.get(f"/api/recipes/{sample_recipe.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["uploader_name"] == "Test User"
+
+    def test_uploader_name_fallback_to_email_prefix(self, client, test_session):
+        """Test uploader_name falls back to email prefix when display_name is null."""
+        from app.models import Recipe, User
+
+        # Create user without display_name
+        user = User(
+            email="nodisplay@example.com",
+            hashed_password="fakehash",
+            display_name=None,
+        )
+        test_session.add(user)
+        test_session.flush()
+
+        # Create recipe owned by this user
+        recipe = Recipe(
+            name="No Display Name Recipe",
+            user_id=user.id,
+        )
+        test_session.add(recipe)
+        test_session.commit()
+
+        response = client.get(f"/api/recipes/{recipe.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["uploader_name"] == "nodisplay"  # email prefix
+
+    def test_uploader_name_null_for_anonymous_recipe(self, client, orphan_recipe):
+        """Test uploader_name is null for recipes without user."""
+        response = client.get(f"/api/recipes/{orphan_recipe.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["uploader_name"] is None
+
+    def test_uploader_name_in_list_response(self, client, sample_recipe, sample_user):
+        """Test uploader_name appears in list endpoint response."""
+        response = client.get("/api/recipes")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Find our sample recipe
+        sample = next(r for r in data if r["id"] == sample_recipe.id)
+        assert sample["uploader_name"] == "Test User"
+
+    def test_uploader_name_null_in_list_for_orphan(self, client, orphan_recipe):
+        """Test uploader_name is null in list for orphan recipes."""
+        response = client.get("/api/recipes")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Find the orphan recipe
+        orphan = next(r for r in data if r["id"] == orphan_recipe.id)
+        assert orphan["uploader_name"] is None

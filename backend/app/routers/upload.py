@@ -15,7 +15,8 @@ from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
-from app.models import Recipe, Ingredient, RecipeIngredient, ExtractionJob
+from app.models import Recipe, Ingredient, RecipeIngredient, ExtractionJob, User
+from app.services.auth import get_current_user_optional
 from app.schemas import (
     ExtractionJobResponse,
     RecipeResponse,
@@ -198,8 +199,13 @@ async def upload_image(
 
 @router.post("/{job_id}/extract", response_model=RecipeResponse)
 @limiter.limit("10/minute")
-def extract_recipe(request: Request, job_id: str, db: Session = Depends(get_db)):
-    """Execute extraction for a pending job."""
+def extract_recipe(
+    request: Request,
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Execute extraction for a pending job. Associates with current user if authenticated."""
     job = db.query(ExtractionJob).filter(ExtractionJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -272,6 +278,7 @@ def extract_recipe(request: Request, job_id: str, db: Session = Depends(get_db))
             image_content_hash=content_hash,
             image_perceptual_hash=perceptual_hash,
             recipe_fingerprint=fingerprint,
+            user_id=current_user.id if current_user else None,
         )
         db.add(recipe)
         db.flush()
@@ -318,8 +325,9 @@ async def upload_and_extract(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Upload an image and immediately extract the recipe (synchronous)."""
+    """Upload an image and immediately extract the recipe. Associates with current user if authenticated."""
     # Validate file type
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
@@ -398,6 +406,7 @@ async def upload_and_extract(
             image_content_hash=content_hash,
             image_perceptual_hash=perceptual_hash,
             recipe_fingerprint=fingerprint,
+            user_id=current_user.id if current_user else None,
         )
         db.add(recipe)
         db.flush()
@@ -435,6 +444,7 @@ async def upload_and_extract_multi(
     request: Request,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """Upload multiple images and extract a single recipe from them.
 
@@ -531,6 +541,7 @@ async def upload_and_extract_multi(
             image_content_hash=content_hash,
             image_perceptual_hash=perceptual_hash,
             recipe_fingerprint=fingerprint,
+            user_id=current_user.id if current_user else None,
         )
         db.add(recipe)
         db.flush()

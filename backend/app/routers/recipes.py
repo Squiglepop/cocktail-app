@@ -7,7 +7,7 @@ from typing import Generator, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models import (
     Recipe,
@@ -31,6 +31,16 @@ from app.services.auth import get_current_user, get_current_user_optional
 
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
+
+
+def _get_uploader_name(user: Optional[User]) -> Optional[str]:
+    """Get display name from user, falling back to email prefix if display_name is null."""
+    if not user:
+        return None
+    if user.display_name:
+        return user.display_name
+    # Fall back to email prefix (everything before @)
+    return user.email.split("@")[0] if user.email else None
 
 
 def _apply_visibility_filter(query, current_user: Optional[User], include_own: bool = True):
@@ -126,7 +136,7 @@ def list_recipes(
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """List recipes with optional filters. Respects visibility settings."""
-    query = db.query(Recipe)
+    query = db.query(Recipe).options(selectinload(Recipe.user))
 
     # Apply visibility filter
     query = _apply_visibility_filter(query, current_user)
@@ -177,7 +187,7 @@ def list_recipes(
             )
             user_ratings_map = {ur.recipe_id: ur.rating for ur in user_ratings}
 
-    # Build response with user's rating
+    # Build response with user's rating and uploader name
     result = []
     for recipe in recipes:
         recipe_dict = {
@@ -189,6 +199,7 @@ def list_recipes(
             "serving_style": recipe.serving_style,
             "has_image": recipe.has_image,
             "user_id": recipe.user_id,
+            "uploader_name": _get_uploader_name(recipe.user),
             "visibility": recipe.visibility,
             "my_rating": user_ratings_map.get(recipe.id),
             "created_at": recipe.created_at,
@@ -207,7 +218,10 @@ def get_recipe(
     """Get a single recipe by ID. Respects visibility settings."""
     recipe = (
         db.query(Recipe)
-        .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+        .options(
+            joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
+            selectinload(Recipe.user),
+        )
         .filter(Recipe.id == recipe_id)
         .first()
     )
@@ -233,7 +247,7 @@ def get_recipe(
         if user_rating:
             my_rating = user_rating.rating
 
-    # Build response manually to include my_rating
+    # Build response manually to include my_rating and uploader_name
     return RecipeResponse(
         id=recipe.id,
         name=recipe.name,
@@ -249,6 +263,7 @@ def get_recipe(
         source_url=recipe.source_url,
         source_type=recipe.source_type,
         user_id=recipe.user_id,
+        uploader_name=_get_uploader_name(recipe.user),
         visibility=recipe.visibility,
         my_rating=my_rating,
         has_image=recipe.has_image,
@@ -456,12 +471,56 @@ def create_recipe(
     # Load relationships for response
     recipe = (
         db.query(Recipe)
-        .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+        .options(
+            joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
+            selectinload(Recipe.user),
+        )
         .filter(Recipe.id == recipe.id)
         .first()
     )
 
-    return recipe
+    # Build response manually to include uploader_name
+    return RecipeResponse(
+        id=recipe.id,
+        name=recipe.name,
+        description=recipe.description,
+        instructions=recipe.instructions,
+        template=recipe.template,
+        main_spirit=recipe.main_spirit,
+        glassware=recipe.glassware,
+        serving_style=recipe.serving_style,
+        method=recipe.method,
+        garnish=recipe.garnish,
+        notes=recipe.notes,
+        source_url=recipe.source_url,
+        source_type=recipe.source_type,
+        user_id=recipe.user_id,
+        uploader_name=_get_uploader_name(recipe.user),
+        visibility=recipe.visibility,
+        my_rating=None,
+        has_image=recipe.has_image,
+        created_at=recipe.created_at,
+        updated_at=recipe.updated_at,
+        ingredients=[
+            RecipeIngredientResponse(
+                id=ri.id,
+                amount=ri.amount,
+                unit=ri.unit,
+                notes=ri.notes,
+                optional=ri.optional,
+                order=ri.order,
+                ingredient=IngredientResponse(
+                    id=ri.ingredient.id,
+                    name=ri.ingredient.name,
+                    type=ri.ingredient.type,
+                    spirit_category=ri.ingredient.spirit_category,
+                    description=ri.ingredient.description,
+                    common_brands=ri.ingredient.common_brands,
+                )
+            )
+            for ri in recipe.ingredients
+        ]
+    )
 
 
 @router.put("/{recipe_id}", response_model=RecipeResponse)
@@ -505,12 +564,56 @@ def update_recipe(
     # Load relationships
     recipe = (
         db.query(Recipe)
-        .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient))
+        .options(
+            joinedload(Recipe.ingredients).joinedload(RecipeIngredient.ingredient),
+            selectinload(Recipe.user),
+        )
         .filter(Recipe.id == recipe.id)
         .first()
     )
 
-    return recipe
+    # Build response manually to include uploader_name
+    return RecipeResponse(
+        id=recipe.id,
+        name=recipe.name,
+        description=recipe.description,
+        instructions=recipe.instructions,
+        template=recipe.template,
+        main_spirit=recipe.main_spirit,
+        glassware=recipe.glassware,
+        serving_style=recipe.serving_style,
+        method=recipe.method,
+        garnish=recipe.garnish,
+        notes=recipe.notes,
+        source_url=recipe.source_url,
+        source_type=recipe.source_type,
+        user_id=recipe.user_id,
+        uploader_name=_get_uploader_name(recipe.user),
+        visibility=recipe.visibility,
+        my_rating=None,
+        has_image=recipe.has_image,
+        created_at=recipe.created_at,
+        updated_at=recipe.updated_at,
+        ingredients=[
+            RecipeIngredientResponse(
+                id=ri.id,
+                amount=ri.amount,
+                unit=ri.unit,
+                notes=ri.notes,
+                optional=ri.optional,
+                order=ri.order,
+                ingredient=IngredientResponse(
+                    id=ri.ingredient.id,
+                    name=ri.ingredient.name,
+                    type=ri.ingredient.type,
+                    spirit_category=ri.ingredient.spirit_category,
+                    description=ri.ingredient.description,
+                    common_brands=ri.ingredient.common_brands,
+                )
+            )
+            for ri in recipe.ingredients
+        ]
+    )
 
 
 @router.delete("/{recipe_id}")
