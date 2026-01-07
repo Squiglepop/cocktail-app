@@ -76,27 +76,40 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
 
   // Update dimensions on resize AND when returning from navigation (Android back button fix)
   useEffect(() => {
-    const updateDimensions = () => {
+    const updateDimensions = (source: string = 'unknown') => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setDimensions({ width: rect.width, height: window.innerHeight - rect.top - 100 });
-        setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+        const actualScrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        const newWidth = rect.width;
+        const newHeight = window.innerHeight - rect.top - 100;
+        const desktop = window.innerWidth >= 1024;
+
+        console.log(`[Grid] ${source}: containerWidth=${newWidth.toFixed(0)} windowWidth=${window.innerWidth} scrollbarWidth=${actualScrollbarWidth} isDesktop=${desktop}`);
+
+        setDimensions({ width: newWidth, height: newHeight });
+        setIsDesktop(desktop);
       }
     };
 
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
+    // Wrapper functions for event listeners with source tracking
+    const onResize = () => updateDimensions('resize');
+    const onVisibility = () => updateDimensions('visibilitychange');
+    const onFocus = () => updateDimensions('focus');
+    const onPopstate = () => updateDimensions('popstate');
+
+    updateDimensions('mount');
+    window.addEventListener('resize', onResize);
     // Re-measure when page becomes visible again (Android back navigation)
-    document.addEventListener('visibilitychange', updateDimensions);
-    window.addEventListener('focus', updateDimensions);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
     // Also re-measure on popstate (back/forward navigation)
-    window.addEventListener('popstate', updateDimensions);
+    window.addEventListener('popstate', onPopstate);
 
     return () => {
-      window.removeEventListener('resize', updateDimensions);
-      document.removeEventListener('visibilitychange', updateDimensions);
-      window.removeEventListener('focus', updateDimensions);
-      window.removeEventListener('popstate', updateDimensions);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('popstate', onPopstate);
     };
   }, []);
 
@@ -105,7 +118,11 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const gap = isDesktop ? GAP_LG : GAP;
   const rowCount = Math.ceil(recipes.length / columnCount);
   // Account for mobile scrollbar overlay (16px on mobile)
-  const scrollbarPadding = isDesktop ? 0 : 16;
+  // Also check actual scrollbar width in case user has visible scrollbars
+  const actualScrollbarWidth = typeof window !== 'undefined'
+    ? window.innerWidth - document.documentElement.clientWidth
+    : 0;
+  const scrollbarPadding = Math.max(isDesktop ? 0 : 16, actualScrollbarWidth);
   const gridWidth = dimensions.width - scrollbarPadding;
   // Grid column width = columnWidth + gap (each column includes trailing gap)
   // Total = columnCount * (columnWidth + gap) must equal gridWidth
@@ -113,6 +130,14 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const columnWidth = gridWidth > 0
     ? (gridWidth / columnCount) - gap
     : 200;
+
+  // Debug: Log calculated values when they change
+  useEffect(() => {
+    if (dimensions.width > 0) {
+      const totalCalcWidth = columnCount * (columnWidth + gap);
+      console.log(`[Grid] CALC: dimWidth=${dimensions.width.toFixed(0)} scrollPad=${scrollbarPadding} gridWidth=${gridWidth.toFixed(0)} colWidth=${columnWidth.toFixed(0)} total=${totalCalcWidth.toFixed(0)} overflow=${(totalCalcWidth - gridWidth).toFixed(0)}`);
+    }
+  }, [dimensions.width, scrollbarPadding, gridWidth, columnWidth, columnCount, gap]);
   // Calculate row height dynamically: 3:4 aspect image + info strip
   // This ensures cards fit exactly without whitespace
   const rowHeight = Math.ceil((columnWidth * 4 / 3) + INFO_STRIP_HEIGHT);

@@ -1,8 +1,8 @@
 // Service Worker for Cocktail Recipe Library PWA
 // Handles offline caching for pages and recipe images
 
-// Debug mode - set to false for production
-const DEBUG = false;
+// Debug mode - set to true for diagnosing issues
+const DEBUG = true;
 const log = (...args) => DEBUG && console.log('[SW]', ...args);
 const warn = (...args) => DEBUG && console.warn('[SW]', ...args);
 
