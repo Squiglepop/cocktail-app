@@ -125,31 +125,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     refreshCachedRecipes();
   }, [refreshCachedRecipes]);
 
-  // Pre-cache the offline recipe page (and its JS chunks) when online
-  // This ensures the page works when user goes offline later
-  // We use both Next.js prefetch AND a hidden iframe to ensure full caching
+  // Pre-cache the offline recipe page when online
+  // Next.js prefetch handles client-side routing cache
+  // Note: Removed iframe warming - it was causing Android crashes on navigation
   useEffect(() => {
     if (isOnline && typeof window !== 'undefined') {
-      // 1. Use Next.js router prefetch for client-side routing cache
       router.prefetch('/offline/recipe');
       debug.log('Prefetched /offline/recipe via Next.js router');
-
-      // 2. Also load the page in a hidden iframe to ensure SW caches ALL resources
-      // This is a belt-and-suspenders approach since prefetch alone may not cache JS chunks
-      // IMPORTANT: Delay this to avoid competing with initial page load (causes Android crashes)
-      const warmupTimer = setTimeout(() => {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = '/offline/recipe?warmup=true';
-        iframe.onload = () => {
-          debug.log('Offline recipe page fully loaded in hidden iframe (cached by SW)');
-          // Remove iframe after it loads to free resources
-          setTimeout(() => iframe.remove(), 1000);
-        };
-        document.body.appendChild(iframe);
-      }, 5000); // Wait 5s after page load to avoid resource competition
-
-      return () => clearTimeout(warmupTimer);
     }
   }, [isOnline, router]);
 
