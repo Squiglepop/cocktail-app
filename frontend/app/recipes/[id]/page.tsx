@@ -287,7 +287,7 @@ export default function RecipeDetailPage() {
           )}
           {recipe.serving_style && (
             <div className="flex items-center">
-              Served {formatEnumValue(recipe.serving_style)}
+              {formatEnumValue(recipe.serving_style)}
             </div>
           )}
         </div>
