@@ -151,6 +151,7 @@ function recipeToListItem(recipe: Recipe): RecipeListItem {
     serving_style: recipe.serving_style,
     has_image: recipe.has_image,
     user_id: recipe.user_id,
+    uploader_name: recipe.uploader_name,
     visibility: recipe.visibility,
     my_rating: recipe.my_rating,
     created_at: recipe.created_at,

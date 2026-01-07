@@ -6,7 +6,7 @@ const DEBUG = false;
 const log = (...args) => DEBUG && console.log('[SW]', ...args);
 const warn = (...args) => DEBUG && console.warn('[SW]', ...args);
 
-const CACHE_NAME = 'cocktail-recipes-v9';
+const CACHE_NAME = 'cocktail-recipes-v10';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
