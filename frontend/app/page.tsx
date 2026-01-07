@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { RecipeFilters } from '@/lib/api';
 import { FilterSidebar } from '@/components/recipes/FilterSidebar';
@@ -10,19 +10,15 @@ import { useFavourites } from '@/lib/favourites-context';
 import { useOffline } from '@/lib/offline-context';
 import { useInfiniteRecipes, useRecipeCount } from '@/lib/hooks';
 import { Plus, Upload, WifiOff } from 'lucide-react';
+import { useListState } from '@/lib/list-state-context';
 
 const PAGE_SIZE = 20;
-
-// Extended filters type to include favourites_only (client-side filter)
-interface ExtendedFilters extends RecipeFilters {
-  favourites_only?: string;
-}
 
 export default function HomePage() {
   const { token } = useAuth();
   const { favourites } = useFavourites();
   const { isOnline, cachedRecipes, cachedRecipesLoading, refreshCachedRecipes } = useOffline();
-  const [filters, setFilters] = useState<ExtendedFilters>({});
+  const { filters, setFilters } = useListState();
 
   // Extract favourites_only for client-side filtering (won't trigger API reload)
   const favourites_only = filters.favourites_only;

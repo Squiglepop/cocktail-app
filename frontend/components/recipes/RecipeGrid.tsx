@@ -5,6 +5,7 @@ import { Grid, GridImperativeAPI } from 'react-window';
 import { RecipeListItem } from '@/lib/api';
 import { RecipeCard } from './RecipeCard';
 import { GlassWater, Loader2 } from 'lucide-react';
+import { useListState } from '@/lib/list-state-context';
 
 interface RecipeGridProps {
   recipes: RecipeListItem[];
@@ -70,6 +71,8 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const gridRef = useRef<GridImperativeAPI | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isDesktop, setIsDesktop] = useState(false);
+  const { saveScrollPosition, getScrollPosition } = useListState();
+  const hasRestoredScroll = useRef(false);
 
   // Update dimensions on resize AND when returning from navigation (Android back button fix)
   useEffect(() => {
@@ -125,12 +128,37 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
     }
   }, [onLoadMore, rowCount]);
 
-  // Reset scroll position when recipes change significantly (e.g., filter change)
+  // Handle scroll events - save position for restoration
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = event.currentTarget.scrollTop;
+    saveScrollPosition(scrollTop);
+  }, [saveScrollPosition]);
+
+  // Restore scroll position on mount (after recipes load)
+  useEffect(() => {
+    if (!hasRestoredScroll.current && recipes.length > 0 && gridRef.current && rowHeight > 0) {
+      const savedScrollTop = getScrollPosition();
+      if (savedScrollTop > 0) {
+        // Calculate row index from scroll position
+        const rowIndex = Math.floor(savedScrollTop / (rowHeight + gap));
+        // Use requestAnimationFrame to ensure Grid is fully rendered
+        requestAnimationFrame(() => {
+          if (gridRef.current && rowIndex < rowCount) {
+            gridRef.current.scrollToRow({ index: rowIndex, align: 'start' });
+          }
+        });
+      }
+      hasRestoredScroll.current = true;
+    }
+  }, [recipes.length, getScrollPosition, rowHeight, gap, rowCount]);
+
+  // Reset scroll restoration flag when recipes change significantly (e.g., filter change)
   const prevRecipesLengthRef = useRef(recipes.length);
   useEffect(() => {
     // If recipes reduced significantly, we likely filtered - reset scroll
     if (recipes.length < prevRecipesLengthRef.current / 2 && gridRef.current) {
       gridRef.current.scrollToRow({ index: 0 });
+      hasRestoredScroll.current = true; // Don't try to restore after reset
     }
     prevRecipesLengthRef.current = recipes.length;
   }, [recipes.length]);
@@ -186,6 +214,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
             cellComponent={RecipeCell}
             cellProps={{ recipes, columnCount, gap }}
             onCellsRendered={handleCellsRendered}
+            onScroll={handleScroll}
             style={{
               height: gridHeight,
               width: gridWidth,

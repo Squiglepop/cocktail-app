@@ -8,6 +8,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { FavouritesProvider } from '@/lib/favourites-context';
 import { OfflineProvider } from '@/lib/offline-context';
 import { QueryProvider } from '@/lib/query-provider';
+import { ListStateProvider } from '@/lib/list-state-context';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -44,6 +45,7 @@ export default function RootLayout({
           <AuthProvider>
             <FavouritesProvider>
               <OfflineProvider>
+                <ListStateProvider>
                 <ServiceWorkerRegistration />
                 <div className="min-h-screen flex flex-col">
                   <OfflineIndicator />
@@ -57,6 +59,7 @@ export default function RootLayout({
                     </div>
                   </footer>
                 </div>
+                </ListStateProvider>
               </OfflineProvider>
             </FavouritesProvider>
           </AuthProvider>

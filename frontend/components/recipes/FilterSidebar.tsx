@@ -11,6 +11,7 @@ interface FilterSidebarProps {
     main_spirit?: string;
     glassware?: string;
     serving_style?: string;
+    method?: string;
     search?: string;
     min_rating?: string;
     favourites_only?: string;
@@ -213,6 +214,25 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
               </select>
             </div>
 
+            {/* Method */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Method
+              </label>
+              <select
+                value={filters.method || ''}
+                onChange={(e) => updateFilter('method', e.target.value)}
+                className="select"
+              >
+                <option value="">All methods</option>
+                {categories.methods.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Min Rating */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -391,6 +411,25 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
             >
               <option value="">All styles</option>
               {categories.serving_styles.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Method */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Method
+            </label>
+            <select
+              value={filters.method || ''}
+              onChange={(e) => updateFilter('method', e.target.value)}
+              className="select"
+            >
+              <option value="">All methods</option>
+              {categories.methods.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.display_name}
                 </option>
