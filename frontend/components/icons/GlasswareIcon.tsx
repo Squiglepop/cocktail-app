@@ -5,14 +5,14 @@ interface GlasswareIconProps extends SVGProps<SVGSVGElement> {
   className?: string;
 }
 
-// SVG wrapper with consistent Lucide-style props
+// SVG wrapper with refined stroke styling
 const SvgWrapper = ({ children, className, ...props }: SVGProps<SVGSVGElement> & { children: React.ReactNode }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
     className={className}
@@ -22,117 +22,112 @@ const SvgWrapper = ({ children, className, ...props }: SVGProps<SVGSVGElement> &
   </svg>
 );
 
-// Individual glass icons - designed for recognition at small sizes
+// Refined glass icons with elegant curves matching reference aesthetic
 
 const CoupeIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Wide, shallow rounded bowl on stem */}
-    <path d="M4 8 Q4 4 12 4 Q20 4 20 8 Q20 11 12 11 Q4 11 4 8" />
-    <line x1="12" y1="11" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    {/* Wide, shallow elegant bowl */}
+    <path d="M4 6 Q4 10 12 10 Q20 10 20 6" />
+    <path d="M4 6 Q4 4 12 4 Q20 4 20 6" />
+    <line x1="12" y1="10" x2="12" y2="18" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const NickAndNoraIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Smaller, more rounded bowl than coupe */}
-    <path d="M6 9 Q6 4 12 4 Q18 4 18 9 Q18 12 12 12 Q6 12 6 9" />
-    <line x1="12" y1="12" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    {/* Smaller rounded bell-shaped bowl */}
+    <path d="M6 5 Q6 11 12 11 Q18 11 18 5 Q18 3 12 3 Q6 3 6 5" />
+    <line x1="12" y1="11" x2="12" y2="18" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const MartiniIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Classic V-shape */}
-    <path d="M4 4 L12 12 L20 4" />
+    {/* Classic elegant V-shape */}
     <line x1="4" y1="4" x2="20" y2="4" />
+    <line x1="4" y1="4" x2="12" y2="12" />
+    <line x1="20" y1="4" x2="12" y2="12" />
     <line x1="12" y1="12" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const FluteIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Tall, narrow, slightly tapered */}
-    <path d="M9 3 L8 13 Q8 15 12 15 Q16 15 16 13 L15 3" />
+    {/* Tall elegant champagne flute */}
+    <path d="M9 3 Q8 8 10 12 Q11 14 12 14 Q13 14 14 12 Q16 8 15 3" />
     <line x1="9" y1="3" x2="15" y2="3" />
-    <line x1="12" y1="15" x2="12" y2="19" />
-    <line x1="9" y1="21" x2="15" y2="21" />
-    <line x1="12" y1="19" x2="12" y2="21" />
+    <line x1="12" y1="14" x2="12" y2="19" />
+    <path d="M9 21 Q12 20 15 21" />
   </SvgWrapper>
 );
 
 const SaucerIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Very wide, very shallow bowl - champagne saucer */}
-    <path d="M3 8 Q3 6 12 6 Q21 6 21 8 Q21 10 12 10 Q3 10 3 8" />
-    <line x1="12" y1="10" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    {/* Very wide champagne saucer */}
+    <path d="M2 7 Q2 9 12 9 Q22 9 22 7" />
+    <path d="M2 7 Q2 5 12 5 Q22 5 22 7" />
+    <line x1="12" y1="9" x2="12" y2="18" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const RocksIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Short, wide tumbler */}
-    <path d="M5 6 L6 18 L18 18 L19 6 Z" />
-    <line x1="5" y1="6" x2="19" y2="6" />
+    {/* Short wide tumbler with subtle taper */}
+    <path d="M5 7 L6 19 Q6 20 12 20 Q18 20 18 19 L19 7" />
+    <line x1="5" y1="7" x2="19" y2="7" />
   </SvgWrapper>
 );
 
 const DoubleRocksIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Taller version of rocks */}
-    <path d="M5 4 L6 20 L18 20 L19 4 Z" />
-    <line x1="5" y1="4" x2="19" y2="4" />
+    {/* Taller tumbler */}
+    <path d="M6 4 L7 19 Q7 20 12 20 Q17 20 17 19 L18 4" />
+    <line x1="6" y1="4" x2="18" y2="4" />
   </SvgWrapper>
 );
 
 const JulepCupIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Tapered cup, wider at top, metal cup look */}
-    <path d="M6 4 L5 20 L19 20 L18 4 Z" />
-    <line x1="6" y1="4" x2="18" y2="4" />
-    {/* Subtle frost/texture lines */}
-    <line x1="7" y1="8" x2="17" y2="8" strokeOpacity="0.5" />
+    {/* Tapered metal julep cup */}
+    <path d="M7 4 L5 19 Q5 20 12 20 Q19 20 19 19 L17 4" />
+    <line x1="7" y1="4" x2="17" y2="4" />
   </SvgWrapper>
 );
 
 const HighballIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Tall, straight cylinder */}
-    <path d="M7 3 L7 20 L17 20 L17 3 Z" />
+    {/* Tall straight highball */}
+    <path d="M7 3 L7 19 Q7 20 12 20 Q17 20 17 19 L17 3" />
     <line x1="7" y1="3" x2="17" y2="3" />
   </SvgWrapper>
 );
 
 const CollinsIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Taller, narrower than highball */}
-    <path d="M8 2 L8 21 L16 21 L16 2 Z" />
+    {/* Taller narrower collins */}
+    <path d="M8 2 L8 19 Q8 21 12 21 Q16 21 16 19 L16 2" />
     <line x1="8" y1="2" x2="16" y2="2" />
   </SvgWrapper>
 );
 
 const CopperMugIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Barrel-shaped mug with handle */}
-    <path d="M5 5 Q4 12 5 19 L17 19 Q18 12 17 5 Z" />
+    {/* Moscow mule mug with handle */}
+    <path d="M5 5 L5 17 Q5 19 11 19 Q17 19 17 17 L17 5" />
     <line x1="5" y1="5" x2="17" y2="5" />
-    {/* Handle */}
-    <path d="M17 7 Q21 7 21 12 Q21 17 17 17" fill="none" />
+    <path d="M17 7 Q20 7 20 11 Q20 15 17 15" />
   </SvgWrapper>
 );
 
 const PilsnerIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Tall, flared at top */}
-    <path d="M8 3 L6 20 L18 20 L16 3 Z" />
-    <line x1="8" y1="3" x2="16" y2="3" />
+    {/* Flared pilsner glass */}
+    <path d="M7 3 Q6 12 6 17 Q6 20 12 20 Q18 20 18 17 Q18 12 17 3" />
+    <line x1="7" y1="3" x2="17" y2="3" />
   </SvgWrapper>
 );
 
@@ -141,7 +136,7 @@ const TikiMugIcon = (props: SVGProps<SVGSVGElement>) => (
     {/* Distinctive tiki totem shape */}
     <path d="M7 3 L6 20 L18 20 L17 3 Z" />
     <line x1="7" y1="3" x2="17" y2="3" />
-    {/* Tiki face details - simplified */}
+    {/* Tiki face details */}
     <ellipse cx="9" cy="9" rx="1.5" ry="1" />
     <ellipse cx="15" cy="9" rx="1.5" ry="1" />
     <path d="M9 14 L15 14" />
@@ -153,124 +148,112 @@ const TikiMugIcon = (props: SVGProps<SVGSVGElement>) => (
 
 const HurricaneIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Hourglass/curved vase shape */}
-    <path d="M7 3 Q5 8 7 12 Q5 16 7 20 L17 20 Q19 16 17 12 Q19 8 17 3 Z" />
-    <line x1="7" y1="3" x2="17" y2="3" />
+    {/* Elegant hourglass hurricane */}
+    <path d="M8 3 Q5 7 7 11 Q5 15 7 19 Q8 20 12 20 Q16 20 17 19 Q19 15 17 11 Q19 7 16 3" />
+    <line x1="8" y1="3" x2="16" y2="3" />
   </SvgWrapper>
 );
 
 const GobletIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Large rounded bowl on short stem */}
-    <path d="M5 5 Q5 14 12 14 Q19 14 19 5 Q19 3 12 3 Q5 3 5 5" />
-    <line x1="12" y1="14" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    {/* Large rounded goblet bowl */}
+    <path d="M6 4 Q4 9 7 13 Q9 15 12 15 Q15 15 17 13 Q20 9 18 4" />
+    <line x1="6" y1="4" x2="18" y2="4" />
+    <line x1="12" y1="15" x2="12" y2="18" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const PocoGrandeIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Like hurricane but with stem - curved tulip */}
-    <path d="M8 4 Q6 7 8 10 Q6 13 8 15 L16 15 Q18 13 16 10 Q18 7 16 4 Z" />
-    <line x1="8" y1="4" x2="16" y2="4" />
-    <line x1="12" y1="15" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    {/* Curved tulip with stem */}
+    <path d="M8 3 Q5 6 7 10 Q5 13 8 15 Q10 16 12 16 Q14 16 16 15 Q19 13 17 10 Q19 6 16 3" />
+    <line x1="8" y1="3" x2="16" y2="3" />
+    <line x1="12" y1="16" x2="12" y2="18" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const MargaritaIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Wide, stepped bowl - double rim */}
-    <path d="M3 5 L12 10 L21 5" />
+    {/* Classic wide margarita bowl */}
+    <path d="M3 5 Q3 7 12 10 Q21 7 21 5" />
     <line x1="3" y1="5" x2="21" y2="5" />
-    <path d="M7 5 L7 3 L17 3 L17 5" />
     <line x1="12" y1="10" x2="12" y2="18" />
-    <line x1="8" y1="20" x2="16" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    <path d="M8 20 Q12 19 16 20" />
   </SvgWrapper>
 );
 
 const SnifterIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Wide bottom, narrow top, short stem */}
-    <path d="M8 4 Q4 10 6 15 Q8 17 12 17 Q16 17 18 15 Q20 10 16 4" />
+    {/* Brandy snifter - wide belly, narrow top */}
+    <path d="M8 4 Q4 8 5 13 Q6 16 12 16 Q18 16 19 13 Q20 8 16 4" />
     <line x1="8" y1="4" x2="16" y2="4" />
-    <line x1="12" y1="17" x2="12" y2="19" />
-    <line x1="9" y1="21" x2="15" y2="21" />
-    <line x1="12" y1="19" x2="12" y2="21" />
+    <line x1="12" y1="16" x2="12" y2="19" />
+    <path d="M9 21 Q12 20 15 21" />
   </SvgWrapper>
 );
 
 const WineGlassIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Classic wine glass - larger bowl */}
-    <path d="M7 4 Q5 10 8 14 Q10 16 12 16 Q14 16 16 14 Q19 10 17 4" />
+    {/* Classic wine glass silhouette */}
+    <path d="M7 4 Q5 8 7 12 Q9 15 12 15 Q15 15 17 12 Q19 8 17 4" />
     <line x1="7" y1="4" x2="17" y2="4" />
-    <line x1="12" y1="16" x2="12" y2="19" />
-    <line x1="8" y1="21" x2="16" y2="21" />
-    <line x1="12" y1="19" x2="12" y2="21" />
+    <line x1="12" y1="15" x2="12" y2="19" />
+    <path d="M8 21 Q12 20 16 21" />
   </SvgWrapper>
 );
 
 const IrishCoffeeIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Footed mug with handle */}
-    <path d="M6 4 L7 15 Q7 17 12 17 Q17 17 17 15 L18 4 Z" />
+    {/* Footed glass mug */}
+    <path d="M6 4 Q5 8 6 13 Q7 15 12 15 Q17 15 18 13 Q19 8 18 4" />
     <line x1="6" y1="4" x2="18" y2="4" />
-    {/* Handle */}
-    <path d="M18 6 Q22 6 22 10 Q22 14 18 14" fill="none" />
-    {/* Short foot */}
-    <line x1="12" y1="17" x2="12" y2="19" />
-    <line x1="9" y1="20" x2="15" y2="20" />
-    <line x1="12" y1="19" x2="12" y2="20" />
+    <path d="M18 6 Q21 6 21 9 Q21 12 18 12" />
+    <line x1="12" y1="15" x2="12" y2="18" />
+    <path d="M9 20 Q12 19 15 20" />
   </SvgWrapper>
 );
 
 const FizzGlassIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Small, narrow, tapered - like a small collins */}
-    <path d="M9 4 L8 20 L16 20 L15 4 Z" />
+    {/* Small narrow fizz glass */}
+    <path d="M9 4 L8 19 Q8 20 12 20 Q16 20 16 19 L15 4" />
     <line x1="9" y1="4" x2="15" y2="4" />
   </SvgWrapper>
 );
 
 const PunchCupIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Small bowl with handle */}
-    <path d="M5 6 Q5 14 12 14 Q19 14 19 6 Q19 4 12 4 Q5 4 5 6" />
-    {/* Handle */}
-    <path d="M19 7 Q23 7 23 10 Q23 13 19 13" fill="none" />
+    {/* Small teacup-style punch cup */}
+    <path d="M5 6 Q4 10 6 13 Q8 15 12 15 Q16 15 18 13 Q20 10 19 6" />
+    <line x1="5" y1="6" x2="19" y2="6" />
+    <path d="M19 8 Q22 8 22 11 Q22 13 19 13" />
   </SvgWrapper>
 );
 
 const GlencairnIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Tulip-shaped whisky glass - wide at bottom, narrow at top */}
-    <path d="M9 4 Q6 8 6 14 Q6 18 12 18 Q18 18 18 14 Q18 8 15 4" />
+    {/* Tulip-shaped whisky nosing glass */}
+    <path d="M9 4 Q6 7 6 12 Q6 16 12 16 Q18 16 18 12 Q18 7 15 4" />
     <line x1="9" y1="4" x2="15" y2="4" />
-    <line x1="9" y1="20" x2="15" y2="20" />
-    <line x1="12" y1="18" x2="12" y2="20" />
+    <line x1="12" y1="16" x2="12" y2="19" />
+    <path d="M9 21 Q12 20 15 21" />
   </SvgWrapper>
 );
 
 const ShotGlassIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    {/* Very small, slightly tapered */}
-    <path d="M8 8 L9 18 L15 18 L16 8 Z" />
+    {/* Small tapered shot glass */}
+    <path d="M8 8 L9 18 Q9 19 12 19 Q15 19 15 18 L16 8" />
     <line x1="8" y1="8" x2="16" y2="8" />
-    {/* Thick bottom */}
-    <line x1="9" y1="20" x2="15" y2="20" />
-    <line x1="9" y1="18" x2="9" y2="20" />
-    <line x1="15" y1="18" x2="15" y2="20" />
   </SvgWrapper>
 );
 
 // Fallback generic glass
 const GenericGlassIcon = (props: SVGProps<SVGSVGElement>) => (
   <SvgWrapper {...props}>
-    <path d="M7 4 L8 18 L16 18 L17 4 Z" />
+    <path d="M7 4 L8 19 Q8 20 12 20 Q16 20 16 19 L17 4" />
     <line x1="7" y1="4" x2="17" y2="4" />
   </SvgWrapper>
 );
