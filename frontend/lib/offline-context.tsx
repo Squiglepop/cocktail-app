@@ -73,8 +73,9 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Check immediately and periodically (15s is less battery-draining than 5s)
-    checkRealConnectivity();
+    // Delay initial check to avoid competing with page load (prevents Android crashes)
+    // Then check periodically (15s is less battery-draining than 5s)
+    const initialCheck = setTimeout(checkRealConnectivity, 2000);
     const interval = setInterval(checkRealConnectivity, 15000);
 
     // Also check when browser fires online/offline events
@@ -88,6 +89,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     window.addEventListener('offline', handleNetworkChange);
 
     return () => {
+      clearTimeout(initialCheck);
       clearInterval(interval);
       window.removeEventListener('online', handleNetworkChange);
       window.removeEventListener('offline', handleNetworkChange);

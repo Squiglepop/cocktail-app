@@ -6,7 +6,7 @@ const DEBUG = false;
 const log = (...args) => DEBUG && console.log('[SW]', ...args);
 const warn = (...args) => DEBUG && console.warn('[SW]', ...args);
 
-const CACHE_NAME = 'cocktail-recipes-v10';
+const CACHE_NAME = 'cocktail-recipes-v11';
 const IMAGE_CACHE_NAME = 'cocktail-recipe-images-v1';
 
 // Store for shared images (temporary, in-memory)
@@ -78,11 +78,20 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response before caching
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        // Cache in background - wrapped in try-catch to prevent crashes on memory-constrained devices
+        // This is fire-and-forget: we return the response immediately, caching happens async
+        try {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone).catch(() => {
+              // Silently ignore cache failures (quota exceeded, etc.)
+            });
+          }).catch(() => {
+            // Silently ignore cache open failures
+          });
+        } catch (e) {
+          // Clone failed (memory pressure) - skip caching, just serve the response
+        }
         return response;
       })
       .catch(async () => {
@@ -138,9 +147,13 @@ async function handleRecipeImage(request) {
     // Try network first
     const response = await fetch(request);
     if (response.ok) {
-      // Cache successful responses
-      const cache = await caches.open(IMAGE_CACHE_NAME);
-      cache.put(request, response.clone());
+      // Cache successful responses - wrapped to prevent crashes on memory-constrained devices
+      try {
+        const cache = await caches.open(IMAGE_CACHE_NAME);
+        cache.put(request, response.clone()).catch(() => {});
+      } catch (e) {
+        // Clone/cache failed - continue without caching
+      }
       return response;
     }
     throw new Error('Network response not ok');
