@@ -92,11 +92,14 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const gap = isDesktop ? GAP_LG : GAP;
   const rowHeight = isDesktop ? ROW_HEIGHT_LG : ROW_HEIGHT;
   const rowCount = Math.ceil(recipes.length / columnCount);
-  // Account for mobile scrollbar overlay (16px padding on right)
+  // Account for mobile scrollbar overlay (16px on mobile)
   const scrollbarPadding = isDesktop ? 0 : 16;
   const gridWidth = dimensions.width - scrollbarPadding;
+  // Grid column width = columnWidth + gap (each column includes trailing gap)
+  // Total = columnCount * (columnWidth + gap) must equal gridWidth
+  // So: columnWidth = gridWidth / columnCount - gap
   const columnWidth = gridWidth > 0
-    ? (gridWidth - gap * (columnCount - 1)) / columnCount
+    ? (gridWidth / columnCount) - gap
     : 200;
 
   // Handle scroll to trigger load more
