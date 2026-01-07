@@ -79,7 +79,15 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       <Link href={`/recipes/${recipe.id}`} className="block h-full" onClick={handleCardClick}>
         <div className="card hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col overflow-hidden">
           {/* Hero image section with title overlay */}
-          <div className="aspect-[3/4] relative flex-shrink-0 isolate transform-gpu">
+          <div
+            className="aspect-[3/4] relative flex-shrink-0"
+            style={{
+              isolation: 'isolate',
+              contain: 'paint',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+            }}
+          >
             {/* Background: image or buff fallback */}
             {recipe.has_image ? (
               <Image
@@ -89,6 +97,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
                 sizes="(max-width: 768px) 50vw, 33vw"
                 className="object-cover object-top"
                 loading="lazy"
+                style={{ backfaceVisibility: 'hidden' }}
               />
             ) : (
               <div className="absolute inset-0 bg-[#F5F0E6] flex items-center justify-center">
@@ -96,8 +105,15 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               </div>
             )}
 
-            {/* Top gradient overlay for title - use black/0 instead of transparent to avoid color interpolation issues */}
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 via-black/30 to-black/0" />
+            {/* Top gradient overlay - simplified 2-stop gradient for Android GPU stability */}
+            <div
+              className="absolute inset-x-0 top-0 h-24"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+              }}
+            />
 
             {/* Title positioned at top */}
             <div className="absolute inset-x-0 top-0 p-3 pt-10">
