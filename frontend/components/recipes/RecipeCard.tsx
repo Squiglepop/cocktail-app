@@ -49,7 +49,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   };
 
   return (
-    <div className="relative group">
+    <div className="relative h-full group">
       {/* Action buttons - positioned outside Link to prevent stacking context issues */}
       <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1 z-50">
         <button
@@ -77,8 +77,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <AddToPlaylistButton recipeId={recipe.id} variant="icon" />
       </div>
 
-      <Link href={`/recipes/${recipe.id}`} className="block" onClick={handleCardClick}>
-        <div className="card hover:shadow-md transition-shadow cursor-pointer flex flex-col">
+      <Link href={`/recipes/${recipe.id}`} className="block h-full" onClick={handleCardClick}>
+        <div className="card hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col overflow-hidden">
           {/* Hero image section with title overlay */}
           <div
             className="aspect-[3/4] relative flex-shrink-0"

@@ -16,7 +16,7 @@ interface RecipeGridProps {
 // Constants for grid layout
 const GAP = 16; // gap-4 = 16px
 const GAP_LG = 24; // gap-6 = 24px
-const INFO_STRIP_HEIGHT = 56; // Bottom info strip with badges + uploader
+const INFO_STRIP_HEIGHT = 84; // Bottom info strip: stacked badges + uploader + h-14 icon + padding
 const OVERSCAN_COUNT = 2;
 
 // Cell props type for react-window v2
