@@ -279,7 +279,7 @@ export default function RecipeDetailPage() {
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
           {recipe.glassware && (
             <div className="flex items-center gap-1">
-              <GlasswareIcon glassware={recipe.glassware} className="h-4 w-4" />
+              <GlasswareIcon glassware={recipe.glassware} className="h-6 w-6" />
               {formatEnumValue(recipe.glassware)}
             </div>
           )}

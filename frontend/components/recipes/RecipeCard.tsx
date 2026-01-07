@@ -139,7 +139,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               )}
               {recipe.glassware && (
                 <span className="ml-auto" title={formatEnumValue(recipe.glassware)}>
-                  <GlasswareIcon glassware={recipe.glassware} className="h-3.5 w-3.5 text-gray-400" />
+                  <GlasswareIcon glassware={recipe.glassware} className="h-7 w-7 text-gray-400" />
                 </span>
               )}
             </div>
