@@ -149,7 +149,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               {/* Right: large glassware icon */}
               {recipe.glassware && (
                 <div className="flex-shrink-0" title={formatEnumValue(recipe.glassware)}>
-                  <GlasswareIcon glassware={recipe.glassware} className="h-14 w-14 text-gray-400" />
+                  <GlasswareIcon glassware={recipe.glassware} className="h-10 w-10 text-gray-400" />
                 </div>
               )}
             </div>

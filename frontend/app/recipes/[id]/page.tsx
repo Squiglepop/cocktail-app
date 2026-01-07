@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { GlasswareIcon } from '@/components/icons/GlasswareIcon';
 import { shareRecipe } from '@/lib/share';
+import { PhoneFrame } from '@/components/ui/PhoneFrame';
+import { ImageLightbox } from '@/components/ui/ImageLightbox';
 
 export default function RecipeDetailPage() {
   const params = useParams();
@@ -41,6 +43,7 @@ export default function RecipeDetailPage() {
   const [updatingRating, setUpdatingRating] = useState(false);
   const [offlineRecipe, setOfflineRecipe] = useState<Recipe | null>(null);
   const [offlineLoading, setOfflineLoading] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const recipeId = params.id as string;
 
@@ -363,17 +366,29 @@ export default function RecipeDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
             Original Screenshot
           </h2>
-          <div className="bg-gradient-to-br from-amber-100 to-amber-50 rounded-lg overflow-hidden relative aspect-[4/3]">
+          <PhoneFrame onClick={() => setShowLightbox(true)}>
             <Image
               src={getRecipeImageUrl(recipe.id)}
               alt={recipe.name}
               fill
-              sizes="(max-width: 768px) 100vw, 800px"
-              className="object-contain"
+              sizes="280px"
+              className="object-cover object-top"
               loading="lazy"
             />
-          </div>
+          </PhoneFrame>
+          <p className="text-center text-sm text-gray-400 mt-2">
+            Tap to zoom
+          </p>
         </div>
+      )}
+
+      {/* Screenshot Lightbox */}
+      {showLightbox && recipe.has_image && (
+        <ImageLightbox
+          src={getRecipeImageUrl(recipe.id)}
+          alt={recipe.name}
+          onClose={() => setShowLightbox(false)}
+        />
       )}
 
       {/* Actions */}
