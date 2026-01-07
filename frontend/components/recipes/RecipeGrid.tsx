@@ -16,8 +16,10 @@ interface RecipeGridProps {
 // Constants for grid layout
 const GAP = 16; // gap-4 = 16px
 const GAP_LG = 24; // gap-6 = 24px
-const ROW_HEIGHT = 280; // Approximate height of recipe card
-const ROW_HEIGHT_LG = 320;
+// Card height = 3:4 aspect image + ~50px info strip
+// Mobile: ~150px wide → 200px image + 50px = 250px, but account for actual column width
+const ROW_HEIGHT = 340; // Taller for 3:4 aspect ratio cards
+const ROW_HEIGHT_LG = 420; // Desktop cards are wider, so taller too
 const OVERSCAN_COUNT = 2;
 
 // Cell props type for react-window v2
@@ -127,11 +129,11 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
     return (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="card animate-pulse">
-            <div className="aspect-[4/3] bg-gray-200 rounded-t-lg"></div>
-            <div className="p-4 space-y-3">
-              <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div key={i} className="card animate-pulse overflow-hidden">
+            <div className="aspect-[3/4] bg-gray-200 rounded-t-lg"></div>
+            <div className="p-2 space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
             </div>
           </div>
         ))}

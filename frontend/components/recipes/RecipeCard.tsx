@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
 import { GlassWater, Wine, Share2, Heart, User } from 'lucide-react';
-import { StarRating } from './StarRating';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
 import { useFavourites } from '@/lib/favourites-context';
@@ -78,9 +77,10 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       </div>
 
       <Link href={`/recipes/${recipe.id}`} className="block h-full" onClick={handleCardClick}>
-        <div className="card hover:shadow-md transition-shadow cursor-pointer h-full">
-          {/* Image placeholder or actual image */}
-          <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-50 rounded-t-lg flex items-center justify-center overflow-hidden relative">
+        <div className="card hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col overflow-hidden">
+          {/* Hero image section with title overlay */}
+          <div className="aspect-[3/4] relative flex-shrink-0">
+            {/* Background: image or buff fallback */}
             {recipe.has_image ? (
               <Image
                 src={getRecipeImageUrl(recipe.id)}
@@ -91,48 +91,45 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
                 loading="lazy"
               />
             ) : (
-              <GlassWater className="h-16 w-16 text-amber-300" />
+              <div className="absolute inset-0 bg-[#F5F0E6] flex items-center justify-center">
+                <GlassWater className="h-20 w-20 text-amber-300/60" />
+              </div>
             )}
+
+            {/* Top gradient overlay for title */}
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+
+            {/* Title positioned at top */}
+            <div className="absolute inset-x-0 top-0 p-3 pt-10">
+              <h3 className="font-semibold text-white text-sm leading-tight line-clamp-2 drop-shadow-md">
+                {recipe.name}
+              </h3>
+            </div>
           </div>
 
-          <div className="p-4 space-y-2">
-            <h3 className="font-semibold text-gray-900 line-clamp-1">
-              {recipe.name}
-            </h3>
-
-            {recipe.my_rating && (
-              <StarRating rating={recipe.my_rating} size="sm" showCaption />
-            )}
-
-            <div className="flex flex-wrap gap-1">
+          {/* Compact info strip at bottom */}
+          <div className="p-2 bg-white flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {recipe.template && (
-                <span className="badge badge-amber">
+                <span className="badge badge-amber text-xs px-1.5 py-0.5">
                   {formatEnumValue(recipe.template)}
                 </span>
               )}
               {recipe.main_spirit && (
-                <span className="badge badge-gray">
+                <span className="badge badge-gray text-xs px-1.5 py-0.5">
                   {formatEnumValue(recipe.main_spirit)}
                 </span>
               )}
-            </div>
-
-            <div className="flex items-center gap-3 text-sm text-gray-500">
               {recipe.glassware && (
-                <span className="flex items-center gap-1">
-                  <Wine className="h-3 w-3" />
-                  {formatEnumValue(recipe.glassware)}
+                <span className="ml-auto" title={formatEnumValue(recipe.glassware)}>
+                  <Wine className="h-3.5 w-3.5 text-gray-400" />
                 </span>
               )}
-              {recipe.serving_style && (
-                <span>{formatEnumValue(recipe.serving_style)}</span>
-              )}
             </div>
-
             {recipe.uploader_name && (
-              <div className="flex items-center gap-1 text-xs text-gray-400">
+              <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
                 <User className="h-3 w-3" />
-                <span>{recipe.uploader_name}</span>
+                <span className="truncate">{recipe.uploader_name}</span>
               </div>
             )}
           </div>
