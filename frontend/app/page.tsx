@@ -67,9 +67,10 @@ export default function HomePage() {
       return cachedRecipes;
     }
 
-    // PRIORITY: If we have cached recipes and API has nothing (loading OR failed), show cached IMMEDIATELY
+    // PRIORITY: If we have cached recipes and API is still LOADING, show cached IMMEDIATELY
     // This prevents the empty screen flash while waiting for API
-    if (recipes.length === 0 && cachedRecipes.length > 0) {
+    // But if loading is done and recipes is empty, that's a legitimate empty result
+    if (isLoading && recipes.length === 0 && cachedRecipes.length > 0) {
       console.log(`[HomePage] No API data yet, showing ${cachedRecipes.length} cached recipes`);
       return cachedRecipes;
     }
