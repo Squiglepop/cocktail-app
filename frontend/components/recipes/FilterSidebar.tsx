@@ -96,7 +96,7 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
 
         {/* Dropdown */}
         {isExpanded && categories && (
-          <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-4 space-y-4 z-[60]">
+          <div className="fixed top-16 left-4 right-4 sm:left-auto sm:right-4 sm:w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-4 space-y-4 z-[60] max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Filters</h3>
               {hasActiveFilters && (
@@ -147,7 +147,7 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
             {/* Template */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Template / Family
+                Template
               </label>
               <select
                 value={filters.template || ''}
@@ -262,10 +262,20 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
               </select>
             </div>
 
+            {/* Reset Filters button */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="w-full mt-4 py-2 px-4 border border-amber-600 text-amber-600 hover:bg-amber-50 font-medium text-sm rounded-lg transition-colors"
+              >
+                Reset Filters
+              </button>
+            )}
+
             {/* Show Results button */}
             <button
               onClick={() => setIsExpanded(false)}
-              className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm rounded-lg transition-colors"
+              className={`w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm rounded-lg transition-colors ${hasActiveFilters ? 'mt-2' : 'mt-4'}`}
             >
               {resultCount === undefined
                 ? 'Show Results'
@@ -365,7 +375,7 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
           {/* Template */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Template / Family
+              Template
             </label>
             <select
               value={filters.template || ''}
