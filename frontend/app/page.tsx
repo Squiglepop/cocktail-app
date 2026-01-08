@@ -175,6 +175,7 @@ export default function HomePage() {
             onFilterChange={setFilters}
             variant="tile"
             disabled={!isOnline}
+            resultCount={recipeCount?.filtered}
           />
         </div>
 

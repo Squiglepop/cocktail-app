@@ -20,9 +20,10 @@ interface FilterSidebarProps {
   className?: string;
   variant?: 'sidebar' | 'tile';
   disabled?: boolean;
+  resultCount?: number;
 }
 
-export function FilterSidebar({ filters, onFilterChange, className = '', variant = 'sidebar', disabled = false }: FilterSidebarProps) {
+export function FilterSidebar({ filters, onFilterChange, className = '', variant = 'sidebar', disabled = false, resultCount }: FilterSidebarProps) {
   const { data: categories, isLoading: loading } = useCategories();
   const [isExpanded, setIsExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -83,6 +84,15 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
           </div>
           <span className="text-xs font-medium text-amber-800">Filters</span>
         </button>
+
+        {/* Backdrop scrim for mobile */}
+        {isExpanded && (
+          <div
+            className="fixed inset-0 bg-black/50 z-[55]"
+            onClick={() => setIsExpanded(false)}
+            aria-hidden="true"
+          />
+        )}
 
         {/* Dropdown */}
         {isExpanded && categories && (
@@ -251,6 +261,20 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 <option value="1">1+ stars</option>
               </select>
             </div>
+
+            {/* Show Results button */}
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="w-full mt-4 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm rounded-lg transition-colors"
+            >
+              {resultCount === undefined
+                ? 'Show Results'
+                : resultCount === 0
+                  ? 'No Results'
+                  : resultCount === 1
+                    ? 'Show 1 Result'
+                    : `Show ${resultCount} Results`}
+            </button>
           </div>
         )}
       </div>
