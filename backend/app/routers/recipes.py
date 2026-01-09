@@ -543,7 +543,7 @@ def update_recipe(
                 detail="Authentication required to edit this recipe",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if recipe.user_id != current_user.id:
+        if recipe.user_id != current_user.id and not current_user.is_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to edit this recipe"

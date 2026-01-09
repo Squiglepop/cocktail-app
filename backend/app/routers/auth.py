@@ -1,7 +1,7 @@
 """
 Authentication router for user registration, login, and profile management.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -55,6 +55,12 @@ async def register(request: Request, user_data: UserCreate, db: Session = Depend
         hashed_password=hash_password(user_data.password),
         display_name=user_data.display_name,
     )
+
+    # First user to register becomes admin if no admin exists (Story 1.1 AC-6)
+    admin_exists = db.query(User).filter(User.is_admin == True).first() is not None
+    if not admin_exists:
+        user.is_admin = True
+
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -76,6 +82,10 @@ async def login(request: Request, response: Response, user_data: UserLogin, db: 
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Update last_login_at timestamp (Story 1.1 AC-5)
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
 
     # Create short-lived access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
@@ -122,6 +132,10 @@ async def login_for_access_token(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Update last_login_at timestamp (Story 1.1 AC-5)
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(

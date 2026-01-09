@@ -30,6 +30,9 @@ class UserResponse(BaseModel):
     id: str
     email: str
     display_name: Optional[str]
+    is_active: bool
+    is_admin: bool
+    last_login_at: Optional[datetime]
     created_at: datetime
 
     model_config = {"from_attributes": True}

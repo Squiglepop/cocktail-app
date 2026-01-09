@@ -124,6 +124,22 @@ def another_user(test_session) -> User:
 
 
 @pytest.fixture
+def admin_user(test_session) -> User:
+    """Create an admin user for testing (Story 1.1)."""
+    user = User(
+        email="admin@test.com",
+        hashed_password=hash_password("adminpassword123"),
+        display_name="Admin User",
+        is_active=True,
+        is_admin=True,
+    )
+    test_session.add(user)
+    test_session.commit()
+    test_session.refresh(user)
+    return user
+
+
+@pytest.fixture
 def auth_token(sample_user) -> str:
     """Create a valid JWT token for the sample user."""
     return create_access_token(
@@ -137,6 +153,15 @@ def another_auth_token(another_user) -> str:
     """Create a valid JWT token for another user."""
     return create_access_token(
         data={"sub": another_user.id},
+        expires_delta=timedelta(hours=1)
+    )
+
+
+@pytest.fixture
+def admin_auth_token(admin_user) -> str:
+    """Create a valid JWT token for admin user (Story 1.1)."""
+    return create_access_token(
+        data={"sub": admin_user.id},
         expires_delta=timedelta(hours=1)
     )
 
