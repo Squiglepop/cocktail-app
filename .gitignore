@@ -29,8 +29,19 @@ build/
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
+
+# Claude Code local files (generated/user-specific)
+.claude/audio/
+.claude/settings.local.json
+
+# Local agent/tool configs
+.agent/
+.agentvibes/
+.bmad-user-memory/
+.mcp.json
 
 # OS
 .DS_Store

@@ -272,15 +272,18 @@ Claude (implementation), Claude Opus 4.5 (validation)
 - RecipeUpdate schema already had user_id field (line 102)
 - Validated 2026-01-10: all ACs covered, tests green
 - Added missing ingredient modification test (AC-3 gap)
+- **Code Review 2026-01-13**: Added validation for ownership transfer target user exists (recipes.py:552-559)
+- **Code Review 2026-01-13**: Updated schema comment to reflect owner OR admin can transfer (recipe.py:102)
+- **Code Review 2026-01-13**: Added 4 new tests for ownership transfer edge cases (13 total tests)
 
 ### File List
 
 **To Modify:**
-- `backend/app/routers/recipes.py` - Add admin bypass to ownership check (line 546-550)
-- `backend/app/schemas/recipes.py` - Verify/add user_id to RecipeUpdate
+- `backend/app/routers/recipes.py` - Add admin bypass to ownership check (line 546-550), add target user validation (line 552-559)
+- `backend/app/schemas/recipe.py` - Updated user_id comment (line 102)
 
 **To Create:**
-- `backend/tests/test_recipe_admin.py` - Admin recipe edit tests
+- `backend/tests/test_recipe_admin.py` - Admin recipe edit tests (13 tests)
 
 ---
 
@@ -290,3 +293,4 @@ Claude (implementation), Claude Opus 4.5 (validation)
 |------|--------|
 | 2026-01-10 | Story created via create-story workflow, status: ready-for-dev |
 | 2026-01-10 | Story implemented and validated, status: done |
+| 2026-01-13 | Code review: Added target user validation, owner transfer tests, updated schema comment |

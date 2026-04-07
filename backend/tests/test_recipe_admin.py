@@ -1,15 +1,20 @@
 """
-Tests for admin recipe edit capabilities (Story 1.2).
+Tests for admin recipe capabilities (Stories 1.2 and 1.3).
 
-Tests cover:
+Story 1.2 - Admin Recipe Edit:
 - AC-1: Admin can edit non-owned recipe (returns 200)
 - AC-2: Non-admin cannot edit non-owned recipe (returns 403)
 - AC-3: Admin can edit all fields including ownership transfer
 - AC-4: Admin editing own recipe works (regression)
 - AC-5: Regular user editing own recipe works (regression)
 
-RED PHASE: These tests are designed to FAIL until the admin bypass
-is implemented in recipes.py lines 546-550.
+Story 1.3 - Admin Recipe Delete:
+- AC-1: Admin can delete non-owned recipe (returns 200)
+- AC-2: Non-admin cannot delete non-owned recipe (returns 403)
+- AC-3: Image file cleanup on delete
+- AC-4: Recipe ingredients cascade delete
+- AC-5: Admin can delete own recipe (regression)
+- AC-6: Regular user can delete own recipe (regression)
 """
 import pytest
 from app.models import Recipe
@@ -244,6 +249,86 @@ class TestAdminOwnershipTransfer:
         test_session.refresh(sample_recipe)
         assert sample_recipe.user_id == another_user.id
 
+    def test_transfer_to_nonexistent_user_fails(
+        self, client, sample_recipe, admin_auth_token, test_session
+    ):
+        """
+        AC-3 edge case: Transfer to non-existent user fails with 400.
+
+        GIVEN: A recipe exists
+        WHEN: Admin tries to transfer to a non-existent user_id
+        THEN: Request fails with 400 Bad Request
+        AND: Recipe ownership is NOT changed
+        """
+        original_owner_id = sample_recipe.user_id
+
+        response = client.put(
+            f"/api/recipes/{sample_recipe.id}",
+            json={"user_id": "nonexistent-uuid-12345"},
+            headers={"Authorization": f"Bearer {admin_auth_token}"},
+        )
+
+        assert response.status_code == 400
+        assert "not found" in response.json()["detail"].lower()
+
+        # Verify ownership unchanged
+        test_session.refresh(sample_recipe)
+        assert sample_recipe.user_id == original_owner_id
+
+
+class TestOwnerCanTransferRecipe:
+    """Test recipe owner can transfer their own recipe."""
+
+    def test_owner_can_transfer_own_recipe(
+        self, client, sample_recipe, sample_user, another_user, auth_token, test_session
+    ):
+        """
+        Owner can transfer ownership of their own recipe.
+
+        GIVEN: A recipe owned by sample_user
+        WHEN: sample_user sets user_id to another_user.id
+        THEN: Recipe ownership is transferred successfully
+        """
+        # Verify precondition: recipe owned by sample_user
+        assert sample_recipe.user_id == sample_user.id
+
+        response = client.put(
+            f"/api/recipes/{sample_recipe.id}",
+            json={"user_id": another_user.id},
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        assert response.status_code == 200
+
+        # Verify ownership transferred
+        test_session.refresh(sample_recipe)
+        assert sample_recipe.user_id == another_user.id
+
+    def test_owner_transfer_to_nonexistent_user_fails(
+        self, client, sample_recipe, sample_user, auth_token, test_session
+    ):
+        """
+        Owner cannot transfer to non-existent user.
+
+        GIVEN: A recipe owned by sample_user
+        WHEN: sample_user tries to transfer to non-existent user_id
+        THEN: Request fails with 400 Bad Request
+        """
+        original_owner_id = sample_recipe.user_id
+
+        response = client.put(
+            f"/api/recipes/{sample_recipe.id}",
+            json={"user_id": "fake-user-id-99999"},
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        assert response.status_code == 400
+        assert "not found" in response.json()["detail"].lower()
+
+        # Verify ownership unchanged
+        test_session.refresh(sample_recipe)
+        assert sample_recipe.user_id == original_owner_id
+
 
 class TestAdminOwnRecipeEdit:
     """Test admin can still edit their own recipes (AC-4)."""
@@ -328,3 +413,284 @@ class TestRegularUserOwnRecipeEdit:
         )
 
         assert response.status_code == 401
+
+
+# ============================================================================
+# Admin Recipe Delete Tests (Story 1.3)
+# ============================================================================
+
+
+class TestAdminRecipeDeleteBypass:
+    """Test admin bypass for recipe deletion (AC-1, AC-2)."""
+
+    def test_admin_can_delete_any_recipe(
+        self, client, sample_recipe, another_user, admin_auth_token, test_session
+    ):
+        """
+        AC-1: Admin can delete recipe they don't own.
+
+        GIVEN: A recipe owned by sample_user
+        WHEN: Admin sends DELETE to /api/recipes/{id}
+        THEN: Recipe is deleted successfully with 200 response
+        """
+        recipe_id = sample_recipe.id
+
+        # Admin attempts to delete another user's recipe
+        response = client.delete(
+            f"/api/recipes/{recipe_id}",
+            headers={"Authorization": f"Bearer {admin_auth_token}"},
+        )
+
+        # Should succeed with 200
+        assert response.status_code == 200
+        assert "deleted" in response.json()["message"].lower()
+
+        # Verify recipe no longer exists in database
+        deleted_recipe = test_session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        assert deleted_recipe is None
+
+    def test_non_admin_cannot_delete_others_recipe(
+        self, client, sample_recipe, another_auth_token, test_session
+    ):
+        """
+        AC-2: Non-admin cannot delete recipe they don't own.
+
+        GIVEN: A recipe owned by sample_user
+        WHEN: another_user (non-admin) sends DELETE to /api/recipes/{id}
+        THEN: Request is rejected with 403 Forbidden
+        """
+        recipe_id = sample_recipe.id
+
+        # another_user attempts to delete sample_user's recipe
+        response = client.delete(
+            f"/api/recipes/{recipe_id}",
+            headers={"Authorization": f"Bearer {another_auth_token}"},
+        )
+
+        # Should be rejected with 403
+        assert response.status_code == 403
+        assert "permission" in response.json()["detail"].lower()
+
+        # Verify recipe was NOT deleted
+        recipe = test_session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        assert recipe is not None
+        assert recipe.name == "Margarita"
+
+
+class TestAdminDeleteImageCleanup:
+    """Test image cleanup on admin delete (AC-3)."""
+
+    def test_admin_delete_removes_recipe_image(
+        self, client, sample_user, admin_auth_token, test_session
+    ):
+        """
+        AC-3: Image file is deleted when admin deletes recipe with image.
+
+        GIVEN: A recipe with an associated image file
+        WHEN: Admin deletes the recipe
+        THEN: delete_image is called to clean up the image file
+        """
+        from unittest.mock import patch, MagicMock
+
+        # Create a recipe with an image path
+        recipe_with_image = Recipe(
+            name="Recipe With Image",
+            description="Has an image",
+            instructions="Test",
+            template="sour",
+            main_spirit="vodka",
+            source_type="manual",
+            source_image_path="images/test-image-12345.jpg",  # Has image
+            user_id=sample_user.id,
+        )
+        test_session.add(recipe_with_image)
+        test_session.commit()
+        test_session.refresh(recipe_with_image)
+        recipe_id = recipe_with_image.id
+
+        # Mock the image storage to verify delete_image is called
+        mock_storage = MagicMock()
+        with patch("app.routers.recipes.get_image_storage", return_value=mock_storage):
+            response = client.delete(
+                f"/api/recipes/{recipe_id}",
+                headers={"Authorization": f"Bearer {admin_auth_token}"},
+            )
+
+        # Should succeed
+        assert response.status_code == 200
+
+        # Verify delete_image was called with correct path
+        mock_storage.delete_image.assert_called_once_with("images/test-image-12345.jpg")
+
+
+class TestAdminDeleteCascade:
+    """Test cascade delete for recipe_ingredients (AC-4)."""
+
+    def test_admin_delete_cascades_to_recipe_ingredients(
+        self, client, sample_recipe, admin_auth_token, test_session
+    ):
+        """
+        AC-4: Recipe ingredients are cascade deleted.
+
+        GIVEN: A recipe with associated ingredients in recipe_ingredients table
+        WHEN: Admin deletes the recipe
+        THEN: The recipe_ingredients records are also deleted
+        """
+        from app.models import RecipeIngredient
+
+        recipe_id = sample_recipe.id
+
+        # Verify precondition: recipe has ingredients
+        ingredients_before = test_session.query(RecipeIngredient).filter(
+            RecipeIngredient.recipe_id == recipe_id
+        ).all()
+        assert len(ingredients_before) >= 1
+
+        # Admin deletes the recipe
+        response = client.delete(
+            f"/api/recipes/{recipe_id}",
+            headers={"Authorization": f"Bearer {admin_auth_token}"},
+        )
+
+        assert response.status_code == 200
+
+        # Verify recipe_ingredients were cascade deleted
+        ingredients_after = test_session.query(RecipeIngredient).filter(
+            RecipeIngredient.recipe_id == recipe_id
+        ).all()
+        assert len(ingredients_after) == 0
+
+
+class TestAdminDeleteOwnRecipe:
+    """Test admin can delete their own recipes (AC-5)."""
+
+    def test_admin_can_delete_own_recipe(
+        self, client, admin_user, admin_auth_token, test_session
+    ):
+        """
+        AC-5: Admin deleting their OWN recipe works as before.
+
+        GIVEN: A recipe owned by the admin user
+        WHEN: Admin deletes their own recipe
+        THEN: Delete succeeds (regression test)
+        """
+        # Create a recipe owned by admin
+        admin_recipe = Recipe(
+            name="Admin's Cocktail",
+            description="Admin's recipe to delete",
+            instructions="Test",
+            template="sour",
+            main_spirit="gin",
+            source_type="manual",
+            user_id=admin_user.id,
+        )
+        test_session.add(admin_recipe)
+        test_session.commit()
+        test_session.refresh(admin_recipe)
+        recipe_id = admin_recipe.id
+
+        # Admin deletes their own recipe
+        response = client.delete(
+            f"/api/recipes/{recipe_id}",
+            headers={"Authorization": f"Bearer {admin_auth_token}"},
+        )
+
+        assert response.status_code == 200
+
+        # Verify recipe deleted
+        deleted = test_session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        assert deleted is None
+
+
+class TestRegularUserOwnRecipeDelete:
+    """Test regular users can still delete their own recipes (AC-6)."""
+
+    def test_owner_can_still_delete_own_recipe(
+        self, client, sample_recipe, sample_user, auth_token, test_session
+    ):
+        """
+        AC-6: Regular user deleting their OWN recipe works as before.
+
+        GIVEN: A recipe owned by sample_user
+        WHEN: sample_user deletes their own recipe
+        THEN: Delete succeeds (regression test - existing functionality preserved)
+        """
+        # Verify precondition: sample_recipe owned by sample_user
+        assert sample_recipe.user_id == sample_user.id
+        recipe_id = sample_recipe.id
+
+        # Owner deletes their own recipe
+        response = client.delete(
+            f"/api/recipes/{recipe_id}",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        assert response.status_code == 200
+        assert "deleted" in response.json()["message"].lower()
+
+        # Verify recipe deleted
+        deleted = test_session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        assert deleted is None
+
+    def test_unauthenticated_user_cannot_delete_recipe(
+        self, client, sample_recipe, test_session
+    ):
+        """
+        Regression test: Unauthenticated user cannot delete owned recipes.
+
+        GIVEN: A recipe exists with an owner
+        WHEN: Unauthenticated request to DELETE /api/recipes/{id}
+        THEN: Request is rejected with 401 Unauthorized
+        AND: Recipe is NOT deleted
+        """
+        recipe_id = sample_recipe.id
+
+        response = client.delete(f"/api/recipes/{recipe_id}")
+
+        assert response.status_code == 401
+        assert "authentication" in response.json()["detail"].lower()
+
+        # Verify recipe was NOT deleted
+        recipe = test_session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        assert recipe is not None
+
+
+class TestOrphanRecipeDelete:
+    """Test deletion of recipes with no owner (user_id=None)."""
+
+    def test_anyone_can_delete_orphan_recipe(
+        self, client, test_session
+    ):
+        """
+        Edge case: Orphan recipes (no owner) can be deleted by anyone.
+
+        GIVEN: A recipe with user_id=None (legacy/orphan recipe)
+        WHEN: Any user (even unauthenticated) sends DELETE
+        THEN: Recipe is deleted successfully
+
+        Note: This is intentional backwards-compatibility behavior.
+        """
+        # Create an orphan recipe (no owner)
+        orphan_recipe = Recipe(
+            name="Orphan Cocktail",
+            description="No owner",
+            instructions="Test",
+            template="sour",
+            main_spirit="vodka",
+            source_type="manual",
+            user_id=None,  # No owner
+        )
+        test_session.add(orphan_recipe)
+        test_session.commit()
+        test_session.refresh(orphan_recipe)
+        recipe_id = orphan_recipe.id
+
+        # Unauthenticated delete should work for orphan recipes
+        response = client.delete(f"/api/recipes/{recipe_id}")
+
+        assert response.status_code == 200
+        assert "deleted" in response.json()["message"].lower()
+
+        # Verify recipe deleted
+        deleted = test_session.query(Recipe).filter(Recipe.id == recipe_id).first()
+        assert deleted is None

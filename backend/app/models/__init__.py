@@ -29,6 +29,13 @@ from .user import User
 from .collection import Collection, CollectionRecipe, CollectionShare
 from .user_rating import UserRating
 from .refresh_token import RefreshToken
+from .category import (
+    CategoryTemplate,
+    CategoryGlassware,
+    CategoryServingStyle,
+    CategoryMethod,
+    CategorySpirit,
+)
 
 __all__ = [
     # Enums
@@ -60,4 +67,10 @@ __all__ = [
     "CollectionShare",
     "UserRating",
     "RefreshToken",
+    # Category tables
+    "CategoryTemplate",
+    "CategoryGlassware",
+    "CategoryServingStyle",
+    "CategoryMethod",
+    "CategorySpirit",
 ]

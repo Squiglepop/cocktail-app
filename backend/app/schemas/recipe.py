@@ -99,7 +99,7 @@ class RecipeUpdate(BaseModel):
     notes: Optional[str] = None
     ingredients: Optional[List[RecipeIngredientCreate]] = None
     visibility: Optional[str] = None
-    user_id: Optional[str] = None  # Admin-only: transfer recipe ownership
+    user_id: Optional[str] = None  # Transfer recipe ownership (owner or admin)
 
 
 class RecipeRatingUpdate(BaseModel):

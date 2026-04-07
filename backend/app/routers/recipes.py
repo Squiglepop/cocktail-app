@@ -549,6 +549,15 @@ def update_recipe(
                 detail="You don't have permission to edit this recipe"
             )
 
+    # Validate target user exists if transferring ownership
+    if recipe_data.user_id is not None:
+        target_user = db.query(User).filter(User.id == recipe_data.user_id).first()
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Target user not found for ownership transfer"
+            )
+
     # Update scalar fields
     update_data = recipe_data.model_dump(exclude_unset=True, exclude={"ingredients"})
     for field, value in update_data.items():
@@ -622,7 +631,7 @@ def delete_recipe(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Delete a recipe. Only the owner can delete their recipes."""
+    """Delete a recipe. Owner or admin can delete recipes."""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
@@ -635,7 +644,7 @@ def delete_recipe(
                 detail="Authentication required to delete this recipe",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if recipe.user_id != current_user.id:
+        if recipe.user_id != current_user.id and not current_user.is_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to delete this recipe"
