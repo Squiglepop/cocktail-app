@@ -71,6 +71,8 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const gridRef = useRef<GridImperativeAPI | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isDesktop, setIsDesktop] = useState(false);
+  // HYDRATION SAFETY: Track scrollbar width in state, updated via useEffect
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const { saveScrollPosition, getScrollPosition } = useListState();
   const hasRestoredScroll = useRef(false);
 
@@ -88,6 +90,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
 
         setDimensions({ width: newWidth, height: newHeight });
         setIsDesktop(desktop);
+        setScrollbarWidth(actualScrollbarWidth);
       }
     };
 
@@ -117,12 +120,9 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   const columnCount = isDesktop ? 3 : 2;
   const gap = isDesktop ? GAP_LG : GAP;
   const rowCount = Math.ceil(recipes.length / columnCount);
+  // HYDRATION SAFETY: scrollbarWidth is now tracked in state via useEffect
   // Account for mobile scrollbar overlay (16px on mobile)
-  // Also check actual scrollbar width in case user has visible scrollbars
-  const actualScrollbarWidth = typeof window !== 'undefined'
-    ? window.innerWidth - document.documentElement.clientWidth
-    : 0;
-  const scrollbarPadding = Math.max(isDesktop ? 0 : 16, actualScrollbarWidth);
+  const scrollbarPadding = Math.max(isDesktop ? 0 : 16, scrollbarWidth);
   const gridWidth = dimensions.width - scrollbarPadding;
   // Grid column width = columnWidth + gap (each column includes trailing gap)
   // Total = columnCount * (columnWidth + gap) must equal gridWidth

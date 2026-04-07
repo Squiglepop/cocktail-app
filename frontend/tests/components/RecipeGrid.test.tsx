@@ -5,13 +5,16 @@ import { RecipeListItem } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
 import { OfflineProvider } from '@/lib/offline-context'
+import { ListStateProvider } from '@/lib/list-state-context'
 
 function renderRecipeGrid(props: Parameters<typeof RecipeGrid>[0]) {
   return render(
     <AuthProvider>
       <FavouritesProvider>
         <OfflineProvider>
-          <RecipeGrid {...props} />
+          <ListStateProvider>
+            <RecipeGrid {...props} />
+          </ListStateProvider>
         </OfflineProvider>
       </FavouritesProvider>
     </AuthProvider>

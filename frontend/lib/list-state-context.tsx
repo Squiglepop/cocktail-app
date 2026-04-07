@@ -57,9 +57,10 @@ function saveState(state: ListState): void {
 }
 
 export function ListStateProvider({ children }: { children: ReactNode }) {
-  // Initialize from session storage
-  const [filters, setFiltersState] = useState<ExtendedFilters>(() => loadState().filters);
-  const [scrollTop, setScrollTop] = useState<number>(() => loadState().scrollTop);
+  // HYDRATION SAFETY: Initialize with empty values for SSR
+  // Real values loaded from sessionStorage in useEffect after hydration
+  const [filters, setFiltersState] = useState<ExtendedFilters>({});
+  const [scrollTop, setScrollTop] = useState<number>(0);
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Debounce timer ref
