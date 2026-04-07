@@ -26,6 +26,15 @@ from .category_service import (
     get_active_methods,
     get_active_spirits,
     get_all_active_categories,
+    TYPE_MAP,
+    RECIPE_FIELD_MAP,
+    get_all_by_type,
+    get_by_id,
+    create as create_category,
+    update as update_category,
+    soft_delete as soft_delete_category,
+    reorder as reorder_categories,
+    get_recipe_usage_count,
 )
 
 __all__ = [
@@ -59,4 +68,13 @@ __all__ = [
     "get_active_methods",
     "get_active_spirits",
     "get_all_active_categories",
+    "TYPE_MAP",
+    "RECIPE_FIELD_MAP",
+    "get_all_by_type",
+    "get_by_id",
+    "create_category",
+    "update_category",
+    "soft_delete_category",
+    "reorder_categories",
+    "get_recipe_usage_count",
 ]

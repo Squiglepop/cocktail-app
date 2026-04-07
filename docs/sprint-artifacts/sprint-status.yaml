@@ -56,7 +56,7 @@ development_status:
   1-3-admin-recipe-delete: done
   1-4-category-database-tables: done
   1-5-public-category-endpoints-rewrite: done
-  1-6-admin-category-management: in-progress
+  1-6-admin-category-management: done
   epic-1-retrospective: optional
 
   # Epic 2: Ingredient Data Quality

@@ -49,6 +49,13 @@ from .collection import (
     CollectionShareListResponse,
 )
 from .cleanup import CleanupStatsResponse
+from .category import (
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryAdminResponse,
+    CategoryReorderRequest,
+    CategoryDeleteResponse,
+)
 
 __all__ = [
     "IngredientBase",
@@ -96,4 +103,10 @@ __all__ = [
     "CollectionShareListResponse",
     # Cleanup schemas
     "CleanupStatsResponse",
+    # Admin category schemas
+    "CategoryCreate",
+    "CategoryUpdate",
+    "CategoryAdminResponse",
+    "CategoryReorderRequest",
+    "CategoryDeleteResponse",
 ]
