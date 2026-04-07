@@ -19,6 +19,14 @@ from .recipe_service import (
     add_ingredients_to_recipe,
     replace_recipe_ingredients,
 )
+from .category_service import (
+    get_active_templates,
+    get_active_glassware,
+    get_active_serving_styles,
+    get_active_methods,
+    get_active_spirits,
+    get_all_active_categories,
+)
 
 __all__ = [
     "get_db",
@@ -45,4 +53,10 @@ __all__ = [
     "get_or_create_ingredient",
     "add_ingredients_to_recipe",
     "replace_recipe_ingredients",
+    "get_active_templates",
+    "get_active_glassware",
+    "get_active_serving_styles",
+    "get_active_methods",
+    "get_active_spirits",
+    "get_all_active_categories",
 ]

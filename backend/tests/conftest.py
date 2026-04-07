@@ -20,7 +20,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Local
 from app.main import app
-from app.models import Base, User, Recipe, Ingredient, RecipeIngredient, ExtractionJob
+from app.models import (
+    Base, User, Recipe, Ingredient, RecipeIngredient, ExtractionJob,
+    CategoryTemplate, CategoryGlassware, CategoryServingStyle,
+    CategoryMethod, CategorySpirit,
+)
+from app.models.enums import (
+    CocktailTemplate, Glassware, ServingStyle, Method, SpiritCategory,
+    TEMPLATE_DISPLAY_NAMES, TEMPLATE_DESCRIPTIONS,
+    GLASSWARE_DISPLAY_NAMES, GLASSWARE_CATEGORIES,
+    SERVING_STYLE_DESCRIPTIONS, METHOD_DESCRIPTIONS,
+)
 from app.services.auth import hash_password, create_access_token
 from app.services.database import get_db
 
@@ -407,3 +417,59 @@ def test_image_gif() -> bytes:
 def test_image_webp() -> bytes:
     """Create a valid test WebP image file data."""
     return _create_test_image("WEBP")
+
+
+@pytest.fixture
+def seeded_categories(test_session: Session):
+    """Seed all 5 category tables for endpoint tests."""
+    # Seed category_templates
+    for i, template in enumerate(CocktailTemplate):
+        test_session.add(CategoryTemplate(
+            value=template.value,
+            label=TEMPLATE_DISPLAY_NAMES.get(template, template.value.replace("_", " ").title()),
+            description=TEMPLATE_DESCRIPTIONS.get(template),
+            sort_order=i,
+            is_active=True,
+        ))
+
+    # Seed category_glassware
+    for i, glass in enumerate(Glassware):
+        test_session.add(CategoryGlassware(
+            value=glass.value,
+            label=GLASSWARE_DISPLAY_NAMES.get(glass, glass.value.replace("_", " ").title()),
+            category=GLASSWARE_CATEGORIES.get(glass, "specialty").value,
+            sort_order=i,
+            is_active=True,
+        ))
+
+    # Seed category_serving_styles
+    for i, style in enumerate(ServingStyle):
+        test_session.add(CategoryServingStyle(
+            value=style.value,
+            label=style.value.replace("_", " ").title(),
+            description=SERVING_STYLE_DESCRIPTIONS.get(style),
+            sort_order=i,
+            is_active=True,
+        ))
+
+    # Seed category_methods
+    for i, method in enumerate(Method):
+        test_session.add(CategoryMethod(
+            value=method.value,
+            label=method.value.replace("_", " ").title(),
+            description=METHOD_DESCRIPTIONS.get(method),
+            sort_order=i,
+            is_active=True,
+        ))
+
+    # Seed category_spirits
+    for i, spirit in enumerate(SpiritCategory):
+        test_session.add(CategorySpirit(
+            value=spirit.value,
+            label=spirit.value.replace("_", " ").title(),
+            sort_order=i,
+            is_active=True,
+        ))
+
+    test_session.commit()
+    return test_session

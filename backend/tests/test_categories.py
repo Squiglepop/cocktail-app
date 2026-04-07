@@ -4,6 +4,7 @@ Tests for category endpoints.
 import pytest
 
 
+@pytest.mark.usefixtures("seeded_categories")
 class TestGetAllCategories:
     """Tests for GET /api/categories endpoint."""
 
@@ -53,6 +54,7 @@ class TestGetAllCategories:
         assert "display_name" in method
 
 
+@pytest.mark.usefixtures("seeded_categories")
 class TestGetTemplates:
     """Tests for GET /api/categories/templates endpoint."""
 
@@ -89,6 +91,7 @@ class TestGetTemplates:
         assert len(has_description) > 0
 
 
+@pytest.mark.usefixtures("seeded_categories")
 class TestGetSpirits:
     """Tests for GET /api/categories/spirits endpoint."""
 
@@ -116,6 +119,7 @@ class TestGetSpirits:
             assert "display_name" in spirit
 
 
+@pytest.mark.usefixtures("seeded_categories")
 class TestGetGlassware:
     """Tests for GET /api/categories/glassware endpoint."""
 
@@ -153,6 +157,7 @@ class TestGetGlassware:
         assert "stemmed" in category_names or "Stemmed" in [g["name"] for g in data]
 
 
+@pytest.mark.usefixtures("seeded_categories")
 class TestGetServingStyles:
     """Tests for GET /api/categories/serving-styles endpoint."""
 
@@ -187,6 +192,7 @@ class TestGetServingStyles:
         assert len(has_description) > 0
 
 
+@pytest.mark.usefixtures("seeded_categories")
 class TestGetMethods:
     """Tests for GET /api/categories/methods endpoint."""
 

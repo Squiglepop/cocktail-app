@@ -1,84 +1,75 @@
 """
 Category endpoints for dropdowns and filters.
-"""
-from fastapi import APIRouter
 
-from app.models.enums import (
-    CocktailTemplate,
-    Glassware,
-    GlasswareCategory,
-    ServingStyle,
-    Method,
-    SpiritCategory,
-    GLASSWARE_CATEGORIES,
-    TEMPLATE_DISPLAY_NAMES,
-    TEMPLATE_DESCRIPTIONS,
-    GLASSWARE_DISPLAY_NAMES,
-    SERVING_STYLE_DESCRIPTIONS,
-    METHOD_DESCRIPTIONS,
-)
+Database-driven: queries category tables, filters by is_active,
+orders by sort_order. No Python enum iteration.
+"""
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from typing import List
+
 from app.schemas import CategoryItem, CategoryGroup, CategoriesResponse
+from app.services import (
+    get_db,
+    get_active_templates,
+    get_active_glassware,
+    get_active_serving_styles,
+    get_active_methods,
+    get_active_spirits,
+    get_all_active_categories,
+)
 
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 
 @router.get("", response_model=CategoriesResponse)
-def get_all_categories():
+def get_all_categories(db: Session = Depends(get_db)):
     """Get all category options for filters/dropdowns."""
+    cats = get_all_active_categories(db)
 
-    # Templates
     templates = [
         CategoryItem(
             value=t.value,
-            display_name=TEMPLATE_DISPLAY_NAMES.get(t, t.value),
-            description=TEMPLATE_DESCRIPTIONS.get(t),
+            display_name=t.label,
+            description=t.description,
         )
-        for t in CocktailTemplate
+        for t in cats["templates"]
     ]
 
-    # Spirits
     spirits = [
-        CategoryItem(value=s.value, display_name=s.value.replace("_", " ").title())
-        for s in SpiritCategory
+        CategoryItem(value=s.value, display_name=s.label)
+        for s in cats["spirits"]
     ]
 
-    # Glassware - grouped by category
-    glassware_groups = {}
-    for glass in Glassware:
-        category = GLASSWARE_CATEGORIES.get(glass, GlasswareCategory.SPECIALTY)
-        if category not in glassware_groups:
-            glassware_groups[category] = []
-        glassware_groups[category].append(
-            CategoryItem(
-                value=glass.value,
-                display_name=GLASSWARE_DISPLAY_NAMES.get(glass, glass.value),
-            )
+    # Glassware grouped by category — uses CategoryGroup schema (no "category" key)
+    glass_groups = {}
+    for g in cats["glassware"]:
+        glass_groups.setdefault(g.category, []).append(
+            CategoryItem(value=g.value, display_name=g.label)
         )
-
     glassware = [
-        CategoryGroup(name=cat.value.title(), items=items)
-        for cat, items in glassware_groups.items()
+        CategoryGroup(name=cat.title(), items=items)
+        for cat, items in glass_groups.items()
     ]
 
-    # Serving styles
     serving_styles = [
         CategoryItem(
             value=s.value,
-            display_name=s.value.replace("_", " ").title(),
-            description=SERVING_STYLE_DESCRIPTIONS.get(s),
+            display_name=s.label,
+            description=s.description,
         )
-        for s in ServingStyle
+        for s in cats["serving_styles"]
     ]
 
-    # Methods
     methods = [
         CategoryItem(
             value=m.value,
-            display_name=m.value.replace("_", " ").title(),
-            description=METHOD_DESCRIPTIONS.get(m),
+            display_name=m.label,
+            description=m.description,
         )
-        for m in Method
+        for m in cats["methods"]
     ]
 
     return CategoriesResponse(
@@ -90,70 +81,63 @@ def get_all_categories():
     )
 
 
-@router.get("/templates")
-def get_templates():
+@router.get("/templates", response_model=List[CategoryItem])
+def get_templates(db: Session = Depends(get_db)):
     """Get all cocktail templates/families."""
     return [
         {
             "value": t.value,
-            "display_name": TEMPLATE_DISPLAY_NAMES.get(t, t.value),
-            "description": TEMPLATE_DESCRIPTIONS.get(t),
+            "display_name": t.label,
+            "description": t.description,
         }
-        for t in CocktailTemplate
+        for t in get_active_templates(db)
     ]
 
 
-@router.get("/spirits")
-def get_spirits():
+@router.get("/spirits", response_model=List[CategoryItem])
+def get_spirits(db: Session = Depends(get_db)):
     """Get all spirit categories."""
     return [
-        {"value": s.value, "display_name": s.value.replace("_", " ").title()}
-        for s in SpiritCategory
+        {"value": s.value, "display_name": s.label}
+        for s in get_active_spirits(db)
     ]
 
 
 @router.get("/glassware")
-def get_glassware():
+def get_glassware(db: Session = Depends(get_db)):
     """Get all glassware options grouped by category."""
-    glassware_groups = {}
-    for glass in Glassware:
-        category = GLASSWARE_CATEGORIES.get(glass, GlasswareCategory.SPECIALTY)
-        if category not in glassware_groups:
-            glassware_groups[category] = []
-        glassware_groups[category].append(
-            {
-                "value": glass.value,
-                "display_name": GLASSWARE_DISPLAY_NAMES.get(glass, glass.value),
-            }
+    groups = {}
+    for g in get_active_glassware(db):
+        groups.setdefault(g.category, []).append(
+            {"value": g.value, "display_name": g.label}
         )
-
     return [
-        {"category": cat.value, "name": cat.value.title(), "items": items}
-        for cat, items in glassware_groups.items()
+        {"category": cat, "name": cat.title(), "items": items}
+        for cat, items in groups.items()
     ]
 
 
-@router.get("/serving-styles")
-def get_serving_styles():
+@router.get("/serving-styles", response_model=List[CategoryItem])
+def get_serving_styles(db: Session = Depends(get_db)):
     """Get all serving styles."""
     return [
         {
             "value": s.value,
-            "display_name": s.value.replace("_", " ").title(),
-            "description": SERVING_STYLE_DESCRIPTIONS.get(s),
+            "display_name": s.label,
+            "description": s.description,
         }
-        for s in ServingStyle
+        for s in get_active_serving_styles(db)
     ]
 
 
-@router.get("/methods")
-def get_methods():
+@router.get("/methods", response_model=List[CategoryItem])
+def get_methods(db: Session = Depends(get_db)):
     """Get all preparation methods."""
     return [
         {
             "value": m.value,
-            "display_name": m.value.replace("_", " ").title(),
-            "description": METHOD_DESCRIPTIONS.get(m),
+            "display_name": m.label,
+            "description": m.description,
         }
-        for m in Method
+        for m in get_active_methods(db)
     ]
