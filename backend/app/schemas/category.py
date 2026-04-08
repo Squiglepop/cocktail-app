@@ -5,17 +5,17 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 class CategoryCreate(BaseModel):
-    value: str
-    label: str
+    value: str = Field(max_length=50)
+    label: str = Field(max_length=100)
     description: Optional[str] = None
-    category: Optional[str] = None
+    category: Optional[str] = Field(default=None, max_length=50)
 
     @field_validator("value")
     @classmethod
@@ -28,7 +28,7 @@ class CategoryCreate(BaseModel):
 
 
 class CategoryUpdate(BaseModel):
-    label: Optional[str] = None
+    label: Optional[str] = Field(default=None, max_length=100)
     description: Optional[str] = None
     is_active: Optional[bool] = None
 

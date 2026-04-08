@@ -19,6 +19,17 @@ from .recipe_service import (
     add_ingredients_to_recipe,
     replace_recipe_ingredients,
 )
+from .ingredient_service import (
+    list_ingredients,
+    get_by_id as get_ingredient_by_id,
+    create_ingredient,
+    update_ingredient,
+    delete_ingredient,
+    get_recipe_usage_count as get_ingredient_recipe_usage_count,
+    detect_duplicates,
+    merge_ingredients,
+)
+from .user_service import list_users, update_user_status
 from .category_service import (
     get_active_templates,
     get_active_glassware,
@@ -77,4 +88,16 @@ __all__ = [
     "soft_delete_category",
     "reorder_categories",
     "get_recipe_usage_count",
+    # Admin ingredient service
+    "list_ingredients",
+    "get_ingredient_by_id",
+    "create_ingredient",
+    "update_ingredient",
+    "delete_ingredient",
+    "get_ingredient_recipe_usage_count",
+    "detect_duplicates",
+    "merge_ingredients",
+    # Admin user service
+    "list_users",
+    "update_user_status",
 ]

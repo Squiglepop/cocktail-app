@@ -83,6 +83,12 @@ async def login(request: Request, response: Response, user_data: UserLogin, db: 
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is deactivated",
+        )
+
     # Update last_login_at timestamp (Story 1.1 AC-5)
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
@@ -131,6 +137,12 @@ async def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is deactivated",
         )
 
     # Update last_login_at timestamp (Story 1.1 AC-5)

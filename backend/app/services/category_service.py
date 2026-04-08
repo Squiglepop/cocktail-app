@@ -8,6 +8,7 @@ Admin methods handle full CRUD, reorder, and soft-delete.
 from uuid import uuid4
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -138,7 +139,11 @@ def create(db: Session, type_name: str, data: CategoryCreate):
 
     record = model_class(**fields)
     db.add(record)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return None  # Race condition duplicate — caller raises 409
     db.refresh(record)
     return record
 
@@ -173,15 +178,23 @@ def soft_delete(db: Session, type_name: str, category_id: str):
 
 
 def reorder(db: Session, type_name: str, ids: list[str]) -> list[str]:
-    """Reorder categories. Returns list of invalid IDs (empty if all valid)."""
+    """Reorder categories. Returns list of invalid IDs (empty if all valid).
+
+    Validates that ALL categories of the given type are included in the ID list
+    to prevent partial reorders that create duplicate sort_order values.
+    """
     model_class = TYPE_MAP[type_name]
 
-    records = db.query(model_class).filter(model_class.id.in_(ids)).all()
-    record_map = {r.id: r for r in records}
+    all_records = db.query(model_class).all()
+    record_map = {r.id: r for r in all_records}
 
     invalid_ids = [cid for cid in ids if cid not in record_map]
     if invalid_ids:
         return invalid_ids
+
+    missing_ids = [rid for rid in record_map if rid not in ids]
+    if missing_ids:
+        return missing_ids
 
     for index, category_id in enumerate(ids):
         record_map[category_id].sort_order = index

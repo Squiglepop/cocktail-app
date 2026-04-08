@@ -616,6 +616,76 @@ When running admin panel migrations, execute in this order:
 4. `add_category_indexes` - Performance indexes
 5. `create_audit_log_table` - Audit logging infrastructure
 
+### Pre-Review Verification Checklist
+
+> Added from Epic 1 Retrospective (2026-04-08). Every story must pass this checklist before marking "ready for review." These items were the top code review findings across all 6 Epic 1 stories.
+
+**Test Quality Verification:**
+
+- [ ] Run `coverage report --include=<new/modified files>` — verify every new function/method has actual test coverage (not just test names that sound right)
+- [ ] For every endpoint with `require_admin` or `get_current_user`: verify there is a **401 test** (no token) AND a **403 test** (regular user token)
+- [ ] For every `HTTPException` raised in new code: verify there is a test that triggers that exact error path
+- [ ] Test names describe the **behavior** being tested, not just the function name (e.g., `test_delete_returns_403_for_non_admin` not `test_delete_recipe`)
+
+**Code Quality Verification:**
+
+- [ ] Run `git status` — check for untracked new files that should be committed
+- [ ] Any service method that does INSERT with a unique constraint MUST handle `IntegrityError` and return the appropriate HTTP error (e.g., 409) instead of letting a 500 propagate
+- [ ] Verify docstrings/comments match the actual code (not copy-pasted from a previous story)
+
+**Coverage Verification Command:**
+
+```bash
+# Run after implementation, before requesting review
+coverage run -m pytest tests/test_<your_new_test_file>.py
+coverage report --include="app/<files_you_changed>.py"
+# Expect 100% on new code paths
+```
+
+### Defensive Coding Patterns
+
+> Added from Epic 1 Retrospective (2026-04-08). These patterns prevent bugs found during Epic 1 code reviews.
+
+**Unique Constraint Handling (MANDATORY for all create/insert operations):**
+```python
+from sqlalchemy.exc import IntegrityError
+
+def create(db: Session, data: CreateSchema) -> Model | None:
+    record = Model(**data.model_dump())
+    db.add(record)
+    try:
+        db.commit()
+        db.refresh(record)
+        return record
+    except IntegrityError:
+        db.rollback()
+        return None  # Caller returns 409
+
+# In router:
+result = service.create(db, data)
+if result is None:
+    raise HTTPException(status_code=409, detail="Value already exists")
+```
+
+**Auth Test Pattern (MANDATORY for all protected endpoints):**
+```python
+# For EVERY endpoint that uses require_admin or get_current_user,
+# include BOTH of these tests:
+
+def test_endpoint_returns_401_without_auth(client):
+    """No token → 401."""
+    response = client.get("/api/admin/resource")
+    assert response.status_code == 401
+
+def test_endpoint_returns_403_for_regular_user(client, auth_token):
+    """Regular user token → 403."""
+    response = client.get(
+        "/api/admin/resource",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert response.status_code == 403
+```
+
 ### Admin Panel Don't-Miss Rules
 
 | Action | Consequence |
@@ -625,4 +695,7 @@ When running admin panel migrations, execute in this order:
 | Use 5-min cache for admin views | Admins see stale data after changes |
 | Forget migration order | Foreign key constraint violations |
 | Name tables without `category_` prefix | Inconsistent schema, confusing queries |
+| Skip pre-review checklist | Code review catches functional gaps → slower cycle |
+| INSERT without IntegrityError handling | Race conditions cause 500 instead of 409 |
+| Test only one auth rejection path | Missing 401 or 403 coverage = security gap |
 

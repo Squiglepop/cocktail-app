@@ -56,6 +56,24 @@ from .category import (
     CategoryReorderRequest,
     CategoryDeleteResponse,
 )
+from .ingredient import (
+    IngredientAdminCreate,
+    IngredientAdminUpdate,
+    IngredientAdminResponse,
+    IngredientListResponse,
+    IngredientDeleteResponse,
+    DuplicateMatch,
+    DuplicateGroup,
+    DuplicateDetectionResponse,
+    IngredientMergeRequest,
+    IngredientMergeResponse,
+)
+from .user import (
+    UserAdminResponse,
+    UserListResponse,
+    UserStatusUpdate,
+    UserStatusResponse,
+)
 
 __all__ = [
     "IngredientBase",
@@ -109,4 +127,22 @@ __all__ = [
     "CategoryAdminResponse",
     "CategoryReorderRequest",
     "CategoryDeleteResponse",
+    # Admin ingredient schemas
+    "IngredientAdminCreate",
+    "IngredientAdminUpdate",
+    "IngredientAdminResponse",
+    "IngredientListResponse",
+    "IngredientDeleteResponse",
+    # Ingredient duplicate detection schemas
+    "DuplicateMatch",
+    "DuplicateGroup",
+    "DuplicateDetectionResponse",
+    # Ingredient merge schemas
+    "IngredientMergeRequest",
+    "IngredientMergeResponse",
+    # Admin user schemas
+    "UserAdminResponse",
+    "UserListResponse",
+    "UserStatusUpdate",
+    "UserStatusResponse",
 ]

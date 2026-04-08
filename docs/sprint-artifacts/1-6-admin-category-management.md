@@ -481,10 +481,20 @@ None — clean implementation, all 361 tests passing on first run.
 - **M3**: Refactored `reorder()` to use single `WHERE id IN (...)` query instead of N+1 queries
 - Full suite after review: 369 passed, 0 failed. `category_service.py` now at 100% coverage
 
+### Code Review Fixes #2 (2026-04-08)
+
+- **H1**: Added 3 missing 403 tests for regular users on PUT, DELETE, and reorder endpoints (AC-8 full coverage)
+- **M1**: Wrapped `create()` commit in `IntegrityError` handler — race condition duplicates now return `None` (409) instead of crashing (500)
+- **M2**: `reorder()` now validates ALL category IDs of the type are present — partial reorder returns 400 instead of silently creating duplicate sort_orders
+- **M2**: Added `test_reorder_with_partial_ids_returns_400` test
+- **M3**: Added `max_length` constraints to `CategoryCreate` (`value`=50, `label`=100, `category`=50) and `CategoryUpdate` (`label`=100) matching DB column sizes
+- Full suite after review #2: 373 passed, 0 failed. `admin.py` at 100% coverage
+
 ### Change Log
 
 - 2026-04-07: Implemented Story 1.6 — Admin Category Management (all 8 ACs satisfied)
 - 2026-04-08: Code review fixes — 3 HIGH, 3 MEDIUM issues resolved, 8 new tests added
+- 2026-04-08: Code review #2 fixes — 1 HIGH, 3 MEDIUM issues resolved, 4 new tests added (373 total)
 
 ### File List
 

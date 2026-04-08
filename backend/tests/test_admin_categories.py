@@ -45,9 +45,26 @@ def test_update_category_returns_401_without_auth(client, seeded_categories):
     assert response.status_code == 401
 
 
+def test_update_category_returns_403_for_regular_user(client, auth_token, seeded_categories):
+    response = client.put(
+        "/api/admin/categories/templates/some-id",
+        json={"label": "Test"},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert response.status_code == 403
+
+
 def test_delete_category_returns_401_without_auth(client, seeded_categories):
     response = client.delete("/api/admin/categories/templates/some-id")
     assert response.status_code == 401
+
+
+def test_delete_category_returns_403_for_regular_user(client, auth_token, seeded_categories):
+    response = client.delete(
+        "/api/admin/categories/templates/some-id",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert response.status_code == 403
 
 
 def test_reorder_categories_returns_401_without_auth(client, seeded_categories):
@@ -56,6 +73,15 @@ def test_reorder_categories_returns_401_without_auth(client, seeded_categories):
         json={"ids": ["a", "b"]},
     )
     assert response.status_code == 401
+
+
+def test_reorder_categories_returns_403_for_regular_user(client, auth_token, seeded_categories):
+    response = client.post(
+        "/api/admin/categories/templates/reorder",
+        json={"ids": ["a", "b"]},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert response.status_code == 403
 
 
 # --- GET Tests (AC-1) ---
@@ -324,6 +350,21 @@ def test_reorder_with_invalid_ids_returns_400(client, admin_auth_token, seeded_c
     response = client.post(
         "/api/admin/categories/templates/reorder",
         json={"ids": ["fake-id-1", "fake-id-2"]},
+        headers={"Authorization": f"Bearer {admin_auth_token}"},
+    )
+    assert response.status_code == 400
+    assert "not found" in response.json()["detail"]
+
+
+def test_reorder_with_partial_ids_returns_400(client, admin_auth_token, seeded_categories):
+    db = seeded_categories
+    templates = db.query(CategoryTemplate).order_by(CategoryTemplate.sort_order).all()
+    # Send only the first 2 IDs instead of all
+    partial_ids = [t.id for t in templates[:2]]
+
+    response = client.post(
+        "/api/admin/categories/templates/reorder",
+        json={"ids": partial_ids},
         headers={"Authorization": f"Bearer {admin_auth_token}"},
     )
     assert response.status_code == 400
