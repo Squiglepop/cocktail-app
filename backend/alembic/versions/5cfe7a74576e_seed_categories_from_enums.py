@@ -136,7 +136,7 @@ def upgrade() -> None:
     for i, (value, label, description) in enumerate(TEMPLATES):
         connection.execute(sa.text("""
             INSERT INTO category_templates (id, value, label, description, sort_order, is_active)
-            VALUES (:id, :value, :label, :description, :sort_order, 1)
+            VALUES (:id, :value, :label, :description, :sort_order, TRUE)
         """), {
             "id": str(uuid.uuid4()),
             "value": value,
@@ -149,7 +149,7 @@ def upgrade() -> None:
     for i, (value, label, category) in enumerate(GLASSWARE):
         connection.execute(sa.text("""
             INSERT INTO category_glassware (id, value, label, category, sort_order, is_active)
-            VALUES (:id, :value, :label, :category, :sort_order, 1)
+            VALUES (:id, :value, :label, :category, :sort_order, TRUE)
         """), {
             "id": str(uuid.uuid4()),
             "value": value,
@@ -162,7 +162,7 @@ def upgrade() -> None:
     for i, (value, label, description) in enumerate(SERVING_STYLES):
         connection.execute(sa.text("""
             INSERT INTO category_serving_styles (id, value, label, description, sort_order, is_active)
-            VALUES (:id, :value, :label, :description, :sort_order, 1)
+            VALUES (:id, :value, :label, :description, :sort_order, TRUE)
         """), {
             "id": str(uuid.uuid4()),
             "value": value,
@@ -175,7 +175,7 @@ def upgrade() -> None:
     for i, (value, label, description) in enumerate(METHODS):
         connection.execute(sa.text("""
             INSERT INTO category_methods (id, value, label, description, sort_order, is_active)
-            VALUES (:id, :value, :label, :description, :sort_order, 1)
+            VALUES (:id, :value, :label, :description, :sort_order, TRUE)
         """), {
             "id": str(uuid.uuid4()),
             "value": value,
@@ -188,7 +188,7 @@ def upgrade() -> None:
     for i, (value, label) in enumerate(SPIRITS):
         connection.execute(sa.text("""
             INSERT INTO category_spirits (id, value, label, sort_order, is_active)
-            VALUES (:id, :value, :label, :sort_order, 1)
+            VALUES (:id, :value, :label, :sort_order, TRUE)
         """), {
             "id": str(uuid.uuid4()),
             "value": value,
