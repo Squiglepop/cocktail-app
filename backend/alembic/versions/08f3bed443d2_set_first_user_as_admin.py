@@ -26,7 +26,7 @@ def upgrade() -> None:
     # If no users exist, this affects 0 rows - which is expected
     connection = op.get_bind()
     connection.execute(sa.text("""
-        UPDATE users SET is_admin = 1
+        UPDATE users SET is_admin = TRUE
         WHERE id = (SELECT id FROM users ORDER BY created_at ASC LIMIT 1)
     """))
 
@@ -35,5 +35,5 @@ def downgrade() -> None:
     # Reset all users to non-admin
     connection = op.get_bind()
     connection.execute(sa.text("""
-        UPDATE users SET is_admin = 0
+        UPDATE users SET is_admin = FALSE
     """))
