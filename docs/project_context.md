@@ -690,6 +690,38 @@ raise ValueError("Cannot do X to self") # → 400
 return None                              # → 404 or 409 depending on context
 ```
 
+**SAVEPOINT Isolation for Fire-and-Forget Operations (MANDATORY when flushing inside another transaction):**
+```python
+# When a secondary operation (e.g., audit logging) calls db.flush() inside
+# the caller's transaction, a flush failure leaves the session in
+# PendingRollbackError state — poisoning the caller's already-committed work.
+# Use db.begin_nested() (SAVEPOINT) to isolate the secondary operation.
+
+# ❌ WRONG — flush failure poisons the entire session
+try:
+    entry = AuditLog(...)
+    db.add(entry)
+    db.flush()  # If this fails, caller's session is now broken
+except Exception:
+    pass  # Session is in PendingRollbackError — next db operation crashes
+
+# ✅ RIGHT — SAVEPOINT isolates the failure
+try:
+    with db.begin_nested():  # Creates a SAVEPOINT
+        entry = AuditLog(...)
+        db.add(entry)
+        # flush happens at SAVEPOINT exit
+    # On failure, only the SAVEPOINT rolls back — caller's session is clean
+except Exception as e:
+    logger.error(f"Secondary operation failed: {e}")  # Session still usable
+```
+
+**When to use `db.begin_nested()`:**
+
+- Any `db.flush()` or `db.add()` inside a try/except within another transaction
+- Fire-and-forget patterns (audit logging, notifications, analytics)
+- Any operation where failure should NOT roll back the caller's work
+
 **Unique Constraint Handling (MANDATORY for all create/insert operations):**
 ```python
 from sqlalchemy.exc import IntegrityError
@@ -744,4 +776,5 @@ def test_endpoint_returns_403_for_regular_user(client, auth_token):
 | Test only one auth rejection path | Missing 401 or 403 coverage = security gap |
 | Return error strings from services | Fragile string-matching in router; use exceptions (ValueError/LookupError) |
 | Skip `db.flush()` before deleting parent with modified children | ORM re-nullifies FK columns, corrupting related records |
+| `db.flush()` inside try/except without `begin_nested()` | Session poisoning — PendingRollbackError kills caller's transaction |
 

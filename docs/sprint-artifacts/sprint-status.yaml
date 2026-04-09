@@ -73,10 +73,16 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Audit Trail & Compliance
-  epic-4: in-progress
-  4-1-audit-log-infrastructure: backlog
-  4-2-audit-log-integration: backlog
-  epic-4-retrospective: optional
+  epic-4: done
+  4-1-audit-log-infrastructure: done
+  4-2-audit-log-integration: done
+  epic-4-retrospective: done
+
+  # Epic 4→5 Prep Tasks (from Epic 4 Retrospective)
+  prep-fix-frontend-test-failures: done            # Fixed 23 broken tests (ListStateProvider + stale assertions)
+  prep-verify-frontend-toolchain: done             # npm install, npm test (238 pass), npm run build — all confirmed
+  prep-document-savepoint-pattern: done             # Added db.begin_nested() SAVEPOINT pattern to project_context.md
+  prep-push-to-remote: backlog                     # Push all epics to remote — deploy from clean baseline
 
   # Epic 5: Admin User Interface
   epic-5: backlog

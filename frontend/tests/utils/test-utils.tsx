@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/lib/auth-context';
 import { OfflineProvider } from '@/lib/offline-context';
 import { FavouritesProvider } from '@/lib/favourites-context';
+import { ListStateProvider } from '@/lib/list-state-context';
 import { ReactNode } from 'react';
 
 // Create a new QueryClient for each test to avoid shared state
@@ -33,7 +34,9 @@ export function TestProviders({ children, queryClient }: TestProviderProps) {
       <AuthProvider>
         <OfflineProvider>
           <FavouritesProvider>
-            {children}
+            <ListStateProvider>
+              {children}
+            </ListStateProvider>
           </FavouritesProvider>
         </OfflineProvider>
       </AuthProvider>
@@ -51,7 +54,9 @@ export function createTestWrapper(queryClient?: QueryClient) {
         <AuthProvider>
           <OfflineProvider>
             <FavouritesProvider>
-              {children}
+              <ListStateProvider>
+                {children}
+              </ListStateProvider>
             </FavouritesProvider>
           </OfflineProvider>
         </AuthProvider>

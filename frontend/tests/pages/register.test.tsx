@@ -3,17 +3,18 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RegisterPage from '@/app/register/page'
 import { AuthProvider } from '@/lib/auth-context'
+import { ListStateProvider } from '@/lib/list-state-context'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
 const API_BASE = '*/api'
 
 // Mock useRouter
-const mockPush = vi.fn()
+const mockReplace = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: mockPush,
-    replace: vi.fn(),
+    push: vi.fn(),
+    replace: mockReplace,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
@@ -26,7 +27,9 @@ vi.mock('next/navigation', () => ({
 function renderRegisterPage() {
   return render(
     <AuthProvider>
-      <RegisterPage />
+      <ListStateProvider>
+        <RegisterPage />
+      </ListStateProvider>
     </AuthProvider>
   )
 }
@@ -35,7 +38,7 @@ describe('RegisterPage', () => {
   beforeEach(() => {
     vi.mocked(localStorage.getItem).mockReturnValue(null)
     vi.mocked(localStorage.setItem).mockClear()
-    mockPush.mockClear()
+    mockReplace.mockClear()
   })
 
   describe('Rendering', () => {
@@ -58,7 +61,9 @@ describe('RegisterPage', () => {
 
       const { container } = render(
         <AuthProvider>
-          <RegisterPage />
+          <ListStateProvider>
+            <RegisterPage />
+          </ListStateProvider>
         </AuthProvider>
       )
 
@@ -210,7 +215,7 @@ describe('RegisterPage', () => {
       await user.click(screen.getByRole('button', { name: /create account/i }))
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/')
+        expect(mockReplace).toHaveBeenCalledWith('/')
       })
     })
 

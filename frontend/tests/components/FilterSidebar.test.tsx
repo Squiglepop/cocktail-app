@@ -38,7 +38,7 @@ describe('FilterSidebar', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Search')).toBeInTheDocument()
-        expect(screen.getByText('Template / Family')).toBeInTheDocument()
+        expect(screen.getByText('Template')).toBeInTheDocument()
         expect(screen.getByText('Main Spirit')).toBeInTheDocument()
         expect(screen.getByText('Glassware')).toBeInTheDocument()
         expect(screen.getByText('Serving Style')).toBeInTheDocument()
@@ -109,10 +109,10 @@ describe('FilterSidebar', () => {
       renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
-        expect(screen.getByText('Template / Family')).toBeInTheDocument()
+        expect(screen.getByText('Template')).toBeInTheDocument()
       })
 
-      const templateSelect = getSelectByLabel('Template / Family')
+      const templateSelect = getSelectByLabel('Template')
       await user.selectOptions(templateSelect, 'sour')
 
       expect(mockOnFilterChange).toHaveBeenCalledWith(
@@ -144,7 +144,7 @@ describe('FilterSidebar', () => {
       })
 
       await waitFor(() => {
-        const templateSelect = getSelectByLabel('Template / Family')
+        const templateSelect = getSelectByLabel('Template')
         expect(templateSelect).toHaveValue('sour')
 
         const spiritSelect = getSelectByLabel('Main Spirit')
@@ -198,7 +198,7 @@ describe('FilterSidebar', () => {
       renderFilterSidebar({ filters: defaultFilters, onFilterChange: mockOnFilterChange })
 
       await waitFor(() => {
-        expect(screen.getByText('Template / Family')).toBeInTheDocument()
+        expect(screen.getByText('Template')).toBeInTheDocument()
       })
 
       // Check that options include values from mock categories

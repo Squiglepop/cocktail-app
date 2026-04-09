@@ -3,6 +3,7 @@ import { render, screen, waitFor, cleanup, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 import { AuthProvider } from '@/lib/auth-context'
+import { ListStateProvider } from '@/lib/list-state-context'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
@@ -14,11 +15,11 @@ const flushPromises = () => act(async () => {
 })
 
 // Mock useRouter
-const mockPush = vi.fn()
+const mockReplace = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: mockPush,
-    replace: vi.fn(),
+    push: vi.fn(),
+    replace: mockReplace,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
@@ -31,14 +32,16 @@ vi.mock('next/navigation', () => ({
 function renderLoginPage() {
   return render(
     <AuthProvider>
-      <LoginPage />
+      <ListStateProvider>
+        <LoginPage />
+      </ListStateProvider>
     </AuthProvider>
   )
 }
 
 describe('Login Page', () => {
   beforeEach(() => {
-    mockPush.mockClear()
+    mockReplace.mockClear()
     // Default: no stored session (refresh returns 401)
     server.use(
       http.post(`${API_BASE}/auth/refresh`, () => {
@@ -116,7 +119,7 @@ describe('Login Page', () => {
       })
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/')
+        expect(mockReplace).toHaveBeenCalledWith('/')
       })
     })
 
@@ -138,7 +141,7 @@ describe('Login Page', () => {
       // Token is stored in memory (httpOnly cookie for refresh on server)
       // Verify redirect happens after successful login
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/')
+        expect(mockReplace).toHaveBeenCalledWith('/')
       })
     })
 

@@ -5,6 +5,7 @@ import { RecipeListItem } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
 import { OfflineProvider } from '@/lib/offline-context'
+import { ListStateProvider } from '@/lib/list-state-context'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
@@ -15,7 +16,9 @@ function renderRecipeCard(recipe: RecipeListItem) {
     <AuthProvider>
       <FavouritesProvider>
         <OfflineProvider>
-          <RecipeCard recipe={recipe} />
+          <ListStateProvider>
+            <RecipeCard recipe={recipe} />
+          </ListStateProvider>
         </OfflineProvider>
       </FavouritesProvider>
     </AuthProvider>
@@ -115,23 +118,16 @@ describe('RecipeCard', () => {
   })
 
   describe('Glassware and Serving Style', () => {
-    it('renders glassware', () => {
+    it('renders glassware icon with title', () => {
       renderRecipeCard(mockRecipe)
 
-      expect(screen.getByText('Coupe')).toBeInTheDocument()
+      expect(screen.getByTitle('Coupe')).toBeInTheDocument()
     })
 
-    it('renders serving style', () => {
-      renderRecipeCard(mockRecipe)
-
-      expect(screen.getByText('Up')).toBeInTheDocument()
-    })
-
-    it('does not render when missing', () => {
+    it('does not render glassware when missing', () => {
       renderRecipeCard(mockMinimalRecipe)
 
-      expect(screen.queryByText('Coupe')).not.toBeInTheDocument()
-      expect(screen.queryByText('Up')).not.toBeInTheDocument()
+      expect(screen.queryByTitle('Coupe')).not.toBeInTheDocument()
     })
   })
 
