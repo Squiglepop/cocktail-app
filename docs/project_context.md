@@ -140,6 +140,7 @@ http.get('*/api/recipes', () => HttpResponse.json(mockRecipes))
 **Type Hints:**
 - SQLAlchemy 2.0 `Mapped[]` syntax required
 - Use `Optional[T]` not `T | None`
+- Python 3.9 compatibility: use `Union[X, Y]` not `X | Y`, `Optional[X]` not `X | None`, `Tuple[X, Y]` not `tuple[X, Y]` — union syntax requires 3.10+
 
 **Import Order:**
 ```python
@@ -616,6 +617,15 @@ When running admin panel migrations, execute in this order:
 4. `add_category_indexes` - Performance indexes
 5. `create_audit_log_table` - Audit logging infrastructure
 
+### Adversarial Code Review Guidance
+
+> Added from Epic 2 Retrospective (2026-04-08). Calibrates expectations for multi-round reviews.
+
+- Review Rounds 1-2 catch real bugs (crash bugs, security gaps, missing error handling). These findings are high-value.
+- Review Round 3+ tends to find polish/refactoring items (method signature cleanup, null validators, naming consistency). Still valuable, but evaluate by **actual impact**, not severity label.
+- The adversarial mandate to "always find 3-10 problems" can inflate severity labels on later rounds. Reviewers should be honest about actual severity.
+- Pre-review checklist reduces high-severity findings but doesn't eliminate edge-case bugs — those require adversarial thinking.
+
 ### Pre-Review Verification Checklist
 
 > Added from Epic 1 Retrospective (2026-04-08). Every story must pass this checklist before marking "ready for review." These items were the top code review findings across all 6 Epic 1 stories.
@@ -644,7 +654,41 @@ coverage report --include="app/<files_you_changed>.py"
 
 ### Defensive Coding Patterns
 
-> Added from Epic 1 Retrospective (2026-04-08). These patterns prevent bugs found during Epic 1 code reviews.
+> Added from Epic 1 Retrospective (2026-04-08), updated from Epic 2 & 3 Retrospectives.
+
+**SQLAlchemy `flush()` Before Delete (MANDATORY when modifying + deleting related records):**
+```python
+# When deleting a parent record after modifying/deleting related FK rows,
+# db.flush() is required BEFORE db.delete() to prevent ORM FK nullification.
+
+# ❌ WRONG — ORM may nullify FKs on related rows even after you updated them
+for child in children:
+    child.parent_id = new_parent_id
+db.delete(old_parent)  # ORM re-nullifies child.parent_id!
+
+# ✅ RIGHT — flush commits child changes to DB before parent delete
+for child in children:
+    child.parent_id = new_parent_id
+db.flush()  # Persist child changes first
+db.delete(old_parent)  # Now safe — children already point elsewhere
+db.commit()
+```
+
+**Service→Router Error Convention (MANDATORY for all services):**
+```python
+# Services use these patterns consistently:
+# - return None → caller raises 404 or 409
+# - raise ValueError → caller catches and raises 400
+# - raise LookupError → caller catches and raises 404
+
+# ❌ WRONG — returning error strings, caller does string matching
+return "Target not found"  # Fragile — message change breaks routing
+
+# ✅ RIGHT — exceptions with clear semantics
+raise LookupError("Target not found")   # → 404
+raise ValueError("Cannot do X to self") # → 400
+return None                              # → 404 or 409 depending on context
+```
 
 **Unique Constraint Handling (MANDATORY for all create/insert operations):**
 ```python
@@ -698,4 +742,6 @@ def test_endpoint_returns_403_for_regular_user(client, auth_token):
 | Skip pre-review checklist | Code review catches functional gaps → slower cycle |
 | INSERT without IntegrityError handling | Race conditions cause 500 instead of 409 |
 | Test only one auth rejection path | Missing 401 or 403 coverage = security gap |
+| Return error strings from services | Fragile string-matching in router; use exceptions (ValueError/LookupError) |
+| Skip `db.flush()` before deleting parent with modified children | ORM re-nullifies FK columns, corrupting related records |
 

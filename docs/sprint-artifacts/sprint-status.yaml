@@ -67,13 +67,13 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: User Account Management
-  epic-3: in-progress
+  epic-3: done
   3-1-user-list-search: done
-  3-2-user-status-management: in-progress
-  epic-3-retrospective: optional
+  3-2-user-status-management: done
+  epic-3-retrospective: done
 
   # Epic 4: Audit Trail & Compliance
-  epic-4: backlog
+  epic-4: in-progress
   4-1-audit-log-infrastructure: backlog
   4-2-audit-log-integration: backlog
   epic-4-retrospective: optional
