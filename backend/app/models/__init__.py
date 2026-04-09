@@ -29,6 +29,7 @@ from .user import User
 from .collection import Collection, CollectionRecipe, CollectionShare
 from .user_rating import UserRating
 from .refresh_token import RefreshToken
+from .audit_log import AuditLog
 from .category import (
     CategoryTemplate,
     CategoryGlassware,
@@ -67,6 +68,7 @@ __all__ = [
     "CollectionShare",
     "UserRating",
     "RefreshToken",
+    "AuditLog",
     # Category tables
     "CategoryTemplate",
     "CategoryGlassware",

@@ -74,6 +74,10 @@ from .user import (
     UserStatusUpdate,
     UserStatusResponse,
 )
+from .audit import (
+    AuditLogResponse,
+    AuditLogListResponse,
+)
 
 __all__ = [
     "IngredientBase",
@@ -145,4 +149,7 @@ __all__ = [
     "UserListResponse",
     "UserStatusUpdate",
     "UserStatusResponse",
+    # Audit log schemas
+    "AuditLogResponse",
+    "AuditLogListResponse",
 ]

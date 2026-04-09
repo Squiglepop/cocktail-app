@@ -30,6 +30,7 @@ from .ingredient_service import (
     merge_ingredients,
 )
 from .user_service import list_users, update_user_status
+from .audit_service import AuditService
 from .category_service import (
     get_active_templates,
     get_active_glassware,
@@ -100,4 +101,6 @@ __all__ = [
     # Admin user service
     "list_users",
     "update_user_status",
+    # Audit service
+    "AuditService",
 ]

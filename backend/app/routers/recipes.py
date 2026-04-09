@@ -1,6 +1,7 @@
 """
 Recipe CRUD endpoints.
 """
+import logging
 from pathlib import Path
 from typing import Generator, List, Optional
 
@@ -28,9 +29,21 @@ from app.schemas import (
 )
 from app.services import get_db, get_image_storage, add_ingredients_to_recipe, replace_recipe_ingredients
 from app.services.auth import get_current_user, get_current_user_optional
+from app.services.audit_service import AuditService
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
+
+
+def _audit_log(db, admin_id, action, entity_type, entity_id, details):
+    """Fire-and-forget audit wrapper. Main operation is already committed by service."""
+    try:
+        AuditService.log(db, admin_id, action, entity_type, entity_id, details)
+        db.commit()
+    except Exception as e:
+        logger.error("Audit log failed: %s", e)
+        db.rollback()
 
 
 def _get_uploader_name(user: Optional[User]) -> Optional[str]:
@@ -549,6 +562,29 @@ def update_recipe(
                 detail="You don't have permission to edit this recipe"
             )
 
+    # Determine if this is an admin action on another user's recipe
+    is_admin_action = (
+        current_user is not None
+        and current_user.is_admin
+        and recipe.user_id is not None
+        and recipe.user_id != current_user.id
+    )
+
+    # Capture old values before update (for audit)
+    if is_admin_action:
+        old_values = {
+            "name": recipe.name, "description": recipe.description,
+            "instructions": recipe.instructions, "template": recipe.template,
+            "main_spirit": recipe.main_spirit, "glassware": recipe.glassware,
+            "serving_style": recipe.serving_style, "method": recipe.method,
+            "garnish": recipe.garnish, "notes": recipe.notes,
+            "source_url": recipe.source_url, "visibility": recipe.visibility,
+            "user_id": recipe.user_id,
+        }
+        old_name = recipe.name
+        pre_update_owner_id = recipe.user_id
+        has_ingredient_update = recipe_data.ingredients is not None
+
     # Validate target user exists if transferring ownership
     if recipe_data.user_id is not None:
         target_user = db.query(User).filter(User.id == recipe_data.user_id).first()
@@ -569,6 +605,20 @@ def update_recipe(
 
     db.commit()
     db.refresh(recipe)
+
+    # Audit admin action
+    if is_admin_action:
+        changes = {
+            field: [old_values[field], getattr(recipe, field)]
+            for field in update_data
+            if field in old_values and old_values[field] != getattr(recipe, field)
+        }
+        if has_ingredient_update:
+            changes["ingredients"] = "updated"
+        if changes:
+            _audit_log(db, current_user.id, "recipe_admin_update", "recipe", recipe_id, {
+                "recipe_name": old_name, "owner_id": pre_update_owner_id, "changes": changes,
+            })
 
     # Load relationships
     recipe = (
@@ -650,6 +700,17 @@ def delete_recipe(
                 detail="You don't have permission to delete this recipe"
             )
 
+    # Determine if this is an admin action on another user's recipe
+    is_admin_action = (
+        current_user is not None
+        and current_user.is_admin
+        and recipe.user_id is not None
+        and recipe.user_id != current_user.id
+    )
+    if is_admin_action:
+        pre_delete_name = recipe.name
+        pre_delete_owner_id = recipe.user_id
+
     # Delete image file from filesystem if it exists
     if recipe.source_image_path:
         image_storage = get_image_storage()
@@ -657,6 +718,11 @@ def delete_recipe(
 
     db.delete(recipe)
     db.commit()
+
+    if is_admin_action:
+        _audit_log(db, current_user.id, "recipe_admin_delete", "recipe", recipe_id, {
+            "recipe_name": pre_delete_name, "owner_id": pre_delete_owner_id,
+        })
 
     return {"message": "Recipe deleted successfully"}
 
