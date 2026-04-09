@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RecipeGrid } from '@/components/recipes/RecipeGrid'
 import { RecipeListItem } from '@/lib/api'
@@ -6,18 +6,37 @@ import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
 import { OfflineProvider } from '@/lib/offline-context'
 import { ListStateProvider } from '@/lib/list-state-context'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
 
 function renderRecipeGrid(props: Parameters<typeof RecipeGrid>[0]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
   return render(
-    <AuthProvider>
-      <FavouritesProvider>
-        <OfflineProvider>
-          <ListStateProvider>
-            <RecipeGrid {...props} />
-          </ListStateProvider>
-        </OfflineProvider>
-      </FavouritesProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <FavouritesProvider>
+          <OfflineProvider>
+            <ListStateProvider>
+              <RecipeGrid {...props} />
+            </ListStateProvider>
+          </OfflineProvider>
+        </FavouritesProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
 

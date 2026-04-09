@@ -1,14 +1,19 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { RecipeListItem, formatEnumValue, getRecipeImageUrl } from '@/lib/api';
-import { GlassWater, Share2, Heart, User } from 'lucide-react';
+import { GlassWater, Share2, Heart, User, Pencil, Trash2 } from 'lucide-react';
 import { GlasswareIcon } from '@/components/icons/GlasswareIcon';
 import { AddToPlaylistButton } from '../playlists/AddToPlaylistButton';
 import { shareRecipe } from '@/lib/share';
 import { useFavourites } from '@/lib/favourites-context';
 import { useOffline } from '@/lib/offline-context';
+import { useAuth } from '@/lib/auth-context';
+import { useDeleteRecipe } from '@/lib/hooks';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { debug } from '@/lib/debug';
 
 interface RecipeCardProps {
@@ -18,7 +23,12 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe }: RecipeCardProps) {
   const { isFavourite, toggleFavourite } = useFavourites();
   const { isOnline } = useOffline();
+  const { user, token } = useAuth();
+  const router = useRouter();
+  const deleteRecipeMutation = useDeleteRecipe();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const favourited = isFavourite(recipe.id);
+  const isAdmin = user?.is_admin === true;
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -47,6 +57,28 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     }
     // When online, let the Link handle navigation normally
   };
+
+  const handleAdminEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/recipes/${recipe.id}/edit`);
+  };
+
+  const handleAdminDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = useCallback(async () => {
+    try {
+      await deleteRecipeMutation.mutateAsync({ id: recipe.id, token });
+      setShowDeleteModal(false);
+    } catch (error) {
+      debug.error('Failed to delete:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete recipe');
+    }
+  }, [recipe.id, token, deleteRecipeMutation]);
 
   return (
     <div className="relative h-full group">
@@ -122,6 +154,18 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
                 {recipe.name}
               </h3>
             </div>
+
+            {/* Admin edit/delete icons */}
+            {isAdmin && (
+              <div className="absolute bottom-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-1 z-50">
+                <button onClick={handleAdminEdit} className="p-1.5 bg-white/90 hover:bg-white rounded-full shadow-sm" title="Edit recipe">
+                  <Pencil className="h-3.5 w-3.5 text-gray-600" />
+                </button>
+                <button onClick={handleAdminDelete} className="p-1.5 bg-white/90 hover:bg-red-50 rounded-full shadow-sm" title="Delete recipe">
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Info strip at bottom - badges stacked left, glassware right */}
@@ -156,6 +200,16 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           </div>
         </div>
       </Link>
+
+      {/* Delete confirmation modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        title="Delete this recipe?"
+        itemName={recipe.name}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+        isDeleting={deleteRecipeMutation.isPending}
+      />
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useCategories } from '@/lib/hooks';
-import { X, SlidersHorizontal, Heart } from 'lucide-react';
+import { X, SlidersHorizontal, Heart, Settings } from 'lucide-react';
 import { useFavourites } from '@/lib/favourites-context';
+import { useAuth } from '@/lib/auth-context';
+import { CategoryManagementModal } from '@/components/admin/CategoryManagementModal';
 
 interface FilterSidebarProps {
   filters: {
@@ -28,6 +30,9 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
   const [isExpanded, setIsExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { favouriteCount } = useFavourites();
+  const { user } = useAuth();
+  const isAdmin = user?.is_admin === true;
+  const [managingCategory, setManagingCategory] = useState<{ type: string; label: string } | null>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -161,6 +166,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                   </option>
                 ))}
               </select>
+              {isAdmin && (
+                <button onClick={() => setManagingCategory({ type: 'templates', label: 'Templates' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                  <Settings className="h-3 w-3" /> Manage
+                </button>
+              )}
             </div>
 
             {/* Main Spirit */}
@@ -180,6 +190,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                   </option>
                 ))}
               </select>
+              {isAdmin && (
+                <button onClick={() => setManagingCategory({ type: 'spirits', label: 'Spirits' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                  <Settings className="h-3 w-3" /> Manage
+                </button>
+              )}
             </div>
 
             {/* Glassware */}
@@ -203,6 +218,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                   </optgroup>
                 ))}
               </select>
+              {isAdmin && (
+                <button onClick={() => setManagingCategory({ type: 'glassware', label: 'Glassware' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                  <Settings className="h-3 w-3" /> Manage
+                </button>
+              )}
             </div>
 
             {/* Serving Style */}
@@ -222,6 +242,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                   </option>
                 ))}
               </select>
+              {isAdmin && (
+                <button onClick={() => setManagingCategory({ type: 'serving-styles', label: 'Serving Styles' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                  <Settings className="h-3 w-3" /> Manage
+                </button>
+              )}
             </div>
 
             {/* Method */}
@@ -241,6 +266,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                   </option>
                 ))}
               </select>
+              {isAdmin && (
+                <button onClick={() => setManagingCategory({ type: 'methods', label: 'Methods' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                  <Settings className="h-3 w-3" /> Manage
+                </button>
+              )}
             </div>
 
             {/* Min Rating */}
@@ -286,6 +316,15 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                     : `Show ${resultCount} Results`}
             </button>
           </div>
+        )}
+
+        {managingCategory && (
+          <CategoryManagementModal
+            isOpen={true}
+            categoryType={managingCategory.type}
+            categoryLabel={managingCategory.label}
+            onClose={() => setManagingCategory(null)}
+          />
         )}
       </div>
     );
@@ -389,6 +428,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 </option>
               ))}
             </select>
+            {isAdmin && (
+              <button onClick={() => setManagingCategory({ type: 'templates', label: 'Templates' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                <Settings className="h-3 w-3" /> Manage
+              </button>
+            )}
           </div>
 
           {/* Main Spirit */}
@@ -408,6 +452,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 </option>
               ))}
             </select>
+            {isAdmin && (
+              <button onClick={() => setManagingCategory({ type: 'spirits', label: 'Spirits' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                <Settings className="h-3 w-3" /> Manage
+              </button>
+            )}
           </div>
 
           {/* Glassware */}
@@ -431,6 +480,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 </optgroup>
               ))}
             </select>
+            {isAdmin && (
+              <button onClick={() => setManagingCategory({ type: 'glassware', label: 'Glassware' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                <Settings className="h-3 w-3" /> Manage
+              </button>
+            )}
           </div>
 
           {/* Serving Style */}
@@ -450,6 +504,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 </option>
               ))}
             </select>
+            {isAdmin && (
+              <button onClick={() => setManagingCategory({ type: 'serving-styles', label: 'Serving Styles' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                <Settings className="h-3 w-3" /> Manage
+              </button>
+            )}
           </div>
 
           {/* Method */}
@@ -469,6 +528,11 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
                 </option>
               ))}
             </select>
+            {isAdmin && (
+              <button onClick={() => setManagingCategory({ type: 'methods', label: 'Methods' })} className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1 mt-1">
+                <Settings className="h-3 w-3" /> Manage
+              </button>
+            )}
           </div>
 
           {/* Min Rating */}
@@ -491,6 +555,15 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
           </div>
         </div>
       </div>
+
+      {managingCategory && (
+        <CategoryManagementModal
+          isOpen={true}
+          categoryType={managingCategory.type}
+          categoryLabel={managingCategory.label}
+          onClose={() => setManagingCategory(null)}
+        />
+      )}
     </div>
   );
 }

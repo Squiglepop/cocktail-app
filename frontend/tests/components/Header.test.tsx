@@ -144,6 +144,7 @@ describe('Header', () => {
             id: '1',
             email: 'nodisplay@example.com',
             display_name: null,
+            is_admin: false,
             created_at: new Date().toISOString(),
           })
         })

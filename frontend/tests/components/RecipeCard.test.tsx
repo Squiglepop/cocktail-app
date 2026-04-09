@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RecipeCard } from '@/components/recipes/RecipeCard'
 import { RecipeListItem } from '@/lib/api'
@@ -6,22 +6,41 @@ import { AuthProvider } from '@/lib/auth-context'
 import { FavouritesProvider } from '@/lib/favourites-context'
 import { OfflineProvider } from '@/lib/offline-context'
 import { ListStateProvider } from '@/lib/list-state-context'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 
 const API_BASE = '*/api'
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 function renderRecipeCard(recipe: RecipeListItem) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
   return render(
-    <AuthProvider>
-      <FavouritesProvider>
-        <OfflineProvider>
-          <ListStateProvider>
-            <RecipeCard recipe={recipe} />
-          </ListStateProvider>
-        </OfflineProvider>
-      </FavouritesProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <FavouritesProvider>
+          <OfflineProvider>
+            <ListStateProvider>
+              <RecipeCard recipe={recipe} />
+            </ListStateProvider>
+          </OfflineProvider>
+        </FavouritesProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
 

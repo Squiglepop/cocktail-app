@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { GlassWater, LogOut, User, ListMusic } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { AdminBadge } from './admin/AdminBadge';
 
 export function Header() {
   const { user, isLoading, logout } = useAuth();
@@ -38,6 +39,7 @@ export function Header() {
                       {user.display_name || user.email}
                     </span>
                   </div>
+                  {user.is_admin && <AdminBadge />}
                   <button
                     onClick={logout}
                     className="flex items-center gap-1 text-gray-600 hover:text-gray-900 text-sm font-medium"

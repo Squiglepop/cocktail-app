@@ -82,14 +82,14 @@ development_status:
   prep-fix-frontend-test-failures: done            # Fixed 23 broken tests (ListStateProvider + stale assertions)
   prep-verify-frontend-toolchain: done             # npm install, npm test (238 pass), npm run build — all confirmed
   prep-document-savepoint-pattern: done             # Added db.begin_nested() SAVEPOINT pattern to project_context.md
-  prep-push-to-remote: backlog                     # Push all epics to remote — deploy from clean baseline
+  prep-push-to-remote: done                         # Pushed 5 commits (Epics 2-4 + prep) to origin/main
 
   # Epic 5: Admin User Interface
-  epic-5: backlog
-  5-1-admin-state-indicator: backlog
-  5-2-recipe-admin-controls: backlog
-  5-3-category-management-modal: backlog
-  5-4-ingredient-admin-page: backlog
-  5-5-user-management-page: backlog
-  5-6-audit-log-viewer: backlog
+  epic-5: in-progress
+  5-1-admin-state-indicator: done
+  5-2-recipe-admin-controls: done
+  5-3-category-management-modal: done
+  5-4-ingredient-admin-page: done
+  5-5-user-management-page: done
+  5-6-audit-log-viewer: done
   epic-5-retrospective: optional

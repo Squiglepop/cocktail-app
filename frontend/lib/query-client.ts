@@ -10,6 +10,8 @@ export const STALE_TIMES = {
   recipe: 5 * 60 * 1000,
   // Recipe count - cache for 5 minutes
   recipeCount: 5 * 60 * 1000,
+  // Admin categories - cache for 1 minute (role-based caching, architecture decision #1)
+  adminCategories: 60 * 1000,
 };
 
 // Query keys for consistent cache management
@@ -25,6 +27,26 @@ export const queryKeys = {
   },
   categories: {
     all: ['categories'] as const,
+  },
+  adminCategories: {
+    all: ['admin-categories'] as const,
+    byType: (type: string) => ['admin-categories', type] as const,
+  },
+  adminUsers: {
+    all: ['admin-users'] as const,
+    lists: () => ['admin-users', 'list'] as const,
+    list: (filters: Record<string, unknown>) => ['admin-users', 'list', filters] as const,
+  },
+  adminIngredients: {
+    all: ['admin-ingredients'] as const,
+    lists: () => ['admin-ingredients', 'list'] as const,
+    list: (filters: Record<string, unknown>) => ['admin-ingredients', 'list', filters] as const,
+    duplicates: () => ['admin-ingredients', 'duplicates'] as const,
+  },
+  auditLogs: {
+    all: ['audit-logs'] as const,
+    lists: () => ['audit-logs', 'list'] as const,
+    list: (filters: Record<string, unknown>) => ['audit-logs', 'list', filters] as const,
   },
 };
 

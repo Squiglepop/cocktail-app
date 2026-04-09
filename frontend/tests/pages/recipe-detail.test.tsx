@@ -255,8 +255,7 @@ describe('RecipeDetailPage', () => {
       )
     })
 
-    it('shows confirmation dialog before delete', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    it('shows confirmation modal before delete', async () => {
       const user = userEvent.setup()
 
       renderRecipeDetailPage()
@@ -267,12 +266,12 @@ describe('RecipeDetailPage', () => {
 
       await user.click(screen.getByRole('button', { name: /delete/i }))
 
-      expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete this recipe?')
-      confirmSpy.mockRestore()
+      // Should show modal with recipe name
+      expect(screen.getByText('Delete this recipe?')).toBeInTheDocument()
+      expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument()
     })
 
     it('calls delete API and redirects to home on confirm', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true)
       const user = userEvent.setup()
 
       renderRecipeDetailPage()
@@ -281,8 +280,13 @@ describe('RecipeDetailPage', () => {
         expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
       })
 
+      // Click delete to open modal
+      await user.click(screen.getByRole('button', { name: /delete/i }))
+
+      // Find the modal's confirm button (the red one, first in DOM order)
+      const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i })
       await act(async () => {
-        await user.click(screen.getByRole('button', { name: /delete/i }))
+        await user.click(deleteButtons[0])
       })
 
       await waitFor(() => {
@@ -291,7 +295,6 @@ describe('RecipeDetailPage', () => {
     })
 
     it('shows error message on delete failure', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true)
       vi.spyOn(window, 'alert').mockImplementation(() => {})
       const user = userEvent.setup()
 
@@ -307,8 +310,13 @@ describe('RecipeDetailPage', () => {
         expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
       })
 
+      // Click delete to open modal
+      await user.click(screen.getByRole('button', { name: /delete/i }))
+
+      // Find the modal's confirm button (the red one, first in DOM order)
+      const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i })
       await act(async () => {
-        await user.click(screen.getByRole('button', { name: /delete/i }))
+        await user.click(deleteButtons[0])
       })
 
       await waitFor(() => {

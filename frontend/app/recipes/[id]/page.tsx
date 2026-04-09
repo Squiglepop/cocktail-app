@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -33,6 +33,8 @@ import { GlasswareIcon } from '@/components/icons/GlasswareIcon';
 import { shareRecipe } from '@/lib/share';
 import { PhoneFrame } from '@/components/ui/PhoneFrame';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { debug } from '@/lib/debug';
 
 export default function RecipeDetailPage() {
   const params = useParams();
@@ -44,6 +46,7 @@ export default function RecipeDetailPage() {
   const [offlineRecipe, setOfflineRecipe] = useState<Recipe | null>(null);
   const [offlineLoading, setOfflineLoading] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const recipeId = params.id as string;
 
@@ -83,21 +86,26 @@ export default function RecipeDetailPage() {
 
   // Check if current user is the owner of this recipe
   const isOwner = user && recipe && recipe.user_id === user.id;
-  // Allow editing for recipes without an owner (backwards compatibility) or if user is owner
-  const canEdit = isOnline && recipe && (recipe.user_id === null || recipe.user_id === undefined || isOwner);
+  // Allow editing for recipes without an owner (backwards compatibility), owner, or admin
+  const isAdmin = user?.is_admin === true;
+  const canEdit = isOnline && recipe && (recipe.user_id === null || recipe.user_id === undefined || isOwner || isAdmin);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!recipe || !isOnline) return;
-    if (!confirm('Are you sure you want to delete this recipe?')) return;
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = useCallback(async () => {
+    if (!recipe) return;
     try {
       await deleteRecipeMutation.mutateAsync({ id: recipe.id, token });
+      setShowDeleteModal(false);
       router.push('/');
     } catch (error) {
-      console.error('Failed to delete:', error);
+      debug.error('Failed to delete:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete recipe');
     }
-  };
+  }, [recipe, token, deleteRecipeMutation, router]);
 
   const handleShare = async () => {
     if (!recipe) return;
@@ -390,6 +398,16 @@ export default function RecipeDetailPage() {
           onClose={() => setShowLightbox(false)}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        title="Delete this recipe?"
+        itemName={recipe.name}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+        isDeleting={deleteRecipeMutation.isPending}
+      />
 
       {/* Actions */}
       <div className="mt-8 pt-6 border-t border-gray-200 space-y-4">

@@ -723,6 +723,359 @@ export async function removeCollectionShare(collectionId: string, shareId: strin
   }
 }
 
+// Audit log types
+export interface AuditLogEntry {
+  id: string;
+  admin_user_id: string;
+  admin_email: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// Admin category types
+export interface AdminCategory {
+  id: string;
+  value: string;
+  label: string;
+  description: string | null;
+  category: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminCategoryCreate {
+  value: string;
+  label: string;
+  description?: string;
+  category?: string;
+}
+
+export interface AdminCategoryUpdate {
+  label?: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface CategoryDeleteResult {
+  message: string;
+  recipe_count: number;
+}
+
+// Audit log API functions
+export async function fetchAuditLogs(
+  params: {
+    action?: string;
+    entity_type?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    per_page?: number;
+  },
+  token: string | null
+): Promise<AuditLogListResponse> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const query = new URLSearchParams();
+  if (params.action) query.set('action', params.action);
+  if (params.entity_type) query.set('entity_type', params.entity_type);
+  if (params.from) query.set('from', params.from);
+  if (params.to) query.set('to', params.to);
+  if (params.page) query.set('page', String(params.page));
+  if (params.per_page) query.set('per_page', String(params.per_page));
+  const res = await fetch(`${API_BASE}/admin/audit-log?${query}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch audit logs');
+  return res.json();
+}
+
+// Admin category API functions
+export async function fetchAdminCategories(type: string, token: string | null): Promise<AdminCategory[]> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/categories/${type}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch admin categories');
+  return res.json();
+}
+
+export async function createAdminCategory(type: string, data: AdminCategoryCreate, token: string | null): Promise<AdminCategory> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/categories/${type}`, {
+    method: 'POST', headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to create category' }));
+    throw new Error(error.detail || 'Failed to create category');
+  }
+  return res.json();
+}
+
+export async function updateAdminCategory(type: string, id: string, data: AdminCategoryUpdate, token: string | null): Promise<AdminCategory> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/categories/${type}/${id}`, {
+    method: 'PUT', headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update category' }));
+    throw new Error(error.detail || 'Failed to update category');
+  }
+  return res.json();
+}
+
+export async function deleteAdminCategory(type: string, id: string, token: string | null): Promise<CategoryDeleteResult> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/categories/${type}/${id}`, {
+    method: 'DELETE', headers,
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to delete category' }));
+    throw new Error(error.detail || 'Failed to delete category');
+  }
+  return res.json();
+}
+
+export async function reorderAdminCategories(type: string, ids: string[], token: string | null): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/categories/${type}/reorder`, {
+    method: 'POST', headers, body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to reorder categories' }));
+    throw new Error(error.detail || 'Failed to reorder categories');
+  }
+}
+
+// Admin ingredient types
+export interface AdminIngredient {
+  id: string;
+  name: string;
+  type: string;
+  spirit_category: string | null;
+  description: string | null;
+  common_brands: string | null;
+}
+
+export interface AdminIngredientCreate {
+  name: string;
+  type: string;
+  spirit_category?: string;
+  description?: string;
+  common_brands?: string;
+}
+
+export interface AdminIngredientUpdate {
+  name?: string;
+  type?: string;
+  spirit_category?: string;
+  description?: string;
+  common_brands?: string;
+}
+
+export interface IngredientListResponse {
+  items: AdminIngredient[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface IngredientDuplicateMatch {
+  ingredient_id: string;
+  name: string;
+  type: string;
+  similarity_score: number;
+  detection_reason: 'exact_match_case_insensitive' | 'fuzzy_match' | 'variation_pattern';
+  usage_count: number;
+}
+
+export interface IngredientDuplicateGroup {
+  target: IngredientDuplicateMatch;
+  duplicates: IngredientDuplicateMatch[];
+  group_reason: string;
+}
+
+export interface DuplicateDetectionResponse {
+  groups: IngredientDuplicateGroup[];
+  total_groups: number;
+  total_duplicates: number;
+}
+
+export interface IngredientMergeRequest {
+  source_ids: string[];
+  target_id: string;
+}
+
+export interface IngredientMergeResponse {
+  message: string;
+  recipes_affected: number;
+  sources_removed: number;
+}
+
+// Admin ingredient API functions
+export async function fetchAdminIngredients(
+  params: { page?: number; per_page?: number; search?: string; type?: string },
+  token: string | null
+): Promise<IngredientListResponse> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', String(params.page));
+  if (params.per_page) query.set('per_page', String(params.per_page));
+  if (params.search) query.set('search', params.search);
+  if (params.type) query.set('type', params.type);
+  const res = await fetch(`${API_BASE}/admin/ingredients?${query}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch ingredients');
+  return res.json();
+}
+
+export async function createAdminIngredient(
+  data: AdminIngredientCreate, token: string | null
+): Promise<AdminIngredient> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/ingredients`, {
+    method: 'POST', headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to create ingredient' }));
+    throw new Error(error.detail || 'Failed to create ingredient');
+  }
+  return res.json();
+}
+
+export async function updateAdminIngredient(
+  id: string, data: AdminIngredientUpdate, token: string | null
+): Promise<AdminIngredient> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/ingredients/${id}`, {
+    method: 'PUT', headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update ingredient' }));
+    throw new Error(error.detail || 'Failed to update ingredient');
+  }
+  return res.json();
+}
+
+export async function deleteAdminIngredient(
+  id: string, token: string | null
+): Promise<{ success: boolean; recipe_count?: number }> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/ingredients/${id}`, {
+    method: 'DELETE', headers,
+  });
+  if (res.status === 409) {
+    const body = await res.json();
+    return { success: false, recipe_count: body.recipe_count };
+  }
+  if (!res.ok) throw new Error('Failed to delete ingredient');
+  return { success: true };
+}
+
+export async function fetchDuplicateIngredients(
+  token: string | null
+): Promise<DuplicateDetectionResponse> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/ingredients/duplicates`, { headers });
+  if (!res.ok) throw new Error('Failed to detect duplicates');
+  return res.json();
+}
+
+export async function mergeIngredients(
+  data: IngredientMergeRequest, token: string | null
+): Promise<IngredientMergeResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/ingredients/merge`, {
+    method: 'POST', headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to merge ingredients' }));
+    throw new Error(error.detail || 'Failed to merge ingredients');
+  }
+  return res.json();
+}
+
+// Admin user types
+export interface AdminUser {
+  id: string;
+  email: string;
+  display_name: string | null;
+  is_active: boolean;
+  is_admin: boolean;
+  recipe_count: number;
+  created_at: string;
+  last_login_at: string | null;
+}
+
+export interface UserListResponse {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface UserStatusUpdate {
+  is_active?: boolean;
+  is_admin?: boolean;
+}
+
+export interface UserStatusResponse {
+  id: string;
+  email: string;
+  display_name: string | null;
+  is_active: boolean;
+  is_admin: boolean;
+  message: string;
+}
+
+// Admin user API functions
+export async function fetchAdminUsers(
+  params: { page?: number; per_page?: number; search?: string; status?: string },
+  token: string | null
+): Promise<UserListResponse> {
+  const headers: Record<string, string> = {};
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const query = new URLSearchParams();
+  if (params.page != null) query.set('page', String(params.page));
+  if (params.per_page != null) query.set('per_page', String(params.per_page));
+  if (params.search) query.set('search', params.search);
+  if (params.status) query.set('status', params.status);
+  const res = await fetch(`${API_BASE}/admin/users?${query}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch users');
+  return res.json();
+}
+
+export async function updateUserStatus(
+  id: string, data: UserStatusUpdate, token: string | null
+): Promise<UserStatusResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) { headers['Authorization'] = `Bearer ${token}`; }
+  const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+    method: 'PATCH', headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to update user' }));
+    throw new Error(error.detail || 'Failed to update user');
+  }
+  return res.json();
+}
+
 // Format display helpers
 export function formatEnumValue(value?: string): string {
   if (!value) return '';

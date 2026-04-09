@@ -59,7 +59,8 @@ export default function EditRecipePage() {
     // Check if user has permission to edit
     const canEdit = recipe.user_id === null ||
                    recipe.user_id === undefined ||
-                   (user && recipe.user_id === user.id);
+                   (user && recipe.user_id === user.id) ||
+                   (user && user.is_admin === true);
 
     if (!canEdit) {
       setUnauthorized(true);

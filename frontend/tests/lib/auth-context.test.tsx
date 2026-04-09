@@ -231,6 +231,7 @@ describe('AuthContext', () => {
               id: '2',
               email: 'new@example.com',
               display_name: 'New User',
+              is_admin: false,
               created_at: new Date().toISOString(),
             })
           }
@@ -379,6 +380,53 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('logged-out')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Admin State', () => {
+    it('user object includes is_admin from auth response', async () => {
+      // Mock refresh + /auth/me returning an admin user
+      server.use(
+        http.post(`${API_BASE}/auth/refresh`, () => {
+          return HttpResponse.json({
+            access_token: 'mock-jwt-token',
+            token_type: 'bearer',
+          })
+        }),
+        http.get(`${API_BASE}/auth/me`, ({ request }) => {
+          const authHeader = request.headers.get('Authorization')
+          if (authHeader === 'Bearer mock-jwt-token') {
+            return HttpResponse.json({
+              id: '1',
+              email: 'admin@example.com',
+              display_name: 'Admin',
+              is_admin: true,
+              created_at: '2026-01-01T00:00:00Z',
+            })
+          }
+          return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+        })
+      )
+
+      function AdminTestComponent() {
+        const { user, isLoading } = useAuth()
+        if (isLoading) return <div>Loading...</div>
+        return (
+          <div>
+            {user && <div data-testid="is-admin">{String(user.is_admin)}</div>}
+          </div>
+        )
+      }
+
+      render(
+        <AuthProvider>
+          <AdminTestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('is-admin')).toHaveTextContent('true')
       })
     })
   })

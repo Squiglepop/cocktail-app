@@ -9,6 +9,7 @@ export const mockUser = {
   id: '1',
   email: 'test@example.com',
   display_name: 'Test User',
+  is_admin: false,
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -90,6 +91,88 @@ export const mockRecipeDetail = {
     },
   ],
 }
+
+export const mockAdminUsers = [
+  {
+    id: '1', email: 'admin@test.com', display_name: 'Admin User',
+    is_active: true, is_admin: true, recipe_count: 10,
+    created_at: '2026-01-01T00:00:00Z', last_login_at: '2026-04-08T12:00:00Z',
+  },
+  {
+    id: '2', email: 'user@test.com', display_name: 'Regular User',
+    is_active: true, is_admin: false, recipe_count: 5,
+    created_at: '2026-02-01T00:00:00Z', last_login_at: '2026-04-07T12:00:00Z',
+  },
+  {
+    id: '3', email: 'inactive@test.com', display_name: null,
+    is_active: false, is_admin: false, recipe_count: 0,
+    created_at: '2026-03-01T00:00:00Z', last_login_at: null,
+  },
+  {
+    id: '4', email: 'otheradmin@test.com', display_name: 'Other Admin',
+    is_active: true, is_admin: true, recipe_count: 8,
+    created_at: '2026-01-15T00:00:00Z', last_login_at: '2026-04-09T10:00:00Z',
+  },
+]
+
+export const mockAdminIngredients = [
+  { id: '1', name: 'Lime Juice', type: 'juice', spirit_category: null, description: 'Fresh lime juice', common_brands: null },
+  { id: '2', name: 'Simple Syrup', type: 'syrup', spirit_category: null, description: '1:1 sugar water', common_brands: null },
+  { id: '3', name: 'London Dry Gin', type: 'spirit', spirit_category: 'gin', description: 'Classic gin style', common_brands: 'Beefeater, Tanqueray' },
+]
+
+export const mockDuplicateIngredientResponse = {
+  groups: [
+    {
+      target: { ingredient_id: '1', name: 'Lime Juice', type: 'juice', similarity_score: 1.0, detection_reason: 'exact_match_case_insensitive', usage_count: 15 },
+      duplicates: [
+        { ingredient_id: '10', name: 'lime juice', type: 'juice', similarity_score: 1.0, detection_reason: 'exact_match_case_insensitive', usage_count: 3 },
+      ],
+      group_reason: 'exact_match_case_insensitive',
+    },
+  ],
+  total_groups: 1,
+  total_duplicates: 1,
+}
+
+export const mockAuditLogs = [
+  {
+    id: 'audit-1', admin_user_id: '1', admin_email: 'admin@test.com',
+    action: 'category_create', entity_type: 'category', entity_id: 'cat-1',
+    details: { type: 'templates', value: 'tiki', label: 'Tiki' },
+    created_at: '2026-04-09T14:00:00Z',
+  },
+  {
+    id: 'audit-2', admin_user_id: '1', admin_email: 'admin@test.com',
+    action: 'recipe_admin_delete', entity_type: 'recipe', entity_id: 'rec-1',
+    details: { recipe_name: 'Old Fashioned', owner_id: '2' },
+    created_at: '2026-04-09T13:00:00Z',
+  },
+  {
+    id: 'audit-3', admin_user_id: '1', admin_email: 'admin@test.com',
+    action: 'user_deactivate', entity_type: 'user', entity_id: 'user-3',
+    details: { email: 'banned@test.com' },
+    created_at: '2026-04-08T10:00:00Z',
+  },
+  {
+    id: 'audit-4', admin_user_id: '1', admin_email: null,
+    action: 'ingredient_merge', entity_type: 'ingredient', entity_id: null,
+    details: { source_ids: ['ing-1', 'ing-2'], target_id: 'ing-3', recipes_updated: 5 },
+    created_at: '2026-04-07T09:00:00Z',
+  },
+  {
+    id: 'audit-5', admin_user_id: '1', admin_email: 'admin@test.com',
+    action: 'category_delete', entity_type: 'category', entity_id: 'cat-99',
+    details: null,
+    created_at: '2026-04-06T08:00:00Z',
+  },
+]
+
+export const mockAdminCategories = [
+  { id: '1', value: 'sour', label: 'Sour', description: 'Spirit, citrus, sweetener', category: null, sort_order: 0, is_active: true, created_at: '2026-01-01T00:00:00Z' },
+  { id: '2', value: 'old_fashioned', label: 'Old Fashioned', description: 'Spirit, sugar, bitters', category: null, sort_order: 1, is_active: true, created_at: '2026-01-01T00:00:00Z' },
+  { id: '3', value: 'flip', label: 'Flip', description: 'Egg-based', category: null, sort_order: 2, is_active: false, created_at: '2026-01-01T00:00:00Z' },
+]
 
 export const mockCategories = {
   templates: [
@@ -459,6 +542,165 @@ export const handlers = [
       { detail: 'Job not found' },
       { status: 404 }
     )
+  }),
+
+  // Admin category endpoints
+  http.get(`${API_BASE}/admin/categories/:type`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    return HttpResponse.json(mockAdminCategories)
+  }),
+
+  http.post(`${API_BASE}/admin/categories/:type/reorder`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    return HttpResponse.json({ message: 'Categories reordered successfully' })
+  }),
+
+  http.post(`${API_BASE}/admin/categories/:type`, async ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const body = await request.json() as { value: string; label: string; description?: string }
+    if (body.value === 'sour') return HttpResponse.json({ detail: 'Category value already exists' }, { status: 409 })
+    return HttpResponse.json({ id: '99', ...body, category: null, sort_order: 99, is_active: true, created_at: new Date().toISOString() }, { status: 201 })
+  }),
+
+  http.put(`${API_BASE}/admin/categories/:type/:id`, async ({ params, request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const body = await request.json() as Record<string, unknown>
+    const existing = mockAdminCategories.find(c => c.id === params.id)
+    if (!existing) return HttpResponse.json({ detail: 'Category not found' }, { status: 404 })
+    return HttpResponse.json({ ...existing, ...body })
+  }),
+
+  http.delete(`${API_BASE}/admin/categories/:type/:id`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    return HttpResponse.json({ message: 'Category deactivated', recipe_count: 3 })
+  }),
+
+  // Admin ingredient endpoints
+  http.get(`${API_BASE}/admin/ingredients/duplicates`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    return HttpResponse.json(mockDuplicateIngredientResponse)
+  }),
+
+  http.get(`${API_BASE}/admin/ingredients`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const url = new URL(request.url)
+    const search = url.searchParams.get('search')
+    const type = url.searchParams.get('type')
+    let items = [...mockAdminIngredients]
+    if (search) items = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+    if (type) items = items.filter(i => i.type === type)
+    return HttpResponse.json({ items, total: items.length, page: 1, per_page: 50 })
+  }),
+
+  http.post(`${API_BASE}/admin/ingredients`, async ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const body = await request.json() as { name: string; type: string }
+    if (body.name.toLowerCase() === 'lime juice') {
+      return HttpResponse.json({ detail: 'Ingredient with this name already exists' }, { status: 409 })
+    }
+    return HttpResponse.json({ id: '99', ...body, spirit_category: null, description: null, common_brands: null }, { status: 201 })
+  }),
+
+  http.put(`${API_BASE}/admin/ingredients/:id`, async ({ params, request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const body = await request.json() as Record<string, unknown>
+    const existing = mockAdminIngredients.find(i => i.id === params.id)
+    if (!existing) return HttpResponse.json({ detail: 'Ingredient not found' }, { status: 404 })
+    return HttpResponse.json({ ...existing, ...body })
+  }),
+
+  http.delete(`${API_BASE}/admin/ingredients/:id`, ({ params, request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    if (params.id === '1') {
+      return HttpResponse.json({ message: 'Cannot delete ingredient used in recipes', recipe_count: 15 }, { status: 409 })
+    }
+    return new HttpResponse(null, { status: 200 })
+  }),
+
+  http.post(`${API_BASE}/admin/ingredients/merge`, async ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    return HttpResponse.json({ message: 'Ingredients merged', recipes_affected: 3, sources_removed: 1 })
+  }),
+
+  // Admin user endpoints
+  http.get(`${API_BASE}/admin/users`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const url = new URL(request.url)
+    const search = url.searchParams.get('search')
+    const status = url.searchParams.get('status')
+    let items = [...mockAdminUsers]
+    if (search) {
+      items = items.filter(u =>
+        u.email.toLowerCase().includes(search.toLowerCase()) ||
+        (u.display_name && u.display_name.toLowerCase().includes(search.toLowerCase()))
+      )
+    }
+    if (status === 'active') items = items.filter(u => u.is_active)
+    if (status === 'inactive') items = items.filter(u => !u.is_active)
+    return HttpResponse.json({ items, total: items.length, page: 1, per_page: 50 })
+  }),
+
+  http.patch(`${API_BASE}/admin/users/:id`, async ({ params, request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const body = await request.json() as Record<string, unknown>
+    const user = mockAdminUsers.find(u => u.id === params.id)
+    if (!user) return HttpResponse.json({ detail: 'User not found' }, { status: 404 })
+    if (params.id === '1') {
+      if (body.is_active === false) {
+        return HttpResponse.json({ detail: 'Cannot deactivate your own account' }, { status: 400 })
+      }
+      if (body.is_admin === false) {
+        return HttpResponse.json({ detail: 'Cannot remove your own admin status' }, { status: 400 })
+      }
+    }
+    const updated = { ...user, ...body }
+    const parts: string[] = []
+    if (body.is_active !== undefined) {
+      parts.push(body.is_active ? 'User activated' : 'User deactivated')
+    }
+    if (body.is_admin !== undefined) {
+      parts.push(body.is_admin ? 'User granted admin' : 'User revoked admin')
+    }
+    const message = parts.length > 0 ? parts.join(', ') : 'No changes applied'
+    return HttpResponse.json({
+      id: updated.id, email: updated.email, display_name: updated.display_name,
+      is_active: updated.is_active, is_admin: updated.is_admin,
+      message,
+    })
+  }),
+
+  // Admin audit log endpoint
+  http.get(`${API_BASE}/admin/audit-log`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) return HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })
+    const url = new URL(request.url)
+    const action = url.searchParams.get('action')
+    const entityType = url.searchParams.get('entity_type')
+    const from = url.searchParams.get('from')
+    const to = url.searchParams.get('to')
+    let items = [...mockAuditLogs]
+    if (action) items = items.filter(e => e.action === action)
+    if (entityType) items = items.filter(e => e.entity_type === entityType)
+    if (from) items = items.filter(e => e.created_at >= new Date(from).toISOString())
+    if (to) {
+      const toEnd = new Date(to)
+      toEnd.setDate(toEnd.getDate() + 1)
+      items = items.filter(e => e.created_at < toEnd.toISOString())
+    }
+    return HttpResponse.json({ items, total: items.length, page: 1, per_page: 20 })
   }),
 
   // Health check endpoint (for offline detection)
