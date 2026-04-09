@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Header } from '@/components/Header'
 import { AuthProvider } from '@/lib/auth-context'
@@ -193,7 +193,9 @@ describe('Header', () => {
         expect(screen.getByText('Test User')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: /logout/i }))
+      await act(async () => {
+        await user.click(screen.getByRole('button', { name: /logout/i }))
+      })
 
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /login/i })).toBeInTheDocument()

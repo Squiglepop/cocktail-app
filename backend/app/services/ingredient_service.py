@@ -4,7 +4,7 @@ Admin ingredient CRUD service.
 import re
 from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -338,25 +338,30 @@ def _build_groups(
 
 def merge_ingredients(
     db: Session, target_id: str, source_ids: List[str]
-) -> Union[Tuple[int, int], str]:
-    """Merge source ingredients into target. Returns (recipes_affected, sources_removed) or error string."""
+) -> Tuple[int, int]:
+    """Merge source ingredients into target. Returns (recipes_affected, sources_removed).
+
+    Raises:
+        ValueError: If target is in source_ids (self-merge).
+        LookupError: If target or any source ingredient is not found.
+    """
     from sqlalchemy import and_
 
     # Validate target exists
     target = db.query(Ingredient).filter(Ingredient.id == target_id).first()
     if not target:
-        return "Target ingredient not found"
+        raise LookupError("Target ingredient not found")
 
     # Validate target not in sources
     if target_id in source_ids:
-        return "Cannot merge ingredient into itself"
+        raise ValueError("Cannot merge ingredient into itself")
 
     # Validate all sources exist
     sources = db.query(Ingredient).filter(Ingredient.id.in_(source_ids)).all()
     found_ids = {s.id for s in sources}
     missing = set(source_ids) - found_ids
     if missing:
-        return f"Source ingredient(s) not found: {', '.join(sorted(missing))}"
+        raise LookupError(f"Source ingredient(s) not found: {', '.join(sorted(missing))}")
 
     # Track affected recipes
     affected_recipe_ids = set()

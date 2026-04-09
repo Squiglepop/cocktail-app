@@ -144,7 +144,7 @@ async def get_current_user(
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is inactive",
+            detail="Account is deactivated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

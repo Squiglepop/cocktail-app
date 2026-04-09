@@ -244,7 +244,7 @@ class TestGetMe:
         )
 
         assert response.status_code == 401
-        assert "inactive" in response.json()["detail"].lower()
+        assert "deactivated" in response.json()["detail"].lower()
 
 
 class TestUpdateMe:

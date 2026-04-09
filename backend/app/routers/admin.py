@@ -220,12 +220,12 @@ def merge_admin_ingredients(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    result = merge_ingredients(db, data.target_id, data.source_ids)
-    if isinstance(result, str):
-        if result.startswith("Cannot merge"):
-            raise HTTPException(status_code=400, detail=result)
-        raise HTTPException(status_code=404, detail=result)
-    recipes_affected, sources_removed = result
+    try:
+        recipes_affected, sources_removed = merge_ingredients(db, data.target_id, data.source_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return IngredientMergeResponse(
         message=f"Merged {sources_removed} ingredient(s). {recipes_affected} recipe(s) affected.",
         recipes_affected=recipes_affected,

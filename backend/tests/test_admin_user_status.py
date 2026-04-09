@@ -248,10 +248,16 @@ def test_partial_update_only_is_admin(client, admin_auth_token, test_session):
     assert data["is_active"] is True  # unchanged
 
 
-def test_combined_update_with_self_protection_blocks_entirely(client, admin_auth_token, admin_user):
+def test_combined_update_with_self_protection_blocks_entirely(client, admin_auth_token, admin_user, test_session):
+    # Benign is_active:true + blocked is_admin:false on self — entire request must be rejected
     response = client.patch(
         f"/api/admin/users/{admin_user.id}",
-        json={"is_active": False, "is_admin": True},
+        json={"is_active": True, "is_admin": False},
         headers={"Authorization": f"Bearer {admin_auth_token}"},
     )
     assert response.status_code == 400
+    assert "Cannot remove your own admin status" in response.json()["detail"]
+    # Verify no partial mutation occurred
+    test_session.refresh(admin_user)
+    assert admin_user.is_active is True
+    assert admin_user.is_admin is True

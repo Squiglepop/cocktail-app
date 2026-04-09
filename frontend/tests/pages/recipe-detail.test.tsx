@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RecipeDetailPage from '@/app/recipes/[id]/page'
 import { TestProviders, createTestQueryClient } from '../utils/test-utils'
@@ -57,12 +57,15 @@ describe('RecipeDetailPage', () => {
   })
 
   describe('Loading States', () => {
-    it('shows loading skeleton initially', () => {
+    it('shows loading skeleton initially', async () => {
       renderRecipeDetailPage()
 
       // Check for loading skeleton with animate-pulse class
       const skeleton = document.querySelector('.animate-pulse')
       expect(skeleton).toBeInTheDocument()
+
+      // Flush async provider effects to avoid act() warnings
+      await waitFor(() => {})
     })
 
     it('displays "Recipe not found" for invalid ID', async () => {
@@ -111,8 +114,8 @@ describe('RecipeDetailPage', () => {
         expect(screen.getByText(/coupe/i)).toBeInTheDocument()
       })
 
-      // Check for serving style
-      expect(screen.getByText(/served up/i)).toBeInTheDocument()
+      // Check for serving style (formatEnumValue('up') → 'Up')
+      expect(screen.getByText(/\bUp\b/)).toBeInTheDocument()
     })
 
     it('renders ingredients list sorted by order', async () => {
@@ -278,7 +281,9 @@ describe('RecipeDetailPage', () => {
         expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: /delete/i }))
+      await act(async () => {
+        await user.click(screen.getByRole('button', { name: /delete/i }))
+      })
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/')
@@ -302,7 +307,9 @@ describe('RecipeDetailPage', () => {
         expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: /delete/i }))
+      await act(async () => {
+        await user.click(screen.getByRole('button', { name: /delete/i }))
+      })
 
       await waitFor(() => {
         expect(window.alert).toHaveBeenCalled()

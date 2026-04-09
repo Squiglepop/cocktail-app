@@ -87,6 +87,7 @@ async def login(request: Request, response: Response, user_data: UserLogin, db: 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account is deactivated",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Update last_login_at timestamp (Story 1.1 AC-5)
@@ -143,6 +144,7 @@ async def login_for_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account is deactivated",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Update last_login_at timestamp (Story 1.1 AC-5)
