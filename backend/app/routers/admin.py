@@ -161,7 +161,9 @@ def update_admin_category(
     existing = get_by_id(db, type, id)
     if existing is None:
         raise HTTPException(status_code=404, detail="Category not found")
-    old_values = {"label": existing.label, "description": existing.description, "is_active": existing.is_active}
+    old_values = {"label": existing.label, "is_active": existing.is_active}
+    if hasattr(existing, "description"):
+        old_values["description"] = existing.description
     result = update(db, type, id, data)
     if result is None:
         raise HTTPException(status_code=404, detail="Category not found")
