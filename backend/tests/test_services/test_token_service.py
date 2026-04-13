@@ -3,6 +3,9 @@ Unit tests for refresh token service functions (Story 0.2).
 """
 import pytest
 from datetime import datetime, timedelta
+from unittest.mock import patch
+
+from sqlalchemy.exc import IntegrityError
 
 from app.models import RefreshToken
 from app.services.auth import (
@@ -53,6 +56,19 @@ class TestStoreRefreshToken:
         assert token is not None
         assert token.family_id is not None
         assert len(token.family_id) == 36  # UUID format
+
+    def test_store_refresh_token_integrity_error_raises_value_error(self, test_session, sample_user):
+        """JTI collision on commit raises ValueError (Story 6.1 AC-1)."""
+        jti = "collision-jti"
+        expires_at = datetime.utcnow() + timedelta(days=7)
+
+        def commit_that_fails():
+            test_session.rollback()
+            raise IntegrityError("duplicate", {}, None)
+
+        with patch.object(test_session, "commit", side_effect=commit_that_fails):
+            with pytest.raises(ValueError, match="Token storage failed"):
+                store_refresh_token(test_session, sample_user.id, jti, expires_at)
 
 
 class TestIsRefreshTokenValid:

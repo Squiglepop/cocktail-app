@@ -34,7 +34,7 @@ import { shareRecipe } from '@/lib/share';
 import { PhoneFrame } from '@/components/ui/PhoneFrame';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { debug } from '@/lib/debug';
+import { recipeDebug } from '@/lib/debug';
 
 export default function RecipeDetailPage() {
   const params = useParams();
@@ -60,14 +60,14 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     if (recipeId) {
       setOfflineLoading(true);
-      console.log(`[RecipeDetail] Trying to load recipe ${recipeId} from IndexedDB...`);
+      recipeDebug.log(`Trying to load recipe ${recipeId} from IndexedDB...`);
       getRecipeOffline(recipeId)
         .then((cached) => {
-          console.log(`[RecipeDetail] IndexedDB result for ${recipeId}:`, cached ? 'FOUND' : 'NOT FOUND');
+          recipeDebug.log(`IndexedDB result for ${recipeId}:`, cached ? 'FOUND' : 'NOT FOUND');
           setOfflineRecipe(cached || null);
         })
         .catch((err) => {
-          console.error(`[RecipeDetail] IndexedDB error for ${recipeId}:`, err);
+          recipeDebug.error(`IndexedDB error for ${recipeId}:`, err);
           setOfflineRecipe(null);
         })
         .finally(() => {
@@ -102,7 +102,7 @@ export default function RecipeDetailPage() {
       setShowDeleteModal(false);
       router.push('/');
     } catch (error) {
-      debug.error('Failed to delete:', error);
+      recipeDebug.error('Failed to delete:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete recipe');
     }
   }, [recipe, token, deleteRecipeMutation, router]);
@@ -129,7 +129,7 @@ export default function RecipeDetailPage() {
       // Refetch to update the cache
       refetch();
     } catch (error) {
-      console.error('Failed to update rating:', error);
+      recipeDebug.error('Failed to update rating:', error);
       alert(error instanceof Error ? error.message : 'Failed to update rating');
     } finally {
       setUpdatingRating(false);

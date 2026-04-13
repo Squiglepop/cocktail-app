@@ -343,14 +343,99 @@ describe('CategoryManagementModal', () => {
     })
   })
 
-  it('hides delete button for inactive items', async () => {
+  it('shows delete buttons for active items and reactivate for inactive', async () => {
     renderModal()
 
     await waitFor(() => {
       expect(screen.getByText('Flip')).toBeInTheDocument()
     })
 
-    // Should have 2 deactivate buttons (for Sour and Old Fashioned), not 3
+    // Should have 2 deactivate buttons (for Sour and Old Fashioned)
+    const deleteButtons = screen.getAllByTitle('Deactivate')
+    expect(deleteButtons.length).toBe(2)
+
+    // Should have 1 reactivate button (for Flip)
+    const reactivateButtons = screen.getAllByTitle('Reactivate')
+    expect(reactivateButtons.length).toBe(1)
+  })
+
+  it('renders Reactivate button on inactive categories', async () => {
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Flip')).toBeInTheDocument()
+    })
+
+    // Inactive category should show Reactivate button
+    expect(screen.getByTitle('Reactivate')).toBeInTheDocument()
+  })
+
+  it('clicking Reactivate calls update API with is_active true', async () => {
+    let capturedBody: Record<string, unknown> | null = null
+    server.use(
+      http.put('*/api/admin/categories/:type/:id', async ({ params, request }) => {
+        const body = await request.json() as Record<string, unknown>
+        capturedBody = body
+        const existing = mockAdminCategories.find(c => c.id === params.id)
+        if (!existing) return HttpResponse.json({ detail: 'Not found' }, { status: 404 })
+        return HttpResponse.json({ ...existing, ...body })
+      })
+    )
+
+    const user = userEvent.setup()
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Flip')).toBeInTheDocument()
+    })
+
+    const reactivateButton = screen.getByTitle('Reactivate')
+    await user.click(reactivateButton)
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull()
+    })
+    expect(capturedBody).toEqual({ is_active: true })
+
+    // Verify success feedback message
+    await waitFor(() => {
+      expect(screen.getByText('flip reactivated.')).toBeInTheDocument()
+    })
+  })
+
+  it('shows error feedback when reactivation fails', async () => {
+    server.use(
+      http.put('*/api/admin/categories/:type/:id', () => {
+        return HttpResponse.json({ detail: 'Failed to update category' }, { status: 500 })
+      })
+    )
+
+    const user = userEvent.setup()
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Flip')).toBeInTheDocument()
+    })
+
+    const reactivateButton = screen.getByTitle('Reactivate')
+    await user.click(reactivateButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to reactivate category')).toBeInTheDocument()
+    })
+  })
+
+  it('active categories show Edit and Delete buttons, not Reactivate', async () => {
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Sour')).toBeInTheDocument()
+    })
+
+    // Active items should have Edit and Deactivate buttons
+    const editButtons = screen.getAllByTitle('Edit label')
+    expect(editButtons.length).toBe(2) // Sour and Old Fashioned
+
     const deleteButtons = screen.getAllByTitle('Deactivate')
     expect(deleteButtons.length).toBe(2)
   })

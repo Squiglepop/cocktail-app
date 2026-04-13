@@ -276,14 +276,20 @@ class TestCleanupStats:
 class TestAdminCleanupEndpoint:
     """Tests for the admin cleanup API endpoint."""
 
-    def test_cleanup_requires_authentication(self, client):
-        """Test cleanup endpoint requires authentication."""
+    def test_cleanup_returns_401_without_auth(self, client):
+        """No token → 401."""
         response = client.post("/api/admin/cleanup-orphans")
         assert response.status_code == 401
 
+    def test_cleanup_returns_403_for_regular_user(self, authenticated_client):
+        """Regular user token → 403."""
+        response = authenticated_client.post("/api/admin/cleanup-orphans")
+        assert response.status_code == 403
+
     def test_cleanup_dry_run(
         self,
-        authenticated_client,
+        client,
+        admin_auth_token,
         test_session,
         tmp_path,
     ):
@@ -302,9 +308,10 @@ class TestAdminCleanupEndpoint:
             mock_service = OrphanedFileCleanupService(storage_dir)
             mock_get_service.return_value = mock_service
 
-            response = authenticated_client.post(
+            response = client.post(
                 "/api/admin/cleanup-orphans",
                 params={"dry_run": True},
+                headers={"Authorization": f"Bearer {admin_auth_token}"},
             )
 
         assert response.status_code == 200
@@ -316,7 +323,8 @@ class TestAdminCleanupEndpoint:
 
     def test_cleanup_actual_delete(
         self,
-        authenticated_client,
+        client,
+        admin_auth_token,
         test_session,
         tmp_path,
     ):
@@ -334,9 +342,10 @@ class TestAdminCleanupEndpoint:
             mock_service = OrphanedFileCleanupService(storage_dir)
             mock_get_service.return_value = mock_service
 
-            response = authenticated_client.post(
+            response = client.post(
                 "/api/admin/cleanup-orphans",
                 params={"dry_run": False},
+                headers={"Authorization": f"Bearer {admin_auth_token}"},
             )
 
         assert response.status_code == 200

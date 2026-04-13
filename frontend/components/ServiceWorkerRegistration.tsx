@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { swDebug } from '@/lib/debug';
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -8,10 +9,10 @@ export function ServiceWorkerRegistration() {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('Service Worker registered:', registration.scope);
+          swDebug.log('Service Worker registered:', registration.scope);
         })
         .catch((error) => {
-          console.error('Service Worker registration failed:', error);
+          swDebug.error('Service Worker registration failed:', error);
         });
     }
   }, []);

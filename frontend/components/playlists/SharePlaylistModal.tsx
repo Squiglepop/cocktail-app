@@ -9,6 +9,7 @@ import {
   removeCollectionShare,
 } from '@/lib/api';
 import { X, UserPlus, Trash2, Loader2, Users, Pencil, Eye } from 'lucide-react';
+import { playlistDebug } from '@/lib/debug';
 
 interface SharePlaylistModalProps {
   playlistId: string;
@@ -35,7 +36,7 @@ export function SharePlaylistModal({
   useEffect(() => {
     fetchCollectionShares(playlistId, token)
       .then(setShares)
-      .catch(console.error)
+      .catch(playlistDebug.error)
       .finally(() => setLoading(false));
   }, [playlistId, token]);
 

@@ -136,36 +136,40 @@ describe('EditRecipePage', () => {
       const user = userEvent.setup()
       renderEditRecipePage()
 
+      let initialCount: number
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /add ingredient/i })).toBeInTheDocument()
+        const initialIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
+        expect(initialIngredients.length).toBeGreaterThanOrEqual(1)
+        initialCount = initialIngredients.length
       })
-
-      const initialIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
-      const initialCount = initialIngredients.length
 
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      const updatedIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
-      expect(updatedIngredients.length).toBe(initialCount + 1)
+      await waitFor(() => {
+        const updatedIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
+        expect(updatedIngredients.length).toBe(initialCount! + 1)
+      })
     })
 
     it('removes ingredient when clicking Remove', async () => {
       const user = userEvent.setup()
       renderEditRecipePage()
 
+      let initialCount: number
       await waitFor(() => {
-        expect(screen.getAllByPlaceholderText(/ingredient name/i).length).toBeGreaterThanOrEqual(2)
+        const initialIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
+        expect(initialIngredients.length).toBeGreaterThanOrEqual(2)
+        initialCount = initialIngredients.length
       })
-
-      const initialIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
-      const initialCount = initialIngredients.length
 
       // Find and click the first remove button (they have Trash2 icon)
       const removeButtons = document.querySelectorAll('button.text-gray-400')
       await user.click(removeButtons[0] as HTMLElement)
 
-      const updatedIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
-      expect(updatedIngredients.length).toBe(initialCount - 1)
+      await waitFor(() => {
+        const updatedIngredients = screen.getAllByPlaceholderText(/ingredient name/i)
+        expect(updatedIngredients.length).toBe(initialCount! - 1)
+      })
     })
 
     it('updates ingredient fields correctly', async () => {

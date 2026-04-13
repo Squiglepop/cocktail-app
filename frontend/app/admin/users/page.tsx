@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useAdminUsers, useUpdateUserStatus } from '@/lib/hooks';
 import { AdminUser } from '@/lib/api';
 import { clsx } from 'clsx';
-import { Search, ChevronLeft, ChevronRight, Shield, ShieldOff, UserCheck, UserX, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Shield, ShieldOff, UserCheck, UserX, AlertTriangle, CheckCircle, Loader2, Pencil } from 'lucide-react';
+import { UserEditModal } from '@/components/admin/UserEditModal';
 
 interface ConfirmAction {
   userId: string;
@@ -22,6 +23,9 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const { data, isLoading, error: queryError, refetch } = useAdminUsers(
     { page, per_page: 50, search: debouncedSearch || undefined, status: statusFilter || undefined },
@@ -38,6 +42,14 @@ export default function UsersPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Auto-clear success message
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   function handleToggle(user: AdminUser, field: 'is_active' | 'is_admin') {
     setError(null);
@@ -70,6 +82,27 @@ export default function UsersPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user');
       setConfirmAction(null);
+    }
+  }
+
+  async function handleEditSave(data: { display_name: string }) {
+    if (!editingUser) return;
+    try {
+      const result = await updateStatus.mutateAsync({
+        id: editingUser.id,
+        data: { display_name: data.display_name },
+        token,
+      });
+      if (result.message === 'No changes applied') {
+        setEditingUser(null);
+        setEditError(null);
+        return;
+      }
+      setSuccessMessage(`Updated display name for ${editingUser.email}`);
+      setEditError(null);
+      setEditingUser(null);
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update user');
     }
   }
 
@@ -117,6 +150,14 @@ export default function UsersPage() {
           <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800 text-sm font-medium">
             Dismiss
           </button>
+        </div>
+      )}
+
+      {/* Success message */}
+      {successMessage && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-800 text-sm">
+          <CheckCircle className="h-4 w-4" />
+          {successMessage}
         </div>
       )}
 
@@ -171,6 +212,7 @@ export default function UsersPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recipes</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -224,6 +266,15 @@ export default function UsersPage() {
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : 'Never'}
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        onClick={() => { setEditingUser(user); setEditError(null); }}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                        title="Edit user"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -266,6 +317,16 @@ export default function UsersPage() {
           isLoading={updateStatus.isPending}
         />
       )}
+
+      {/* Edit User Modal */}
+      <UserEditModal
+        isOpen={editingUser !== null}
+        user={editingUser}
+        onClose={() => { setEditingUser(null); setEditError(null); }}
+        onSave={handleEditSave}
+        isSaving={updateStatus.isPending}
+        error={editError}
+      />
     </div>
   );
 }

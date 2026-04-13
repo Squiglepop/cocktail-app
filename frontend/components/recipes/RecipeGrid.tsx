@@ -6,6 +6,7 @@ import { RecipeListItem } from '@/lib/api';
 import { RecipeCard } from './RecipeCard';
 import { GlassWater, Loader2 } from 'lucide-react';
 import { useListState } from '@/lib/list-state-context';
+import { recipeDebug } from '@/lib/debug';
 
 interface RecipeGridProps {
   recipes: RecipeListItem[];
@@ -86,7 +87,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
         const newHeight = window.innerHeight - rect.top - 100;
         const desktop = window.innerWidth >= 1024;
 
-        console.log(`[Grid] ${source}: containerWidth=${newWidth.toFixed(0)} windowWidth=${window.innerWidth} scrollbarWidth=${actualScrollbarWidth} isDesktop=${desktop}`);
+        recipeDebug.log(`[Grid] ${source}: containerWidth=${newWidth.toFixed(0)} windowWidth=${window.innerWidth} scrollbarWidth=${actualScrollbarWidth} isDesktop=${desktop}`);
 
         setDimensions({ width: newWidth, height: newHeight });
         setIsDesktop(desktop);
@@ -135,7 +136,7 @@ export function RecipeGrid({ recipes, loading, loadingMore, onLoadMore }: Recipe
   useEffect(() => {
     if (dimensions.width > 0) {
       const totalCalcWidth = columnCount * (columnWidth + gap);
-      console.log(`[Grid] CALC: dimWidth=${dimensions.width.toFixed(0)} scrollPad=${scrollbarPadding} gridWidth=${gridWidth.toFixed(0)} colWidth=${columnWidth.toFixed(0)} total=${totalCalcWidth.toFixed(0)} overflow=${(totalCalcWidth - gridWidth).toFixed(0)}`);
+      recipeDebug.log(`[Grid] CALC: dimWidth=${dimensions.width.toFixed(0)} scrollPad=${scrollbarPadding} gridWidth=${gridWidth.toFixed(0)} colWidth=${columnWidth.toFixed(0)} total=${totalCalcWidth.toFixed(0)} overflow=${(totalCalcWidth - gridWidth).toFixed(0)}`);
     }
   }, [dimensions.width, scrollbarPadding, gridWidth, columnWidth, columnCount, gap]);
   // Calculate row height dynamically: 3:4 aspect image + info strip

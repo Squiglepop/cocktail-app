@@ -453,6 +453,183 @@ describe('UsersPage', () => {
     })
   })
 
+  // --- Edit user display_name tests (Story 7-3) ---
+
+  it('renders edit button on each user row', async () => {
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('admin@test.com')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByTitle('Edit user')
+    expect(editButtons.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('clicking edit opens modal with display_name pre-populated', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('admin@test.com')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByTitle('Edit user')
+    await user.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit User')).toBeInTheDocument()
+    })
+    // Display name pre-populated
+    const input = screen.getByLabelText('Display Name') as HTMLInputElement
+    expect(input.value).toBe('Admin User')
+  })
+
+  it('submitting edit modal calls PATCH with display_name', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('user@test.com')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByTitle('Edit user')
+    await user.click(editButtons[1])
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit User')).toBeInTheDocument()
+    })
+
+    const input = screen.getByLabelText('Display Name')
+    await user.clear(input)
+    await user.type(input, 'New Name')
+    await user.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Updated display name for user@test.com/)).toBeInTheDocument()
+    })
+  })
+
+  it('edit modal shows email as read-only context', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('admin@test.com')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByTitle('Edit user')
+    await user.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit User')).toBeInTheDocument()
+    })
+
+    // Email should be visible in a <p> tag within the modal (read-only)
+    const emailElements = screen.getAllByText('admin@test.com')
+    const emailInModal = emailElements.find(el => el.tagName === 'P')
+    expect(emailInModal).toBeTruthy()
+    expect(emailInModal!.tagName).toBe('P')
+  })
+
+  it('self-edit of display_name is allowed', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('admin@test.com')).toBeInTheDocument()
+    })
+
+    // Click edit on our own user (first row, id=1)
+    const editButtons = screen.getAllByTitle('Edit user')
+    await user.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit User')).toBeInTheDocument()
+    })
+
+    const input = screen.getByLabelText('Display Name')
+    await user.clear(input)
+    await user.type(input, 'My New Name')
+    await user.click(screen.getByText('Save'))
+
+    // Should succeed (no error about self-edit)
+    await waitFor(() => {
+      expect(screen.getByText(/Updated display name for admin@test.com/)).toBeInTheDocument()
+    })
+  })
+
+  it('success message appears after edit save and auto-clears', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('user@test.com')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByTitle('Edit user')
+    await user.click(editButtons[1])
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit User')).toBeInTheDocument()
+    })
+
+    const input = screen.getByLabelText('Display Name')
+    await user.clear(input)
+    await user.type(input, 'Test Name')
+    await user.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Updated display name/)).toBeInTheDocument()
+    })
+
+    // Advance past 3s auto-clear
+    vi.advanceTimersByTime(3500)
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Updated display name/)).not.toBeInTheDocument()
+    })
+
+    vi.useRealTimers()
+  })
+
+  it('shows error in edit modal when display_name update fails', async () => {
+    server.use(
+      http.patch('*/api/admin/users/:id', () => {
+        return HttpResponse.json(
+          { detail: 'Display name update failed' },
+          { status: 400 }
+        )
+      })
+    )
+
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('user@test.com')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByTitle('Edit user')
+    await user.click(editButtons[1])
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit User')).toBeInTheDocument()
+    })
+
+    const input = screen.getByLabelText('Display Name')
+    await user.clear(input)
+    await user.type(input, 'Failing Name')
+    await user.click(screen.getByText('Save'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Display name update failed')).toBeInTheDocument()
+    })
+    // Modal should still be open (error is shown inline)
+    expect(screen.getByText('Edit User')).toBeInTheDocument()
+  })
+
   it('shows API error when mutation fails', async () => {
     server.use(
       http.patch('*/api/admin/users/:id', () => {

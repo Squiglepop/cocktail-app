@@ -261,3 +261,73 @@ def test_combined_update_with_self_protection_blocks_entirely(client, admin_auth
     test_session.refresh(admin_user)
     assert admin_user.is_active is True
     assert admin_user.is_admin is True
+
+
+# --- Display name update tests (Story 7-3) ---
+
+
+def test_update_user_display_name(client, admin_auth_token, test_session):
+    user = _create_test_user(test_session, "displayname@test.com", display_name="Old Name")
+    response = client.patch(
+        f"/api/admin/users/{user.id}",
+        json={"display_name": "New Display Name"},
+        headers={"Authorization": f"Bearer {admin_auth_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["display_name"] == "New Display Name"
+
+
+def test_update_user_display_name_only(client, admin_auth_token, test_session):
+    """display_name alone satisfies at_least_one_field validator."""
+    user = _create_test_user(test_session, "solo_field@test.com")
+    response = client.patch(
+        f"/api/admin/users/{user.id}",
+        json={"display_name": "Solo Field"},
+        headers={"Authorization": f"Bearer {admin_auth_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["display_name"] == "Solo Field"
+
+
+def test_update_user_display_name_too_long(client, admin_auth_token, test_session):
+    """display_name exceeding 255 chars returns 422."""
+    user = _create_test_user(test_session, "toolong@test.com")
+    response = client.patch(
+        f"/api/admin/users/{user.id}",
+        json={"display_name": "x" * 256},
+        headers={"Authorization": f"Bearer {admin_auth_token}"},
+    )
+    assert response.status_code == 422
+
+
+def test_self_edit_display_name_allowed(client, admin_auth_token, admin_user):
+    """Self-edit of display_name IS allowed (no security implication)."""
+    response = client.patch(
+        f"/api/admin/users/{admin_user.id}",
+        json={"display_name": "My New Name"},
+        headers={"Authorization": f"Bearer {admin_auth_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["display_name"] == "My New Name"
+
+
+def test_update_display_name_creates_audit_log(client, admin_auth_token, test_session):
+    """AC-3: display_name change creates user_update_profile audit entry."""
+    from app.models.audit_log import AuditLog
+
+    user = _create_test_user(test_session, "audit_dn@test.com", display_name="Old")
+    client.patch(
+        f"/api/admin/users/{user.id}",
+        json={"display_name": "New"},
+        headers={"Authorization": f"Bearer {admin_auth_token}"},
+    )
+    entry = (
+        test_session.query(AuditLog)
+        .filter_by(action="user_update_profile", entity_id=user.id)
+        .first()
+    )
+    assert entry is not None
+    assert entry.details["field"] == "display_name"
+    assert entry.details["old_value"] == "Old"
+    assert entry.details["new_value"] == "New"

@@ -17,6 +17,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { API_BASE } from './api';
+import { authDebug } from './debug';
 
 export interface User {
   id: string;
@@ -95,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         // Network error - return null to indicate refresh failed
         // Caller should handle gracefully (e.g., retry or prompt re-login)
-        console.error('Token refresh failed:', error);
+        authDebug.error('Token refresh failed:', error);
         return null;
       } finally {
         isRefreshing.current = false;
@@ -122,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         // Silent refresh failed - user is not authenticated
-        console.error('Silent auth refresh failed:', error);
+        authDebug.error('Silent auth refresh failed:', error);
       } finally {
         setIsLoading(false);
       }

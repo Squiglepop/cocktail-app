@@ -4,7 +4,7 @@ Admin user management schemas.
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class UserAdminResponse(BaseModel):
@@ -29,11 +29,12 @@ class UserListResponse(BaseModel):
 class UserStatusUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
+    display_name: Optional[str] = Field(None, max_length=255)
 
     @model_validator(mode="after")
     def at_least_one_field(self):
-        if self.is_active is None and self.is_admin is None:
-            raise ValueError("At least one of is_active or is_admin must be provided")
+        if self.is_active is None and self.is_admin is None and self.display_name is None:
+            raise ValueError("At least one of is_active, is_admin, or display_name must be provided")
         return self
 
 

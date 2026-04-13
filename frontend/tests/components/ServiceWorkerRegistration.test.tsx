@@ -87,8 +87,10 @@ describe('ServiceWorkerRegistration', () => {
 
     render(<ServiceWorkerRegistration />)
 
+    // swDebug.log() only outputs in development mode (NODE_ENV=development)
+    // In test env, verify registration was called successfully
     await vi.waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Service Worker registered:', mockScope)
+      expect(mockRegister).toHaveBeenCalledWith('/sw.js')
     })
   })
 
@@ -104,7 +106,7 @@ describe('ServiceWorkerRegistration', () => {
     render(<ServiceWorkerRegistration />)
 
     await vi.waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Service Worker registration failed:', mockError)
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[SW]', 'Service Worker registration failed:', mockError)
     })
   })
 })

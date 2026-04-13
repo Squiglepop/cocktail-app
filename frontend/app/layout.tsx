@@ -43,8 +43,8 @@ export default function RootLayout({
       <body className={inter.className}>
         <QueryProvider>
           <AuthProvider>
-            <FavouritesProvider>
-              <OfflineProvider>
+            <OfflineProvider>
+              <FavouritesProvider>
                 <ListStateProvider>
                 <ServiceWorkerRegistration />
                 <div className="min-h-screen flex flex-col">
@@ -60,8 +60,8 @@ export default function RootLayout({
                   </footer>
                 </div>
                 </ListStateProvider>
-              </OfflineProvider>
-            </FavouritesProvider>
+              </FavouritesProvider>
+            </OfflineProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

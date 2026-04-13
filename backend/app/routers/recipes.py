@@ -3,11 +3,12 @@ Recipe CRUD endpoints.
 """
 import logging
 from pathlib import Path
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models import (
@@ -37,13 +38,12 @@ router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 
 def _audit_log(db, admin_id, action, entity_type, entity_id, details):
-    """Fire-and-forget audit wrapper. Main operation is already committed by service."""
+    """Fire-and-forget audit wrapper. Main operation is already committed."""
     try:
         AuditService.log(db, admin_id, action, entity_type, entity_id, details)
         db.commit()
     except Exception as e:
         logger.error("Audit log failed: %s", e)
-        db.rollback()
 
 
 def _get_uploader_name(user: Optional[User]) -> Optional[str]:
@@ -331,7 +331,7 @@ def _stream_file(
                     break
 
 
-def _parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
+def _parse_range_header(range_header: str, file_size: int) -> Tuple[int, int]:
     """Parse HTTP Range header and return (start, end) byte positions.
 
     Supports formats: "bytes=0-499", "bytes=500-", "bytes=-500"
@@ -478,8 +478,15 @@ def create_recipe(
     # Add ingredients
     add_ingredients_to_recipe(db, recipe, recipe_data.ingredients)
 
-    db.commit()
-    db.refresh(recipe)
+    try:
+        db.commit()
+        db.refresh(recipe)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Recipe could not be created"
+        )
 
     # Load relationships for response
     recipe = (

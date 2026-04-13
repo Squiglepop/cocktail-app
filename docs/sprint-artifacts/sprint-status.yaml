@@ -85,11 +85,21 @@ development_status:
   prep-push-to-remote: done                         # Pushed 5 commits (Epics 2-4 + prep) to origin/main
 
   # Epic 5: Admin User Interface
-  epic-5: in-progress
+  epic-5: done
   5-1-admin-state-indicator: done
   5-2-recipe-admin-controls: done
   5-3-category-management-modal: done
   5-4-ingredient-admin-page: done
   5-5-user-management-page: done
   5-6-audit-log-viewer: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
+
+  # Epic 6: Code Review Remediation
+  epic-6: in-progress
+  6-1-code-review-remediation: done
+
+  # Epic 7: Admin Panel Bug Fixes
+  epic-7: in-progress
+  7-1-category-reactivation: done
+  7-2-ingredient-row-click-to-edit: done
+  7-3-user-edit-capability: done

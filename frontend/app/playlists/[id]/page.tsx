@@ -30,6 +30,7 @@ import {
   Globe,
   Share2,
 } from 'lucide-react';
+import { playlistDebug } from '@/lib/debug';
 
 export default function PlaylistDetailPage() {
   const params = useParams();
@@ -53,7 +54,7 @@ export default function PlaylistDetailPage() {
     if (params.id) {
       fetchCollection(params.id as string, token)
         .then(setPlaylist)
-        .catch(console.error)
+        .catch(playlistDebug.error)
         .finally(() => setLoading(false));
     }
   }, [params.id, token]);
@@ -67,7 +68,7 @@ export default function PlaylistDetailPage() {
       await deleteCollection(playlist.id, token);
       router.push('/playlists');
     } catch (error) {
-      console.error('Failed to delete:', error);
+      playlistDebug.error('Failed to delete:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete playlist');
       setDeleting(false);
     }
@@ -84,7 +85,7 @@ export default function PlaylistDetailPage() {
         recipe_count: playlist.recipe_count - 1,
       });
     } catch (error) {
-      console.error('Failed to remove recipe:', error);
+      playlistDebug.error('Failed to remove recipe:', error);
       alert(error instanceof Error ? error.message : 'Failed to remove recipe');
     }
   };
@@ -97,7 +98,7 @@ export default function PlaylistDetailPage() {
       setPlaylist({ ...playlist, name: tempName.trim() });
       setEditingName(false);
     } catch (error) {
-      console.error('Failed to update name:', error);
+      playlistDebug.error('Failed to update name:', error);
       alert(error instanceof Error ? error.message : 'Failed to update name');
     }
   };
@@ -114,7 +115,7 @@ export default function PlaylistDetailPage() {
       setPlaylist({ ...playlist, description: tempDescription.trim() || undefined });
       setEditingDescription(false);
     } catch (error) {
-      console.error('Failed to update description:', error);
+      playlistDebug.error('Failed to update description:', error);
       alert(error instanceof Error ? error.message : 'Failed to update description');
     }
   };
@@ -126,7 +127,7 @@ export default function PlaylistDetailPage() {
       await updateCollection(playlist.id, { is_public: !playlist.is_public }, token);
       setPlaylist({ ...playlist, is_public: !playlist.is_public });
     } catch (error) {
-      console.error('Failed to update visibility:', error);
+      playlistDebug.error('Failed to update visibility:', error);
       alert(error instanceof Error ? error.message : 'Failed to update visibility');
     }
   };
@@ -179,7 +180,7 @@ export default function PlaylistDetailPage() {
         token
       );
     } catch (error) {
-      console.error('Failed to reorder:', error);
+      playlistDebug.error('Failed to reorder:', error);
       // Refetch to reset order
       fetchCollection(playlist.id, token).then(setPlaylist);
     }

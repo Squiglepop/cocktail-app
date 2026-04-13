@@ -171,7 +171,11 @@ export default function IngredientsPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {data.items.map((ingredient) => (
-                  <tr key={ingredient.id} className="hover:bg-gray-50">
+                  <tr
+                    key={ingredient.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => { setEditingIngredient(ingredient); setFormError(null); }}
+                  >
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{ingredient.name}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{formatEnumValue(ingredient.type)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">
@@ -179,14 +183,14 @@ export default function IngredientsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        onClick={() => { setEditingIngredient(ingredient); setFormError(null); }}
+                        onClick={(e) => { e.stopPropagation(); setEditingIngredient(ingredient); setFormError(null); }}
                         className="text-gray-400 hover:text-amber-600 mr-2"
                         aria-label={`Edit ${ingredient.name}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => { setDeletingIngredient(ingredient); setDeleteError(null); }}
+                        onClick={(e) => { e.stopPropagation(); setDeletingIngredient(ingredient); setDeleteError(null); }}
                         className="text-gray-400 hover:text-red-600"
                         aria-label={`Delete ${ingredient.name}`}
                       >

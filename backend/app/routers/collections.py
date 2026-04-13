@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Collection, CollectionRecipe, CollectionShare, Recipe, User
@@ -228,8 +229,15 @@ async def create_collection(
     )
 
     db.add(collection)
-    db.commit()
-    db.refresh(collection)
+    try:
+        db.commit()
+        db.refresh(collection)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Collection could not be created"
+        )
 
     return CollectionResponse(
         id=collection.id,
@@ -363,8 +371,15 @@ async def add_recipe_to_collection(
     )
 
     db.add(collection_recipe)
-    db.commit()
-    db.refresh(collection_recipe)
+    try:
+        db.commit()
+        db.refresh(collection_recipe)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Recipe already in collection"
+        )
 
     # Load recipe for response
     collection_recipe = (

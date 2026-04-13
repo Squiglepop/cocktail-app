@@ -5,6 +5,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+from sqlalchemy.exc import IntegrityError
+
 
 class TestListRecipes:
     """Tests for GET /api/recipes endpoint."""
@@ -699,3 +701,91 @@ class TestUploaderName:
         # Find the orphan recipe
         orphan = next(r for r in data if r["id"] == orphan_recipe.id)
         assert orphan["uploader_name"] is None
+
+
+# --- IntegrityError Race Condition Tests ---
+
+
+def test_create_recipe_integrity_error_returns_409(client, test_session, auth_token):
+    """Race condition: commit hits constraint violation on recipe creation."""
+    def commit_that_fails():
+        test_session.rollback()
+        raise IntegrityError("constraint", {}, None)
+
+    with patch.object(test_session, "commit", side_effect=commit_that_fails):
+        response = client.post(
+            "/api/recipes",
+            json={
+                "name": "Race Recipe",
+                "instructions": "Shake and serve",
+                "template": "sour",
+                "main_spirit": "tequila",
+                "ingredients": [],
+            },
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+    assert response.status_code == 409
+    assert "could not be created" in response.json()["detail"].lower()
+
+
+def test_create_collection_integrity_error_returns_409(client, test_session, auth_token):
+    """Race condition: commit hits constraint violation on collection creation."""
+    def commit_that_fails():
+        test_session.rollback()
+        raise IntegrityError("constraint", {}, None)
+
+    with patch.object(test_session, "commit", side_effect=commit_that_fails):
+        response = client.post(
+            "/api/collections",
+            json={"name": "Race Collection"},
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+    assert response.status_code == 409
+    assert "could not be created" in response.json()["detail"].lower()
+
+
+def test_add_recipe_to_collection_duplicate_returns_409(
+    client, test_session, auth_token, sample_recipe
+):
+    """Race condition: duplicate check passes but commit hits unique constraint."""
+    from app.models import Collection
+
+    # Create a collection first (before patching commit)
+    collection = Collection(
+        name="Test Playlist",
+        user_id=sample_recipe.user_id,
+    )
+    test_session.add(collection)
+    test_session.commit()
+    test_session.refresh(collection)
+
+    def commit_that_fails():
+        test_session.rollback()
+        raise IntegrityError("duplicate", {}, None)
+
+    with patch.object(test_session, "commit", side_effect=commit_that_fails):
+        response = client.post(
+            f"/api/collections/{collection.id}/recipes",
+            json={"recipe_id": sample_recipe.id},
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+    assert response.status_code == 409
+    assert "already in collection" in response.json()["detail"].lower()
+
+
+# --- Rating Endpoint Auth Tests ---
+
+
+def test_rate_recipe_returns_401_without_auth(client, sample_recipe):
+    """No token → 401."""
+    response = client.put(
+        f"/api/recipes/{sample_recipe.id}/my-rating",
+        json={"rating": 4},
+    )
+    assert response.status_code == 401
+
+
+def test_delete_rating_returns_401_without_auth(client, sample_recipe):
+    """No token → 401."""
+    response = client.delete(f"/api/recipes/{sample_recipe.id}/my-rating")
+    assert response.status_code == 401

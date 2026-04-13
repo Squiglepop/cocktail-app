@@ -66,13 +66,13 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 def _audit_log(db, admin_id, action, entity_type, entity_id, details):
-    """Fire-and-forget audit wrapper. Main operation is already committed by service."""
+    """Fire-and-forget audit wrapper. Uses SAVEPOINT to isolate failures."""
     try:
-        AuditService.log(db, admin_id, action, entity_type, entity_id, details)
+        with db.begin_nested():
+            AuditService.log(db, admin_id, action, entity_type, entity_id, details)
         db.commit()
     except Exception as e:
         logger.error("Audit log failed: %s", e)
-        db.rollback()
 
 VALID_CATEGORY_TYPES = {"templates", "glassware", "serving-styles", "methods", "spirits"}
 VALID_INGREDIENT_TYPES = {
@@ -95,7 +95,7 @@ async def cleanup_orphaned_images(
         default=False,
         description="If true, only report what would be deleted without actually deleting"
     ),
-    current_user: User = Depends(get_current_user),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CleanupStatsResponse:
     """
@@ -410,6 +410,7 @@ def update_admin_user_status(
     # Capture old state before update
     old_is_active = user.is_active
     old_is_admin = user.is_admin
+    old_display_name = user.display_name
     try:
         updated_user, message = update_user_status(db, user, data, admin.id)
     except ValueError as e:
@@ -422,6 +423,10 @@ def update_admin_user_status(
         if old_is_admin != updated_user.is_admin:
             action = "user_grant_admin" if updated_user.is_admin else "user_revoke_admin"
             _audit_log(db, admin.id, action, "user", user.id, {"email": updated_user.email})
+        if data.display_name is not None and data.display_name != old_display_name:
+            _audit_log(db, admin.id, "user_update_profile", "user", user.id,
+                       {"email": updated_user.email, "field": "display_name",
+                        "old_value": old_display_name, "new_value": updated_user.display_name})
     return UserStatusResponse(
         id=updated_user.id,
         email=updated_user.email,

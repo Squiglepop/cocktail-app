@@ -266,6 +266,42 @@ describe('IngredientsPage', () => {
     })
   })
 
+  it('clicking ingredient row opens edit modal', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Lime Juice')).toBeInTheDocument()
+    })
+
+    // Verify cursor-pointer is on the row (AC-2)
+    const row = screen.getByText('Lime Juice').closest('tr')
+    expect(row).toHaveClass('cursor-pointer')
+
+    // Click the row itself (on the name cell)
+    await user.click(screen.getByText('Lime Juice'))
+
+    expect(screen.getByText('Edit Ingredient')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Lime Juice')).toBeInTheDocument()
+  })
+
+  it('clicking delete button does not open edit modal', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Lime Juice')).toBeInTheDocument()
+    })
+
+    const deleteButton = screen.getByLabelText('Delete Lime Juice')
+    await user.click(deleteButton)
+
+    // Delete confirmation should open
+    expect(screen.getByText(/are you sure/i)).toBeInTheDocument()
+    // Edit modal should NOT open
+    expect(screen.queryByText('Edit Ingredient')).not.toBeInTheDocument()
+  })
+
   it('redirects non-admin users via AdminLayout', async () => {
     mockUseAuth.mockReturnValue(nonAdminAuth)
 

@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Bookmark, Check, Plus, Loader2, X } from 'lucide-react';
+import { playlistDebug } from '@/lib/debug';
 
 interface AddToPlaylistButtonProps {
   recipeId: string;
@@ -59,7 +60,7 @@ export function AddToPlaylistButton({
           // We'd need an API to check which playlists contain this recipe
           // For now, we'll track it locally after actions
         })
-        .catch(console.error)
+        .catch(playlistDebug.error)
         .finally(() => setLoading(false));
     }
   }, [isOpen, token]);
@@ -89,7 +90,7 @@ export function AddToPlaylistButton({
         setRecipeInPlaylists((prev) => new Set(prev).add(playlistId));
       }
     } catch (error) {
-      console.error('Failed to update playlist:', error);
+      playlistDebug.error('Failed to update playlist:', error);
       alert(error instanceof Error ? error.message : 'Failed to update playlist');
     } finally {
       setActionLoading(null);
@@ -102,15 +103,15 @@ export function AddToPlaylistButton({
 
     setCreating(true);
     try {
-      console.log('[Playlist] Creating playlist:', newPlaylistName.trim(), 'for user:', user?.email);
+      playlistDebug.log('Creating playlist:', newPlaylistName.trim(), 'for user:', user?.email);
       const newPlaylist = await createCollection(
         { name: newPlaylistName.trim() },
         token
       );
-      console.log('[Playlist] Created:', newPlaylist, 'user_id:', newPlaylist.user_id);
+      playlistDebug.log('Created:', newPlaylist, 'user_id:', newPlaylist.user_id);
       // Add recipe to the new playlist
       await addRecipeToCollection(newPlaylist.id, recipeId, token);
-      console.log('[Playlist] Added recipe to playlist');
+      playlistDebug.log('Added recipe to playlist');
 
       setPlaylists([
         {
@@ -127,7 +128,7 @@ export function AddToPlaylistButton({
       setNewPlaylistName('');
       setShowCreateForm(false);
     } catch (error) {
-      console.error('Failed to create playlist:', error);
+      playlistDebug.error('Failed to create playlist:', error);
       alert(error instanceof Error ? error.message : 'Failed to create playlist');
     } finally {
       setCreating(false);

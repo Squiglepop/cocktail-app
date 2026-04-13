@@ -3,6 +3,7 @@
  */
 
 import { getRecipeImageUrl } from './api';
+import { shareDebug } from './debug';
 
 interface ShareRecipeOptions {
   id: string;
@@ -25,7 +26,7 @@ async function fetchImageAsFile(recipeId: string, recipeName: string): Promise<F
 
     return new File([blob], fileName, { type: blob.type || 'image/jpeg' });
   } catch (error) {
-    console.error('Failed to fetch image for sharing:', error);
+    shareDebug.error('Failed to fetch image for sharing:', error);
     return null;
   }
 }
@@ -75,7 +76,7 @@ export async function shareRecipe(recipe: ShareRecipeOptions): Promise<boolean> 
   } catch (error) {
     // User cancelled or share failed
     if ((error as Error).name !== 'AbortError') {
-      console.error('Share failed:', error);
+      shareDebug.error('Share failed:', error);
       // Fallback to clipboard
       await copyToClipboard(recipeUrl);
     }

@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { apiDebug } from '@/lib/debug';
 
 function getBackendUrl(): string {
   return (
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Health Proxy] Backend unavailable:', error);
+    apiDebug.error('[Health Proxy] Backend unavailable:', error);
     return NextResponse.json(
       { status: 'error', detail: 'Backend unavailable' },
       { status: 502 }

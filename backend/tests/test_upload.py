@@ -5,6 +5,8 @@ import pytest
 from io import BytesIO
 from unittest.mock import patch, MagicMock
 
+from sqlalchemy.exc import IntegrityError
+
 from app.routers.upload import MAX_FILE_SIZE, MIN_FILE_SIZE
 from app.schemas import ExtractedRecipe, ExtractedIngredient
 
@@ -427,3 +429,97 @@ class TestExtractImmediate:
 
         assert response.status_code == 400
         assert "too large" in response.json()["detail"].lower()
+
+
+# --- IntegrityError Race Condition Tests ---
+
+
+def test_upload_extract_integrity_error_returns_500(
+    client, sample_extraction_job, test_session,
+):
+    """IntegrityError during extract commit sets job to failed and returns 500."""
+    mock_extracted = ExtractedRecipe(
+        name="Integrity Fail Cocktail",
+        description="Test",
+        ingredients=[
+            ExtractedIngredient(name="Vodka", amount=2.0, unit="oz", type="spirit"),
+        ],
+        instructions="Shake",
+        template="sour",
+        main_spirit="vodka",
+        glassware="coupe",
+        serving_style="up",
+        method="shaken",
+    )
+
+    original_commit = test_session.commit
+    call_count = 0
+
+    def commit_that_fails_on_recipe():
+        nonlocal call_count
+        call_count += 1
+        # call 1: status update to "processing" → allow
+        # call 2: recipe commit → IntegrityError
+        # call 3+: recovery commit (job.status="failed") → allow
+        if call_count == 2:
+            test_session.rollback()
+            raise IntegrityError("constraint", {}, None)
+        original_commit()
+
+    with patch("app.routers.upload.RecipeExtractor") as mock_extractor:
+        mock_instance = MagicMock()
+        mock_instance.extract_from_file.return_value = mock_extracted
+        mock_extractor.return_value = mock_instance
+
+        with patch.object(test_session, "commit", side_effect=commit_that_fails_on_recipe):
+            response = client.post(f"/api/upload/{sample_extraction_job.id}/extract")
+
+    assert response.status_code == 500
+    assert "failed to save" in response.json()["detail"].lower()
+
+
+def test_upload_and_extract_integrity_error_returns_500(
+    client, test_session, test_image_file,
+):
+    """IntegrityError during upload-and-extract commit sets job to failed and returns 500."""
+    mock_extracted = ExtractedRecipe(
+        name="Integrity Fail Cocktail 2",
+        description="Test",
+        ingredients=[
+            ExtractedIngredient(name="Gin", amount=2.0, unit="oz", type="spirit"),
+        ],
+        instructions="Stir",
+        template="martini",
+        main_spirit="gin",
+        glassware="coupe",
+        serving_style="up",
+        method="stirred",
+    )
+
+    original_commit = test_session.commit
+    call_count = 0
+
+    def commit_that_fails_on_recipe():
+        nonlocal call_count
+        call_count += 1
+        # call 1: job creation commit → allow
+        # call 2: recipe commit → IntegrityError
+        # call 3+: recovery commit (job.status="failed") → allow
+        if call_count == 2:
+            test_session.rollback()
+            raise IntegrityError("constraint", {}, None)
+        original_commit()
+
+    with patch("app.routers.upload.RecipeExtractor") as mock_extractor:
+        mock_instance = MagicMock()
+        mock_instance.extract_from_file.return_value = mock_extracted
+        mock_extractor.return_value = mock_instance
+
+        with patch.object(test_session, "commit", side_effect=commit_that_fails_on_recipe):
+            response = client.post(
+                "/api/upload/extract-immediate",
+                files={"file": ("test.png", BytesIO(test_image_file), "image/png")},
+            )
+
+    assert response.status_code == 500
+    assert "failed to save" in response.json()["detail"].lower()

@@ -674,6 +674,9 @@ export const handlers = [
     if (body.is_admin !== undefined) {
       parts.push(body.is_admin ? 'User granted admin' : 'User revoked admin')
     }
+    if (body.display_name !== undefined) {
+      parts.push(`display_name updated to '${body.display_name}'`)
+    }
     const message = parts.length > 0 ? parts.join(', ') : 'No changes applied'
     return HttpResponse.json({
       id: updated.id, email: updated.email, display_name: updated.display_name,

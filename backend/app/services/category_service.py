@@ -5,6 +5,7 @@ Thin DB query wrapper for public category endpoints.
 Filters by is_active=True and orders by sort_order.
 Admin methods handle full CRUD, reorder, and soft-delete.
 """
+from typing import Dict, List
 from uuid import uuid4
 
 from sqlalchemy import func
@@ -39,7 +40,7 @@ RECIPE_FIELD_MAP = {
 }
 
 
-def get_active_templates(db: Session) -> list[CategoryTemplate]:
+def get_active_templates(db: Session) -> List[CategoryTemplate]:
     """Get all active templates ordered by sort_order."""
     return (
         db.query(CategoryTemplate)
@@ -49,7 +50,7 @@ def get_active_templates(db: Session) -> list[CategoryTemplate]:
     )
 
 
-def get_active_glassware(db: Session) -> list[CategoryGlassware]:
+def get_active_glassware(db: Session) -> List[CategoryGlassware]:
     """Get all active glassware ordered by sort_order."""
     return (
         db.query(CategoryGlassware)
@@ -59,7 +60,7 @@ def get_active_glassware(db: Session) -> list[CategoryGlassware]:
     )
 
 
-def get_active_serving_styles(db: Session) -> list[CategoryServingStyle]:
+def get_active_serving_styles(db: Session) -> List[CategoryServingStyle]:
     """Get all active serving styles ordered by sort_order."""
     return (
         db.query(CategoryServingStyle)
@@ -69,7 +70,7 @@ def get_active_serving_styles(db: Session) -> list[CategoryServingStyle]:
     )
 
 
-def get_active_methods(db: Session) -> list[CategoryMethod]:
+def get_active_methods(db: Session) -> List[CategoryMethod]:
     """Get all active methods ordered by sort_order."""
     return (
         db.query(CategoryMethod)
@@ -79,7 +80,7 @@ def get_active_methods(db: Session) -> list[CategoryMethod]:
     )
 
 
-def get_active_spirits(db: Session) -> list[CategorySpirit]:
+def get_active_spirits(db: Session) -> List[CategorySpirit]:
     """Get all active spirits ordered by sort_order."""
     return (
         db.query(CategorySpirit)
@@ -89,7 +90,7 @@ def get_active_spirits(db: Session) -> list[CategorySpirit]:
     )
 
 
-def get_all_active_categories(db: Session) -> dict[str, list]:
+def get_all_active_categories(db: Session) -> Dict[str, List]:
     """Get all active categories across all 5 tables in one call."""
     return {
         "templates": get_active_templates(db),
@@ -103,7 +104,7 @@ def get_all_active_categories(db: Session) -> dict[str, list]:
 # --- Admin CRUD methods ---
 
 
-def get_all_by_type(db: Session, type_name: str) -> list:
+def get_all_by_type(db: Session, type_name: str) -> List:
     """Get ALL categories (active + inactive) ordered by sort_order."""
     model_class = TYPE_MAP[type_name]
     return db.query(model_class).order_by(model_class.sort_order).all()
@@ -177,7 +178,7 @@ def soft_delete(db: Session, type_name: str, category_id: str):
     return record, recipe_count
 
 
-def reorder(db: Session, type_name: str, ids: list[str]) -> list[str]:
+def reorder(db: Session, type_name: str, ids: List[str]) -> List[str]:
     """Reorder categories. Returns list of invalid IDs (empty if all valid).
 
     Validates that ALL categories of the given type are included in the ID list

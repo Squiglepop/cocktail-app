@@ -12,6 +12,7 @@ import filetype
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -291,7 +292,14 @@ def extract_recipe(
         job.recipe_id = recipe.id
         job.completed_at = datetime.now(timezone.utc)
 
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            job.status = "failed"
+            job.error_message = "Failed to save extracted recipe"
+            db.commit()
+            raise HTTPException(status_code=500, detail="Failed to save extracted recipe")
 
         # Load full recipe with relationships
         recipe = (
@@ -303,6 +311,8 @@ def extract_recipe(
 
         return recipe
 
+    except HTTPException:
+        raise
     except Exception as e:
         job.status = "failed"
         job.error_message = str(e)
@@ -419,7 +429,14 @@ async def upload_and_extract(
         job.recipe_id = recipe.id
         job.completed_at = datetime.now(timezone.utc)
 
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            job.status = "failed"
+            job.error_message = "Failed to save extracted recipe"
+            db.commit()
+            raise HTTPException(status_code=500, detail="Failed to save extracted recipe")
 
         # Return full recipe
         recipe = (
@@ -431,6 +448,8 @@ async def upload_and_extract(
 
         return recipe
 
+    except HTTPException:
+        raise
     except Exception as e:
         job.status = "failed"
         job.error_message = str(e)
@@ -549,7 +568,11 @@ async def upload_and_extract_multi(
         # Add ingredients
         add_ingredients_to_recipe(db, recipe, recipe_data.ingredients)
 
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Failed to save extracted recipe")
 
         # Return full recipe
         recipe = (
@@ -561,6 +584,8 @@ async def upload_and_extract_multi(
 
         return recipe
 
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")

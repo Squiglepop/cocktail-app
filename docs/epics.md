@@ -112,6 +112,9 @@ This document provides the complete epic and story breakdown for Cocktail Shots 
 | UX-5.4 | Epic 5 | Ingredient admin page |
 | UX-5.5 | Epic 5 | User management page |
 | UX-5.6 | Epic 5 | Audit log viewer |
+| BUG-7.1 | Epic 7 | Category reactivation missing |
+| BUG-7.2 | Epic 7 | Ingredient row click non-functional |
+| BUG-7.3 | Epic 7 | User edit capability missing |
 
 ## Epic List
 

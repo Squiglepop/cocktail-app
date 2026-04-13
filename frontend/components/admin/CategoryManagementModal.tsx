@@ -6,7 +6,7 @@ import { useAdminCategories, useCreateCategory, useUpdateCategory, useDeleteCate
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-client';
 import { AdminCategory } from '@/lib/api';
-import { X, Plus, Pencil, Trash2, ChevronUp, ChevronDown, Loader2, Check } from 'lucide-react';
+import { X, Plus, Pencil, Trash2, ChevronUp, ChevronDown, Loader2, Check, RotateCcw } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface CategoryManagementModalProps {
@@ -135,6 +135,17 @@ export function CategoryManagementModal({
       setTimeout(() => setDeleteMessage(null), 3000);
     } catch (err) {
       setDeleteMessage(err instanceof Error ? err.message : 'Failed to delete category');
+      setTimeout(() => setDeleteMessage(null), 3000);
+    }
+  };
+
+  const handleReactivate = async (cat: AdminCategory) => {
+    try {
+      await updateMutation.mutateAsync({ id: cat.id, data: { is_active: true }, token });
+      setDeleteMessage(`${cat.value} reactivated.`);
+      setTimeout(() => setDeleteMessage(null), 3000);
+    } catch {
+      setDeleteMessage('Failed to reactivate category');
       setTimeout(() => setDeleteMessage(null), 3000);
     }
   };
@@ -323,25 +334,36 @@ export function CategoryManagementModal({
                   </div>
 
                   {/* Actions */}
-                  {cat.is_active && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {cat.is_active ? (
+                      <>
+                        <button
+                          onClick={() => handleEditStart(cat)}
+                          className="p-1 text-gray-400 hover:text-gray-600"
+                          title="Edit label"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(cat)}
+                          disabled={deleteMutation.isPending}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="Deactivate"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : (
                       <button
-                        onClick={() => handleEditStart(cat)}
-                        className="p-1 text-gray-400 hover:text-gray-600"
-                        title="Edit label"
+                        onClick={() => handleReactivate(cat)}
+                        disabled={updateMutation.isPending}
+                        className="p-1 text-gray-400 hover:text-green-600"
+                        title="Reactivate"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <RotateCcw className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(cat)}
-                        disabled={deleteMutation.isPending}
-                        className="p-1 text-gray-400 hover:text-red-600"
-                        title="Deactivate"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

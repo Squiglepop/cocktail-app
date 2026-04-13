@@ -94,6 +94,10 @@ def update_user_status(
         user.is_admin = data.is_admin
         changes.append("granted admin" if data.is_admin else "revoked admin")
 
+    if data.display_name is not None and data.display_name != user.display_name:
+        user.display_name = data.display_name
+        changes.append(f"display_name updated to '{data.display_name}'")
+
     db.commit()
     db.refresh(user)
     message = f"User {', '.join(changes)}" if changes else "No changes applied"

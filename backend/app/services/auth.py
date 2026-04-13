@@ -3,12 +3,13 @@ Authentication service for JWT token handling and password management.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -49,7 +50,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> tuple[str, str, datetime]:
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> Tuple[str, str, datetime]:
     """
     Create a JWT refresh token with longer expiry.
     Returns: (token, jti, expires_at) tuple
@@ -119,6 +120,10 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     return user
 
 
+# NOTE: get_current_user and get_current_user_optional are FastAPI Depends()
+# dependencies, not pure services. HTTPException is intentional here — these
+# functions are always called via Depends() and never directly by service code.
+# See project_context.md architecture boundaries.
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -194,8 +199,12 @@ def store_refresh_token(
         family_id=family_id or str(uuid.uuid4())
     )
     db.add(token)
-    db.commit()
-    db.refresh(token)
+    try:
+        db.commit()
+        db.refresh(token)
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Token storage failed")
     return token
 
 

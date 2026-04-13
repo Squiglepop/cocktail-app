@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { apiDebug } from '@/lib/debug';
 
 // Runtime config - read at request time, not build time
 function getBackendUrl(): string {
@@ -130,7 +131,7 @@ async function proxyRequest(
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error('[API Proxy] Backend request failed:', error);
+    apiDebug.error('[API Proxy] Backend request failed:', error);
     return NextResponse.json(
       { detail: 'Backend service unavailable' },
       { status: 502 }

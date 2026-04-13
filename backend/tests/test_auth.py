@@ -1,7 +1,10 @@
 """
 Tests for authentication endpoints.
 """
+from unittest.mock import patch
+
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 
 class TestRegister:
@@ -532,3 +535,25 @@ class TestRevokeAll:
 
         # Cookie should be cleared (would need to check Set-Cookie header for deletion)
         # For now, just verify the endpoint executed successfully
+
+
+# --- IntegrityError Race Condition Tests ---
+
+
+def test_register_duplicate_email_integrity_error_returns_400(client, test_session):
+    """Race condition: email check passes but commit hits unique constraint."""
+    def commit_that_fails():
+        test_session.rollback()
+        raise IntegrityError("duplicate", {}, None)
+
+    with patch.object(test_session, "commit", side_effect=commit_that_fails):
+        response = client.post(
+            "/api/auth/register",
+            json={
+                "email": "race@example.com",
+                "password": "securepassword123",
+                "display_name": "Race User",
+            },
+        )
+    assert response.status_code == 400
+    assert "already registered" in response.json()["detail"].lower()

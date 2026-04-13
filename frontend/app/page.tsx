@@ -11,6 +11,7 @@ import { useOffline } from '@/lib/offline-context';
 import { useInfiniteRecipes, useRecipeCount } from '@/lib/hooks';
 import { Plus, Upload, WifiOff } from 'lucide-react';
 import { useListState } from '@/lib/list-state-context';
+import { homeDebug } from '@/lib/debug';
 
 const PAGE_SIZE = 20;
 
@@ -59,11 +60,11 @@ export default function HomePage() {
 
   // Determine which recipes to display
   const displayedRecipes = useMemo(() => {
-    console.log(`[HomePage] Computing displayedRecipes - isOnline: ${isOnline}, cachedRecipes: ${cachedRecipes.length}, recipes: ${recipes.length}, favourites_only: ${favourites_only}, isLoading: ${isLoading}`);
+    homeDebug.log(`[HomePage] Computing displayedRecipes - isOnline: ${isOnline}, cachedRecipes: ${cachedRecipes.length}, recipes: ${recipes.length}, favourites_only: ${favourites_only}, isLoading: ${isLoading}`);
 
     // When explicitly offline, show cached recipes
     if (!isOnline) {
-      console.log(`[HomePage] OFFLINE - showing ${cachedRecipes.length} cached recipes from IndexedDB`);
+      homeDebug.log(`[HomePage] OFFLINE - showing ${cachedRecipes.length} cached recipes from IndexedDB`);
       return cachedRecipes;
     }
 
@@ -71,18 +72,18 @@ export default function HomePage() {
     // This prevents the empty screen flash while waiting for API
     // But if loading is done and recipes is empty, that's a legitimate empty result
     if (isLoading && recipes.length === 0 && cachedRecipes.length > 0) {
-      console.log(`[HomePage] No API data yet, showing ${cachedRecipes.length} cached recipes`);
+      homeDebug.log(`[HomePage] No API data yet, showing ${cachedRecipes.length} cached recipes`);
       return cachedRecipes;
     }
 
     // When online with favourites filter, filter from API results
     if (favourites_only) {
       const filtered = recipes.filter((recipe) => favourites.has(recipe.id));
-      console.log(`[HomePage] ONLINE with favourites filter - showing ${filtered.length} of ${recipes.length}`);
+      homeDebug.log(`[HomePage] ONLINE with favourites filter - showing ${filtered.length} of ${recipes.length}`);
       return filtered;
     }
 
-    console.log(`[HomePage] ONLINE - showing ${recipes.length} recipes from API`);
+    homeDebug.log(`[HomePage] ONLINE - showing ${recipes.length} recipes from API`);
     return recipes;
   }, [isOnline, cachedRecipes, recipes, favourites_only, favourites, isLoading]);
 

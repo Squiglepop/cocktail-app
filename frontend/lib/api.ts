@@ -1033,6 +1033,7 @@ export interface UserListResponse {
 export interface UserStatusUpdate {
   is_active?: boolean;
   is_admin?: boolean;
+  display_name?: string;
 }
 
 export interface UserStatusResponse {
