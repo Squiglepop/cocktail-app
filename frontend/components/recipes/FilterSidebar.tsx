@@ -34,6 +34,13 @@ export function FilterSidebar({ filters, onFilterChange, className = '', variant
   const isAdmin = user?.is_admin === true;
   const [managingCategory, setManagingCategory] = useState<{ type: string; label: string } | null>(null);
 
+  // Close filter dropdown when category modal opens (prevents touch interception on mobile)
+  useEffect(() => {
+    if (managingCategory) {
+      setIsExpanded(false);
+    }
+  }, [managingCategory]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     if (variant !== 'tile' || !isExpanded) return;
