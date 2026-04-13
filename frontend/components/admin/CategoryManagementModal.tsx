@@ -142,12 +142,23 @@ export function CategoryManagementModal({
   const handleReactivate = async (cat: AdminCategory) => {
     setDeleteMessage(`Restoring ${cat.value}...`);
     try {
-      const result = await updateMutation.mutateAsync({ id: cat.id, data: { is_active: true }, token });
-      window.alert(`API response: ${JSON.stringify(result)}`);
-      setDeleteMessage(`${cat.value} reactivated.`);
-      setTimeout(() => setDeleteMessage(null), 3000);
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) { headers['Authorization'] = `Bearer ${token}`; }
+      const res = await fetch(`${API_BASE}/admin/categories/${categoryType}/${cat.id}`, {
+        method: 'PUT', headers, body: JSON.stringify({ is_active: true }),
+      });
+      const body = await res.text();
+      window.alert(`Status: ${res.status}\nURL: ${API_BASE}/admin/categories/${categoryType}/${cat.id}\nBody: ${body}`);
+      if (res.ok) {
+        setDeleteMessage(`${cat.value} reactivated.`);
+        setTimeout(() => setDeleteMessage(null), 3000);
+      } else {
+        setDeleteMessage(`Failed: ${res.status} - ${body}`);
+        setTimeout(() => setDeleteMessage(null), 5000);
+      }
     } catch (err) {
-      window.alert(`API error: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
+      window.alert(`Fetch error: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
       setDeleteMessage(`Failed to reactivate: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setTimeout(() => setDeleteMessage(null), 5000);
     }
