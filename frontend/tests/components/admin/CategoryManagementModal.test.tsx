@@ -421,7 +421,7 @@ describe('CategoryManagementModal', () => {
     await user.click(reactivateButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to reactivate category')).toBeInTheDocument()
+      expect(screen.getByText(/Failed to reactivate/)).toBeInTheDocument()
     })
   })
 
