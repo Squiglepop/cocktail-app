@@ -140,14 +140,14 @@ export function CategoryManagementModal({
   };
 
   const handleReactivate = async (cat: AdminCategory) => {
-    window.alert(`Restoring ${cat.value} (id: ${cat.id})`);
     setDeleteMessage(`Restoring ${cat.value}...`);
     try {
-      await updateMutation.mutateAsync({ id: cat.id, data: { is_active: true }, token });
+      const result = await updateMutation.mutateAsync({ id: cat.id, data: { is_active: true }, token });
+      window.alert(`API response: ${JSON.stringify(result)}`);
       setDeleteMessage(`${cat.value} reactivated.`);
       setTimeout(() => setDeleteMessage(null), 3000);
     } catch (err) {
-      console.error('Reactivate failed:', err);
+      window.alert(`API error: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
       setDeleteMessage(`Failed to reactivate: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setTimeout(() => setDeleteMessage(null), 5000);
     }
