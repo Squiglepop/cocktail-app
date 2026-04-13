@@ -357,10 +357,10 @@ export function CategoryManagementModal({
                       <button
                         onClick={() => handleReactivate(cat)}
                         disabled={updateMutation.isPending}
-                        className="p-1 text-gray-400 hover:text-green-600"
-                        title="Reactivate"
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100 active:bg-green-200 disabled:opacity-50"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
+                        Restore
                       </button>
                     )}
                   </div>

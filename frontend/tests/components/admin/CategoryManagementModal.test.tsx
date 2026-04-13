@@ -354,8 +354,8 @@ describe('CategoryManagementModal', () => {
     const deleteButtons = screen.getAllByTitle('Deactivate')
     expect(deleteButtons.length).toBe(2)
 
-    // Should have 1 reactivate button (for Flip)
-    const reactivateButtons = screen.getAllByTitle('Reactivate')
+    // Should have 1 Restore button (for Flip)
+    const reactivateButtons = screen.getAllByRole('button', { name: /Restore/ })
     expect(reactivateButtons.length).toBe(1)
   })
 
@@ -367,7 +367,7 @@ describe('CategoryManagementModal', () => {
     })
 
     // Inactive category should show Reactivate button
-    expect(screen.getByTitle('Reactivate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Restore/ })).toBeInTheDocument()
   })
 
   it('clicking Reactivate calls update API with is_active true', async () => {
@@ -389,7 +389,7 @@ describe('CategoryManagementModal', () => {
       expect(screen.getByText('Flip')).toBeInTheDocument()
     })
 
-    const reactivateButton = screen.getByTitle('Reactivate')
+    const reactivateButton = screen.getByRole('button', { name: /Restore/ })
     await user.click(reactivateButton)
 
     await waitFor(() => {
@@ -417,7 +417,7 @@ describe('CategoryManagementModal', () => {
       expect(screen.getByText('Flip')).toBeInTheDocument()
     })
 
-    const reactivateButton = screen.getByTitle('Reactivate')
+    const reactivateButton = screen.getByRole('button', { name: /Restore/ })
     await user.click(reactivateButton)
 
     await waitFor(() => {
