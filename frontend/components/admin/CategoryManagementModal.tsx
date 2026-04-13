@@ -270,105 +270,114 @@ export function CategoryManagementModal({
           ) : !categories || categories.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-4">No categories found</p>
           ) : (
-            <div className="space-y-1">
-              {categories.map((cat, index) => (
-                <div
-                  key={cat.id}
-                  className={clsx(
-                    'flex items-center gap-2 p-2 rounded hover:bg-gray-50 group',
-                    !cat.is_active && 'opacity-50'
-                  )}
-                >
-                  {/* Reorder arrows */}
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => handleReorder(index, 'up')}
-                      disabled={index === 0 || reorderMutation.isPending}
-                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Move up"
-                    >
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleReorder(index, 'down')}
-                      disabled={index === categories.length - 1 || reorderMutation.isPending}
-                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Move down"
-                    >
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Label (editable) */}
-                  <div className="flex-1 min-w-0">
-                    {editingId === cat.id ? (
-                      <div className="flex items-center gap-1">
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => handleEditSave(cat.id)}
-                          onKeyDown={(e) => handleEditKeyDown(e, cat.id)}
-                          className="input text-sm py-0.5 flex-1"
-                        />
-                        {updateMutation.isPending && (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
-                        )}
-                      </div>
-                    ) : (
-                      <div>
-                        <span
-                          className={clsx(
-                            'text-sm font-medium cursor-pointer hover:text-amber-600',
-                            !cat.is_active && 'line-through text-gray-400'
-                          )}
-                          onClick={() => cat.is_active && handleEditStart(cat)}
-                        >
-                          {cat.label}
-                        </span>
-                        <span className="text-xs text-gray-400 ml-2">{cat.value}</span>
-                        {cat.category && (
-                          <span className="text-xs text-gray-400 ml-1">({cat.category})</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    {cat.is_active ? (
-                      <>
-                        <button
-                          onClick={() => handleEditStart(cat)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                          title="Edit label"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cat)}
-                          disabled={deleteMutation.isPending}
-                          className="p-1 text-gray-400 hover:text-red-600"
-                          title="Deactivate"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </>
-                    ) : (
+            <>
+              {/* Active categories */}
+              <div className="space-y-1">
+                {categories.filter(c => c.is_active).map((cat, index, activeList) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 group"
+                  >
+                    {/* Reorder arrows */}
+                    <div className="flex flex-col">
                       <button
+                        onClick={() => handleReorder(categories.indexOf(cat), 'up')}
+                        disabled={index === 0 || reorderMutation.isPending}
+                        className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move up"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleReorder(categories.indexOf(cat), 'down')}
+                        disabled={index === activeList.length - 1 || reorderMutation.isPending}
+                        className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move down"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Label (editable) */}
+                    <div className="flex-1 min-w-0">
+                      {editingId === cat.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={() => handleEditSave(cat.id)}
+                            onKeyDown={(e) => handleEditKeyDown(e, cat.id)}
+                            className="input text-sm py-0.5 flex-1"
+                          />
+                          {updateMutation.isPending && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <span
+                            className="text-sm font-medium cursor-pointer hover:text-amber-600"
+                            onClick={() => handleEditStart(cat)}
+                          >
+                            {cat.label}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-2">{cat.value}</span>
+                          {cat.category && (
+                            <span className="text-xs text-gray-400 ml-1">({cat.category})</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleEditStart(cat)}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                        title="Edit label"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(cat)}
+                        disabled={deleteMutation.isPending}
+                        className="p-1 text-gray-400 hover:text-red-600"
+                        title="Deactivate"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Inactive categories — separate section */}
+              {categories.some(c => !c.is_active) && (
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <p className="text-xs font-medium text-gray-500 uppercase mb-2">Disabled</p>
+                  <div className="space-y-1">
+                    {categories.filter(c => !c.is_active).map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
                         onClick={() => handleReactivate(cat)}
                         disabled={updateMutation.isPending}
-                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100 active:bg-green-200 disabled:opacity-50"
+                        className="w-full flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200 text-left active:bg-green-50 active:border-green-300 disabled:opacity-50"
                       >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Restore
+                        <RotateCcw className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm text-gray-500 line-through">{cat.label}</span>
+                          <span className="text-xs text-gray-400 ml-2">{cat.value}</span>
+                        </div>
+                        <span className="text-xs font-medium text-green-600">Tap to restore</span>
                       </button>
-                    )}
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
 

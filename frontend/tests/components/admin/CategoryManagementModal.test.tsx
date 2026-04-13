@@ -77,7 +77,7 @@ describe('CategoryManagementModal', () => {
 
     const flipLabel = screen.getByText('Flip')
     expect(flipLabel).toHaveClass('line-through')
-    expect(flipLabel).toHaveClass('text-gray-400')
+    expect(flipLabel).toHaveClass('text-gray-500')
   })
 
   it('shows Add New button and form on click', async () => {
@@ -355,7 +355,7 @@ describe('CategoryManagementModal', () => {
     expect(deleteButtons.length).toBe(2)
 
     // Should have 1 Restore button (for Flip)
-    const reactivateButtons = screen.getAllByRole('button', { name: /Restore/ })
+    const reactivateButtons = screen.getAllByRole('button', { name: /Tap to restore/ })
     expect(reactivateButtons.length).toBe(1)
   })
 
@@ -367,7 +367,7 @@ describe('CategoryManagementModal', () => {
     })
 
     // Inactive category should show Reactivate button
-    expect(screen.getByRole('button', { name: /Restore/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Tap to restore/ })).toBeInTheDocument()
   })
 
   it('clicking Reactivate calls update API with is_active true', async () => {
@@ -389,7 +389,7 @@ describe('CategoryManagementModal', () => {
       expect(screen.getByText('Flip')).toBeInTheDocument()
     })
 
-    const reactivateButton = screen.getByRole('button', { name: /Restore/ })
+    const reactivateButton = screen.getByRole('button', { name: /Tap to restore/ })
     await user.click(reactivateButton)
 
     await waitFor(() => {
@@ -417,7 +417,7 @@ describe('CategoryManagementModal', () => {
       expect(screen.getByText('Flip')).toBeInTheDocument()
     })
 
-    const reactivateButton = screen.getByRole('button', { name: /Restore/ })
+    const reactivateButton = screen.getByRole('button', { name: /Tap to restore/ })
     await user.click(reactivateButton)
 
     await waitFor(() => {
