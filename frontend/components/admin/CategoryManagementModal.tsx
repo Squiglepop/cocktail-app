@@ -140,6 +140,7 @@ export function CategoryManagementModal({
   };
 
   const handleReactivate = async (cat: AdminCategory) => {
+    window.alert(`Restoring ${cat.value} (id: ${cat.id})`);
     setDeleteMessage(`Restoring ${cat.value}...`);
     try {
       await updateMutation.mutateAsync({ id: cat.id, data: { is_active: true }, token });

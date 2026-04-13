@@ -66,10 +66,9 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 def _audit_log(db, admin_id, action, entity_type, entity_id, details):
-    """Fire-and-forget audit wrapper. Uses SAVEPOINT to isolate failures."""
+    """Fire-and-forget audit wrapper. AuditService.log already uses SAVEPOINT internally."""
     try:
-        with db.begin_nested():
-            AuditService.log(db, admin_id, action, entity_type, entity_id, details)
+        AuditService.log(db, admin_id, action, entity_type, entity_id, details)
         db.commit()
     except Exception as e:
         logger.error("Audit log failed: %s", e)
