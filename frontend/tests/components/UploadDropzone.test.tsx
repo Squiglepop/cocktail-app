@@ -9,10 +9,18 @@ import { http, HttpResponse } from 'msw'
 const API_BASE = '*/api'
 
 // Wrapper with auth provider
-function renderUploadDropzone(onRecipeExtracted = vi.fn()) {
+function renderUploadDropzone(
+  onRecipeExtracted = vi.fn(),
+  enhanceRecipeId?: string,
+  onEnhanceComplete = vi.fn()
+) {
   return render(
     <AuthProvider>
-      <UploadDropzone onRecipeExtracted={onRecipeExtracted} />
+      <UploadDropzone
+        onRecipeExtracted={onRecipeExtracted}
+        enhanceRecipeId={enhanceRecipeId}
+        onEnhanceComplete={onEnhanceComplete}
+      />
     </AuthProvider>
   )
 }
@@ -258,6 +266,173 @@ describe('UploadDropzone', () => {
       await waitFor(() => {
         expect(screen.getByText(/no recipe found in image/i)).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('Back-Navigation Regression (Story 8.2)', () => {
+    it('stays in success state when enhanceRecipeId changes to undefined after success', async () => {
+      // Set up enhance endpoint
+      server.use(
+        http.post(`${API_BASE}/upload/enhance/*`, () => {
+          return HttpResponse.json({
+            id: '5',
+            name: 'Enhanced Recipe',
+            ingredients: [],
+            source_type: 'screenshot',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        })
+      )
+
+      const onEnhanceComplete = vi.fn()
+      const { rerender } = renderUploadDropzone(vi.fn(), 'some-uuid', onEnhanceComplete)
+
+      // Trigger file upload to reach success state
+      const file = new File(['test'], 'test.png', { type: 'image/png' })
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      await waitFor(() => {
+        expect(input).toBeInTheDocument()
+      })
+
+      Object.defineProperty(input, 'files', { value: [file] })
+      fireEvent.change(input)
+
+      await waitFor(() => {
+        expect(screen.getByText(/recipe enhanced successfully/i)).toBeInTheDocument()
+      })
+
+      // Simulate back-navigation: enhanceRecipeId goes to undefined
+      rerender(
+        <AuthProvider>
+          <UploadDropzone
+            onRecipeExtracted={vi.fn()}
+            enhanceRecipeId={undefined}
+            onEnhanceComplete={onEnhanceComplete}
+          />
+        </AuthProvider>
+      )
+
+      // Should still show success, NOT error
+      expect(screen.getByText(/recipe enhanced successfully/i)).toBeInTheDocument()
+      expect(screen.queryByText(/failed/i)).not.toBeInTheDocument()
+    })
+
+    it('processFiles is a no-op when state is success', async () => {
+      renderUploadDropzone(vi.fn())
+
+      // Trigger file upload to reach success state
+      const file = new File(['test'], 'test.png', { type: 'image/png' })
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      await waitFor(() => {
+        expect(input).toBeInTheDocument()
+      })
+
+      Object.defineProperty(input, 'files', { value: [file] })
+      fireEvent.change(input)
+
+      await waitFor(() => {
+        expect(screen.getByText(/recipe extracted successfully/i)).toBeInTheDocument()
+      })
+
+      // Try to paste another image while in success state — should be a no-op
+      const pasteFile = new File(['test2'], 'test2.png', { type: 'image/png' })
+      const dataTransfer = {
+        items: [{
+          type: 'image/png',
+          getAsFile: () => pasteFile,
+        }],
+      }
+
+      const pasteEvent = new Event('paste', { bubbles: true })
+      Object.defineProperty(pasteEvent, 'clipboardData', { value: dataTransfer })
+      document.dispatchEvent(pasteEvent)
+
+      // Should still show success — no state change
+      await waitFor(() => {
+        expect(screen.getByText(/recipe extracted successfully/i)).toBeInTheDocument()
+      })
+      expect(screen.queryByText(/failed/i)).not.toBeInTheDocument()
+    })
+
+    it('processFiles is a no-op when state is error', async () => {
+      server.use(
+        http.post(`${API_BASE}/upload/extract-immediate`, () => {
+          return HttpResponse.json({ detail: 'Extraction failed' }, { status: 500 })
+        })
+      )
+
+      renderUploadDropzone(vi.fn())
+
+      const file = new File(['test'], 'test.png', { type: 'image/png' })
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      await waitFor(() => {
+        expect(input).toBeInTheDocument()
+      })
+
+      Object.defineProperty(input, 'files', { value: [file] })
+      fireEvent.change(input)
+
+      await waitFor(() => {
+        expect(screen.getByText(/failed to extract recipe/i)).toBeInTheDocument()
+      })
+
+      // Try to paste another image while in error state — should be a no-op
+      const pasteFile = new File(['test2'], 'test2.png', { type: 'image/png' })
+      const dataTransfer = {
+        items: [{
+          type: 'image/png',
+          getAsFile: () => pasteFile,
+        }],
+      }
+
+      const pasteEvent = new Event('paste', { bubbles: true })
+      Object.defineProperty(pasteEvent, 'clipboardData', { value: dataTransfer })
+      document.dispatchEvent(pasteEvent)
+
+      // Should still show error — no state change to uploading
+      await waitFor(() => {
+        expect(screen.getByText(/failed to extract recipe/i)).toBeInTheDocument()
+      })
+    })
+
+    it('rerender with enhanceRecipeId=undefined after success does not show error', async () => {
+      // This tests the full back-navigation scenario with normal upload (not enhance)
+      const onRecipeExtracted = vi.fn()
+      const { rerender } = renderUploadDropzone(onRecipeExtracted)
+
+      const file = new File(['test'], 'test.png', { type: 'image/png' })
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      await waitFor(() => {
+        expect(input).toBeInTheDocument()
+      })
+
+      Object.defineProperty(input, 'files', { value: [file] })
+      fireEvent.change(input)
+
+      await waitFor(() => {
+        expect(screen.getByText(/recipe extracted successfully/i)).toBeInTheDocument()
+      })
+
+      // Simulate the component being rerendered with explicit undefined enhanceRecipeId
+      // (as would happen during back-navigation)
+      rerender(
+        <AuthProvider>
+          <UploadDropzone
+            onRecipeExtracted={onRecipeExtracted}
+            enhanceRecipeId={undefined}
+            onEnhanceComplete={vi.fn()}
+          />
+        </AuthProvider>
+      )
+
+      // Should still show success, NOT error
+      expect(screen.getByText(/recipe extracted successfully/i)).toBeInTheDocument()
+      expect(screen.queryByText(/failed/i)).not.toBeInTheDocument()
     })
   })
 

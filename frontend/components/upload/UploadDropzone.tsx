@@ -39,7 +39,22 @@ export function UploadDropzone({
   const [extractedRecipeId, setExtractedRecipeId] = useState<string | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
-  const isEnhanceMode = !!enhanceRecipeId;
+  // Stabilized as state to prevent cascade when enhanceRecipeId goes undefined during terminal states
+  const [isEnhanceMode, setIsEnhanceMode] = useState(!!enhanceRecipeId);
+
+  // Ref to avoid stale closure reads of state in callbacks
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // Only transition INTO enhance mode, never out during terminal state
+  useEffect(() => {
+    if (enhanceRecipeId) {
+      setIsEnhanceMode(true);
+    } else if (state === 'idle') {
+      setIsEnhanceMode(false);
+    }
+    // When state is 'success' or 'error', ignore prop going to undefined
+  }, [enhanceRecipeId, state]);
 
   // Cleanup blob URLs when preview changes or component unmounts
   useEffect(() => {
@@ -84,6 +99,9 @@ export function UploadDropzone({
   const processFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
 
+    // Guard: prevent re-invocation in terminal states (uses ref to avoid stale closure)
+    if (stateRef.current === 'success' || stateRef.current === 'error') return;
+
     // Clean up previous blob URL before creating new one
     revokePreviewIfBlob();
 
@@ -119,6 +137,8 @@ export function UploadDropzone({
   }, [isEnhanceMode, token, doExtraction, revokePreviewIfBlob]);
 
   const proceedWithUpload = useCallback(async () => {
+    // Guard: prevent invocation in terminal states (mirrors processFiles guard)
+    if (stateRef.current === 'success' || stateRef.current === 'error') return;
     if (pendingFiles.length > 0) {
       await doExtraction(pendingFiles);
     }
@@ -135,7 +155,9 @@ export function UploadDropzone({
   // Handle clipboard paste anywhere on the page
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      if (state === 'uploading') return;
+      // Guard: use stateRef to avoid stale closure; block paste in uploading and terminal states
+      const currentState = stateRef.current;
+      if (currentState === 'uploading' || currentState === 'success' || currentState === 'error') return;
 
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -180,6 +202,8 @@ export function UploadDropzone({
 
   const handleUrlSubmit = async () => {
     if (!imageUrl.trim()) return;
+    // Guard: prevent invocation in terminal states (mirrors processFiles guard)
+    if (stateRef.current === 'success' || stateRef.current === 'error') return;
 
     // Clean up any existing blob URL before setting the regular URL preview
     revokePreviewIfBlob();

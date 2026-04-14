@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCachedRecipeListItems } from './offline-storage';
 import { RecipeListItem } from './api';
@@ -27,18 +27,23 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   // We ONLY use them to trigger an immediate health check, NOT to set state directly
   // The health check is the single source of truth for isOnline state
 
+  // Consecutive failure counter — useRef to avoid re-creating the callback
+  const failureCountRef = useRef(0);
+  // Mirror isOnline state for reading inside useCallback without stale closures
+  const isOnlineRef = useRef(true);
+
   // Actually TEST connectivity by making a real request (navigator.onLine lies)
   // This is the ONLY reliable way to detect offline in PWAs where service workers
   // serve cached content even when wifi is off
   const checkRealConnectivity = useCallback(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
     try {
       // Use relative /health URL - Next.js rewrites proxy it to the backend
       // Add cache-busting param to prevent ANY caching (browser, CDN, etc)
       const healthUrl = `/health?_=${Date.now()}`;
       debug.log(`Checking connectivity: ${healthUrl}`);
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
 
       const response = await fetch(healthUrl, {
         method: 'GET',
@@ -49,12 +54,28 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) throw new Error('Health check failed');
 
+      // Success: reset failure counter
+      failureCountRef.current = 0;
+      if (!isOnlineRef.current) {
+        debug.log('ONLINE transition: health check passed, failureCount reset');
+      }
       debug.log('Health check passed - ONLINE');
+      isOnlineRef.current = true;
       setIsOnline(true);
     } catch (error) {
-      // Network request failed = actually offline
-      debug.log('Health check failed - OFFLINE', error);
-      setIsOnline(false);
+      clearTimeout(timeout);
+      failureCountRef.current++;
+      debug.log(`Health check failed (${failureCountRef.current} consecutive)`, error);
+
+      if (failureCountRef.current >= 2) {
+        if (isOnlineRef.current) {
+          debug.log(`OFFLINE transition: ${failureCountRef.current} consecutive failures`);
+        }
+        isOnlineRef.current = false;
+        setIsOnline(false);
+      } else {
+        debug.log('Single failure — not transitioning to offline yet');
+      }
     }
   }, []);
 
